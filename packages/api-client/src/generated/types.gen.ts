@@ -18,6 +18,45 @@ export type AuthTokens = {
     token_type?: 'Bearer';
 };
 
+export type CodeRevisionView = {
+    created_at: string;
+    id: string;
+    sequence: number;
+    source_digest: string;
+};
+
+export type CodeRunMode = 'RUN' | 'TRACE' | 'SUBMIT';
+
+export type CodeRunRequest = {
+    expected_task_version: number;
+    mode: 'RUN' | 'TRACE';
+    source_code: string;
+    task_instance_id: string;
+    trace_enabled?: boolean;
+};
+
+export type CodeRunStatus = 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'USER_ERROR' | 'PLATFORM_ERROR' | 'TIMEOUT' | 'CANCELLED';
+
+export type CodeRunView = {
+    completed_at?: string | null;
+    evidence_event_id?: string | null;
+    mode: CodeRunMode;
+    requested_at: string;
+    result?: SandboxResult | null;
+    revision: CodeRevisionView;
+    run_id: string;
+    started_at?: string | null;
+    status: CodeRunStatus;
+    task_instance_id: string;
+    version: number;
+};
+
+export type CodeSubmissionRequest = {
+    expected_task_version: number;
+    source_code: string;
+    task_instance_id: string;
+};
+
 /**
  * 学习证据记录（append-only，event_id 唯一）。
  */
@@ -53,6 +92,24 @@ export type HealthResponse = {
 };
 
 export type HealthStatus = 'ok' | 'degraded' | 'down';
+
+export type HintRequest = {
+    expected_task_version: number;
+    level: number;
+    revision_id?: string | null;
+};
+
+export type HintUsageView = {
+    content: string;
+    cost: number;
+    created_at: string;
+    hint_key: string;
+    id: string;
+    level: number;
+    revision_id?: string | null;
+    sequence: number;
+    task_instance_id: string;
+};
 
 export type LearningPathStatusContract = 'CURRENT' | 'SUPERSEDED';
 
@@ -180,6 +237,51 @@ export type ReviewView = {
     version: number;
 };
 
+export type SandboxComparison = 'EQUAL' | 'APPROX' | 'UNORDERED' | 'MATCHES';
+
+export type SandboxResourceUsage = {
+    cpu_ms: number;
+    exit_code?: number | null;
+    peak_memory_kb?: number | null;
+    wall_ms: number;
+};
+
+/**
+ * A bounded result; platform errors remain separate from user errors.
+ */
+export type SandboxResult = {
+    passed: boolean;
+    platform_error?: string | null;
+    resource_usage: SandboxResourceUsage;
+    run_id: string;
+    status: SandboxRunStatus;
+    stderr: string;
+    stderr_truncated: boolean;
+    stdout: string;
+    stdout_truncated: boolean;
+    tests: Array<SandboxTestCaseResult>;
+    trace_frames?: Array<TraceFrame> | null;
+    trace_truncated: boolean;
+    user_error?: string | null;
+};
+
+export type SandboxRunStatus = 'PASSED' | 'FAILED' | 'ERROR' | 'TIMEOUT' | 'CANCELLED';
+
+export type SandboxTestCaseResult = {
+    case_id: string;
+    comparison: SandboxComparison;
+    display_name: string;
+    duration_ms: number;
+    message?: string | null;
+    passed: boolean;
+    stderr?: string;
+    stderr_truncated?: boolean;
+    stdout?: string;
+    stdout_truncated?: boolean;
+    transfer: boolean;
+    visibility: TestVisibility;
+};
+
 /**
  * Body of the public ``GET /system/ping`` connectivity-test endpoint.
  */
@@ -212,6 +314,8 @@ export type TaskSubmissionResponse = {
     version: number;
 };
 
+export type TestVisibility = 'VISIBLE' | 'HIDDEN';
+
 export type TodayItem = {
     course_id: string;
     due_at?: string | null;
@@ -227,6 +331,19 @@ export type TodayItem = {
  */
 export type TokenRefreshRequest = {
     refresh_token: string;
+};
+
+/**
+ * A deterministic code-trace frame emitted by AST instrumentation.
+ */
+export type TraceFrame = {
+    event: 'call' | 'line' | 'return' | 'exception';
+    func_name: string;
+    line: number;
+    locals?: {
+        [key: string]: string;
+    } | null;
+    sequence: number;
 };
 
 /**
@@ -457,6 +574,110 @@ export type RegisterApiV1AuthRegisterPostResponses = {
 
 export type RegisterApiV1AuthRegisterPostResponse = RegisterApiV1AuthRegisterPostResponses[keyof RegisterApiV1AuthRegisterPostResponses];
 
+export type CreateRunApiV1CodeRunsPostData = {
+    body: CodeRunRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/code/runs';
+};
+
+export type CreateRunApiV1CodeRunsPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateRunApiV1CodeRunsPostError = CreateRunApiV1CodeRunsPostErrors[keyof CreateRunApiV1CodeRunsPostErrors];
+
+export type CreateRunApiV1CodeRunsPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: CodeRunView;
+};
+
+export type CreateRunApiV1CodeRunsPostResponse = CreateRunApiV1CodeRunsPostResponses[keyof CreateRunApiV1CodeRunsPostResponses];
+
+export type GetRunApiV1CodeRunsRunIdGetData = {
+    body?: never;
+    path: {
+        run_id: string;
+    };
+    query?: never;
+    url: '/api/v1/code/runs/{run_id}';
+};
+
+export type GetRunApiV1CodeRunsRunIdGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetRunApiV1CodeRunsRunIdGetError = GetRunApiV1CodeRunsRunIdGetErrors[keyof GetRunApiV1CodeRunsRunIdGetErrors];
+
+export type GetRunApiV1CodeRunsRunIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: CodeRunView;
+};
+
+export type GetRunApiV1CodeRunsRunIdGetResponse = GetRunApiV1CodeRunsRunIdGetResponses[keyof GetRunApiV1CodeRunsRunIdGetResponses];
+
+export type CancelRunApiV1CodeRunsRunIdCancelPostData = {
+    body?: never;
+    path: {
+        run_id: string;
+    };
+    query?: never;
+    url: '/api/v1/code/runs/{run_id}/cancel';
+};
+
+export type CancelRunApiV1CodeRunsRunIdCancelPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CancelRunApiV1CodeRunsRunIdCancelPostError = CancelRunApiV1CodeRunsRunIdCancelPostErrors[keyof CancelRunApiV1CodeRunsRunIdCancelPostErrors];
+
+export type CancelRunApiV1CodeRunsRunIdCancelPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: CodeRunView;
+};
+
+export type CancelRunApiV1CodeRunsRunIdCancelPostResponse = CancelRunApiV1CodeRunsRunIdCancelPostResponses[keyof CancelRunApiV1CodeRunsRunIdCancelPostResponses];
+
+export type CreateSubmissionApiV1CodeSubmissionsPostData = {
+    body: CodeSubmissionRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/code/submissions';
+};
+
+export type CreateSubmissionApiV1CodeSubmissionsPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateSubmissionApiV1CodeSubmissionsPostError = CreateSubmissionApiV1CodeSubmissionsPostErrors[keyof CreateSubmissionApiV1CodeSubmissionsPostErrors];
+
+export type CreateSubmissionApiV1CodeSubmissionsPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: CodeRunView;
+};
+
+export type CreateSubmissionApiV1CodeSubmissionsPostResponse = CreateSubmissionApiV1CodeSubmissionsPostResponses[keyof CreateSubmissionApiV1CodeSubmissionsPostResponses];
+
 export type GetMyEvidenceApiV1EvidenceGetData = {
     body?: never;
     path?: never;
@@ -641,6 +862,33 @@ export type PostponeReviewApiV1ReviewsReviewIdReschedulePostResponses = {
 };
 
 export type PostponeReviewApiV1ReviewsReviewIdReschedulePostResponse = PostponeReviewApiV1ReviewsReviewIdReschedulePostResponses[keyof PostponeReviewApiV1ReviewsReviewIdReschedulePostResponses];
+
+export type RequestHintApiV1TasksTaskInstanceIdHintsPostData = {
+    body: HintRequest;
+    path: {
+        task_instance_id: string;
+    };
+    query?: never;
+    url: '/api/v1/tasks/{task_instance_id}/hints';
+};
+
+export type RequestHintApiV1TasksTaskInstanceIdHintsPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RequestHintApiV1TasksTaskInstanceIdHintsPostError = RequestHintApiV1TasksTaskInstanceIdHintsPostErrors[keyof RequestHintApiV1TasksTaskInstanceIdHintsPostErrors];
+
+export type RequestHintApiV1TasksTaskInstanceIdHintsPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: HintUsageView;
+};
+
+export type RequestHintApiV1TasksTaskInstanceIdHintsPostResponse = RequestHintApiV1TasksTaskInstanceIdHintsPostResponses[keyof RequestHintApiV1TasksTaskInstanceIdHintsPostResponses];
 
 export type SubmitTaskApiV1TasksTaskInstanceIdSubmitPostData = {
     body: AssessmentSubmission;

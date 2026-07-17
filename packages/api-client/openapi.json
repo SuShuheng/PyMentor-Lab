@@ -58,6 +58,222 @@
         "title": "AuthTokens",
         "type": "object"
       },
+      "CodeRevisionView": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "sequence": {
+            "minimum": 1.0,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "source_digest": {
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Source Digest",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sequence",
+          "source_digest",
+          "created_at"
+        ],
+        "title": "CodeRevisionView",
+        "type": "object"
+      },
+      "CodeRunMode": {
+        "enum": [
+          "RUN",
+          "TRACE",
+          "SUBMIT"
+        ],
+        "title": "CodeRunMode",
+        "type": "string"
+      },
+      "CodeRunRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_task_version": {
+            "minimum": 1.0,
+            "title": "Expected Task Version",
+            "type": "integer"
+          },
+          "mode": {
+            "enum": [
+              "RUN",
+              "TRACE"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "source_code": {
+            "maxLength": 65536,
+            "minLength": 1,
+            "title": "Source Code",
+            "type": "string"
+          },
+          "task_instance_id": {
+            "minLength": 1,
+            "title": "Task Instance Id",
+            "type": "string"
+          },
+          "trace_enabled": {
+            "default": false,
+            "title": "Trace Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "task_instance_id",
+          "source_code",
+          "mode",
+          "expected_task_version"
+        ],
+        "title": "CodeRunRequest",
+        "type": "object"
+      },
+      "CodeRunStatus": {
+        "enum": [
+          "QUEUED",
+          "RUNNING",
+          "COMPLETED",
+          "USER_ERROR",
+          "PLATFORM_ERROR",
+          "TIMEOUT",
+          "CANCELLED"
+        ],
+        "title": "CodeRunStatus",
+        "type": "string"
+      },
+      "CodeRunView": {
+        "additionalProperties": false,
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "evidence_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Event Id"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/CodeRunMode"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SandboxResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "$ref": "#/components/schemas/CodeRevisionView"
+          },
+          "run_id": {
+            "minLength": 1,
+            "title": "Run Id",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CodeRunStatus"
+          },
+          "task_instance_id": {
+            "minLength": 1,
+            "title": "Task Instance Id",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "run_id",
+          "task_instance_id",
+          "mode",
+          "status",
+          "version",
+          "revision",
+          "requested_at"
+        ],
+        "title": "CodeRunView",
+        "type": "object"
+      },
+      "CodeSubmissionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_task_version": {
+            "minimum": 1.0,
+            "title": "Expected Task Version",
+            "type": "integer"
+          },
+          "source_code": {
+            "maxLength": 65536,
+            "minLength": 1,
+            "title": "Source Code",
+            "type": "string"
+          },
+          "task_instance_id": {
+            "minLength": 1,
+            "title": "Task Instance Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_instance_id",
+          "source_code",
+          "expected_task_version"
+        ],
+        "title": "CodeSubmissionRequest",
+        "type": "object"
+      },
       "EvidenceEvent": {
         "additionalProperties": false,
         "description": "\u5b66\u4e60\u8bc1\u636e\u8bb0\u5f55\uff08append-only\uff0cevent_id \u552f\u4e00\uff09\u3002",
@@ -208,6 +424,112 @@
         ],
         "title": "HealthStatus",
         "type": "string"
+      },
+      "HintRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_task_version": {
+            "minimum": 1.0,
+            "title": "Expected Task Version",
+            "type": "integer"
+          },
+          "level": {
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Level",
+            "type": "integer"
+          },
+          "revision_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Id"
+          }
+        },
+        "required": [
+          "level",
+          "expected_task_version"
+        ],
+        "title": "HintRequest",
+        "type": "object"
+      },
+      "HintUsageView": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          },
+          "cost": {
+            "minimum": 0.0,
+            "title": "Cost",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "hint_key": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Hint Key",
+            "type": "string"
+          },
+          "id": {
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "level": {
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Level",
+            "type": "integer"
+          },
+          "revision_id": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Id"
+          },
+          "sequence": {
+            "minimum": 1.0,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "task_instance_id": {
+            "minLength": 1,
+            "title": "Task Instance Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "task_instance_id",
+          "sequence",
+          "hint_key",
+          "level",
+          "cost",
+          "content",
+          "created_at"
+        ],
+        "title": "HintUsageView",
+        "type": "object"
       },
       "LearningPathStatusContract": {
         "enum": [
@@ -766,6 +1088,249 @@
         "title": "ReviewView",
         "type": "object"
       },
+      "SandboxComparison": {
+        "enum": [
+          "EQUAL",
+          "APPROX",
+          "UNORDERED",
+          "MATCHES"
+        ],
+        "title": "SandboxComparison",
+        "type": "string"
+      },
+      "SandboxResourceUsage": {
+        "additionalProperties": false,
+        "properties": {
+          "cpu_ms": {
+            "minimum": 0.0,
+            "title": "Cpu Ms",
+            "type": "integer"
+          },
+          "exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Code"
+          },
+          "peak_memory_kb": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peak Memory Kb"
+          },
+          "wall_ms": {
+            "minimum": 0.0,
+            "title": "Wall Ms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cpu_ms",
+          "wall_ms"
+        ],
+        "title": "SandboxResourceUsage",
+        "type": "object"
+      },
+      "SandboxResult": {
+        "additionalProperties": false,
+        "description": "A bounded result; platform errors remain separate from user errors.",
+        "properties": {
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "platform_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform Error"
+          },
+          "resource_usage": {
+            "$ref": "#/components/schemas/SandboxResourceUsage"
+          },
+          "run_id": {
+            "minLength": 1,
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SandboxRunStatus"
+          },
+          "stderr": {
+            "title": "Stderr",
+            "type": "string"
+          },
+          "stderr_truncated": {
+            "title": "Stderr Truncated",
+            "type": "boolean"
+          },
+          "stdout": {
+            "title": "Stdout",
+            "type": "string"
+          },
+          "stdout_truncated": {
+            "title": "Stdout Truncated",
+            "type": "boolean"
+          },
+          "tests": {
+            "items": {
+              "$ref": "#/components/schemas/SandboxTestCaseResult"
+            },
+            "maxItems": 256,
+            "title": "Tests",
+            "type": "array"
+          },
+          "trace_frames": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TraceFrame"
+                },
+                "maxItems": 1000,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trace Frames"
+          },
+          "trace_truncated": {
+            "title": "Trace Truncated",
+            "type": "boolean"
+          },
+          "user_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Error"
+          }
+        },
+        "required": [
+          "run_id",
+          "status",
+          "passed",
+          "stdout",
+          "stderr",
+          "tests",
+          "resource_usage",
+          "stdout_truncated",
+          "stderr_truncated",
+          "trace_truncated"
+        ],
+        "title": "SandboxResult",
+        "type": "object"
+      },
+      "SandboxRunStatus": {
+        "enum": [
+          "PASSED",
+          "FAILED",
+          "ERROR",
+          "TIMEOUT",
+          "CANCELLED"
+        ],
+        "title": "SandboxRunStatus",
+        "type": "string"
+      },
+      "SandboxTestCaseResult": {
+        "additionalProperties": false,
+        "properties": {
+          "case_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Case Id",
+            "type": "string"
+          },
+          "comparison": {
+            "$ref": "#/components/schemas/SandboxComparison"
+          },
+          "display_name": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "duration_ms": {
+            "minimum": 0.0,
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "stderr": {
+            "default": "",
+            "title": "Stderr",
+            "type": "string"
+          },
+          "stderr_truncated": {
+            "default": false,
+            "title": "Stderr Truncated",
+            "type": "boolean"
+          },
+          "stdout": {
+            "default": "",
+            "title": "Stdout",
+            "type": "string"
+          },
+          "stdout_truncated": {
+            "default": false,
+            "title": "Stdout Truncated",
+            "type": "boolean"
+          },
+          "transfer": {
+            "title": "Transfer",
+            "type": "boolean"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/TestVisibility"
+          }
+        },
+        "required": [
+          "case_id",
+          "display_name",
+          "visibility",
+          "comparison",
+          "transfer",
+          "passed",
+          "duration_ms"
+        ],
+        "title": "SandboxTestCaseResult",
+        "type": "object"
+      },
       "SystemPingResponse": {
         "additionalProperties": false,
         "description": "Body of the public ``GET /system/ping`` connectivity-test endpoint.",
@@ -910,6 +1475,14 @@
         "title": "TaskSubmissionResponse",
         "type": "object"
       },
+      "TestVisibility": {
+        "enum": [
+          "VISIBLE",
+          "HIDDEN"
+        ],
+        "title": "TestVisibility",
+        "type": "string"
+      },
       "TodayItem": {
         "additionalProperties": false,
         "properties": {
@@ -983,6 +1556,60 @@
           "refresh_token"
         ],
         "title": "TokenRefreshRequest",
+        "type": "object"
+      },
+      "TraceFrame": {
+        "additionalProperties": false,
+        "description": "A deterministic code-trace frame emitted by AST instrumentation.",
+        "properties": {
+          "event": {
+            "enum": [
+              "call",
+              "line",
+              "return",
+              "exception"
+            ],
+            "title": "Event",
+            "type": "string"
+          },
+          "func_name": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Func Name",
+            "type": "string"
+          },
+          "line": {
+            "exclusiveMinimum": 0.0,
+            "title": "Line",
+            "type": "integer"
+          },
+          "locals": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locals"
+          },
+          "sequence": {
+            "minimum": 1.0,
+            "title": "Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sequence",
+          "line",
+          "event",
+          "func_name"
+        ],
+        "title": "TraceFrame",
         "type": "object"
       },
       "UserProfile": {
@@ -1456,6 +2083,172 @@
         ]
       }
     },
+    "/api/v1/code/runs": {
+      "post": {
+        "operationId": "create_run_api_v1_code_runs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodeRunView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Run",
+        "tags": [
+          "code-evidence"
+        ]
+      }
+    },
+    "/api/v1/code/runs/{run_id}": {
+      "get": {
+        "operationId": "get_run_api_v1_code_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodeRunView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run",
+        "tags": [
+          "code-evidence"
+        ]
+      }
+    },
+    "/api/v1/code/runs/{run_id}/cancel": {
+      "post": {
+        "operationId": "cancel_run_api_v1_code_runs__run_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodeRunView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Run",
+        "tags": [
+          "code-evidence"
+        ]
+      }
+    },
+    "/api/v1/code/submissions": {
+      "post": {
+        "operationId": "create_submission_api_v1_code_submissions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeSubmissionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodeRunView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Submission",
+        "tags": [
+          "code-evidence"
+        ]
+      }
+    },
     "/api/v1/evidence": {
       "get": {
         "description": "\u67e5\u8be2\u5f53\u524d\u5b66\u751f\u7684\u5b66\u4e60\u8bc1\u636e\uff08\u53ea\u80fd\u67e5\u81ea\u5df1\u7684\uff09\u3002",
@@ -1833,6 +2626,58 @@
         "summary": "Postpone Review",
         "tags": [
           "learning-reviews"
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_instance_id}/hints": {
+      "post": {
+        "operationId": "request_hint_api_v1_tasks__task_instance_id__hints_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_instance_id",
+            "required": true,
+            "schema": {
+              "title": "Task Instance Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HintRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HintUsageView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Request Hint",
+        "tags": [
+          "code-hints"
         ]
       }
     },

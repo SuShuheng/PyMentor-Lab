@@ -47,7 +47,6 @@ from sandbox.protocol import (
     ProtocolFrameError,
     decode_frame,
     encode_frame,
-    sign_request,
 )
 
 # --------------------------------------------------------------------------- #
@@ -65,16 +64,14 @@ SANDBOX_CHILD_GID = 10001
 
 # Resource ceilings expressed as ulimits. The harness policy may select lower
 # values; these are absolute upper bounds enforced at the container boundary.
-MAX_ULIMIT_FSIZE_KB = 16_384  # 16 MiB max file size a child can grow.
+MAX_ULIMIT_FSIZE_BYTES = 16 * 1024 * 1024  # Match the bounded 16 MiB tmpfs.
 MAX_ULIMIT_NOFILE = 64  # Bounded descriptor table for untrusted code.
-MAX_ULIMIT_CPU_SECONDS = 30  # Absolute CPU-time ceiling above policy timeout.
+MAX_ULIMIT_CPU_SECONDS = 30  # Soft CPU ceiling; hard limit adds one kill-grace second.
 
 WORK_DIR = "/work"
 STOP_TIMEOUT_SECONDS = 5
 TMPFS_SIZE_BYTES = 16 * 1024 * 1024
 
-SUPERVISOR_PATH = "/internal/v1/executions"
-SUPERVISOR_METHOD = "POST"
 SHARED_SECRET_MIN_BYTES = 32
 
 
@@ -106,19 +103,19 @@ class ExecutorError(Exception):
 def _ulimits(timeout_ms: int) -> list[str]:
     """Build the ``--ulimit`` tokens from validated policy values.
 
-    ``cpu=`` is clamped to the absolute ceiling so a policy value can never
-    exceed the production safety bound.
+    The CPU soft limit is clamped to the production ceiling. Its hard limit
+    reserves one extra second for the kernel to terminate an overrun child.
     """
 
     policy_cpu_seconds = max(1, (timeout_ms + 999) // 1000)
     cpu_seconds = min(policy_cpu_seconds, MAX_ULIMIT_CPU_SECONDS)
     return [
         "--ulimit",
-        f"fsize={MAX_ULIMIT_FSIZE_KB}:{MAX_ULIMIT_FSIZE_KB}",
+        f"fsize={MAX_ULIMIT_FSIZE_BYTES}:{MAX_ULIMIT_FSIZE_BYTES}",
         "--ulimit",
         f"nofile={MAX_ULIMIT_NOFILE}:{MAX_ULIMIT_NOFILE}",
         "--ulimit",
-        f"cpu={cpu_seconds}:{cpu_seconds}",
+        f"cpu={cpu_seconds}:{cpu_seconds + 1}",
     ]
 
 
@@ -160,15 +157,16 @@ def build_container_args(
     args: list[str] = [
         "run",
         "--rm",
+        "--interactive",
         # No network, no published ports, no host namespace sharing.
         "--network",
-        "none",
-        "--dns",
         "none",
         # Read-only root filesystem with a size-bounded tmpfs work directory.
         "--read-only",
         "--tmpfs",
         f"{WORK_DIR}:rw,noexec,nosuid,nodev,size={TMPFS_SIZE_BYTES}",
+        "--env",
+        f"TMPDIR={WORK_DIR}",
         # Fixed numeric non-root student identity.
         "--user",
         f"{SANDBOX_CHILD_UID}:{SANDBOX_CHILD_GID}",
@@ -302,41 +300,17 @@ def _expires_at(request: SandboxExecutionRequest) -> int:
     return int(time.time()) + (request.policy.timeout_ms // 1000) + STOP_TIMEOUT_SECONDS
 
 
-def _signed_frame(request: SandboxExecutionRequest, *, secret: bytes) -> bytes:
-    """Build the authenticated stdin frame for the trusted harness.
+def _runtime_frame(request: SandboxExecutionRequest) -> bytes:
+    """Build the canonical framed request consumed by the trusted harness.
 
-    The harness reads one signed canonical request and writes one canonical
-    response. The signature binds method, path, timestamp, nonce, and body
-    digest so a captured execution frame cannot be replayed as a cancel.
+    The Supervisor has already authenticated the HTTP request. Its service
+    secret must never cross into the untrusted job container.
     """
 
-    body_dict = request.model_dump(mode="json")
-    from sandbox.protocol import canonical_json
-
-    body = canonical_json(body_dict)
-    if len(body) > MAX_REQUEST_BYTES:
-        raise ExecutorError("FRAME_OVERSIZED", "execution request exceeds protocol limit")
-    timestamp = int(time.time())
-    nonce = f"{request.run_id}-{request.request_id}-{request.protocol_version}"
-    headers = sign_request(
-        body,
-        method=SUPERVISOR_METHOD,
-        path=SUPERVISOR_PATH,
-        secret=secret,
-        timestamp=timestamp,
-        nonce=nonce,
-    )
-    # The harness reads the authenticated headers as a length-prefixed preamble
-    # followed by the canonical body. We embed them as a small JSON envelope so
-    # the harness can verify before touching untrusted input.
-    envelope = canonical_json({"headers": headers, "body_b64": _b64(body)})
-    return envelope + b"\n"
-
-
-def _b64(data: bytes) -> str:
-    import base64
-
-    return base64.b64encode(data).decode("ascii")
+    try:
+        return encode_frame(request.model_dump(mode="json"), max_bytes=MAX_REQUEST_BYTES)
+    except ProtocolFrameError as exc:
+        raise ExecutorError("FRAME_OVERSIZED", str(exc)) from exc
 
 
 class Executor:
@@ -362,7 +336,7 @@ class Executor:
     def execute(self, request: SandboxExecutionRequest, *, secret: bytes) -> SandboxResult:
         if len(secret) < SHARED_SECRET_MIN_BYTES:
             raise ExecutorError("PROTOCOL_AUTH_FAILURE", "shared secret is too short")
-        stdin_payload = _signed_frame(request, secret=secret)
+        stdin_payload = _runtime_frame(request)
         run_args = [
             self.docker_binary,
             *build_container_args(request, runtime_image=self.runtime_image),
@@ -517,7 +491,7 @@ def _read_secret() -> bytes:
 __all__ = [
     "DEFAULT_RUNTIME_IMAGE",
     "MAX_ULIMIT_CPU_SECONDS",
-    "MAX_ULIMIT_FSIZE_KB",
+    "MAX_ULIMIT_FSIZE_BYTES",
     "MAX_ULIMIT_NOFILE",
     "SANDBOX_CHILD_GID",
     "SANDBOX_CHILD_UID",

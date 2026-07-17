@@ -21,10 +21,12 @@ from app.contracts.sandbox import (
 )
 from sandbox.executor import (
     DEFAULT_RUNTIME_IMAGE,
-    MAX_ULIMIT_FSIZE_KB,
+    MAX_ULIMIT_FSIZE_BYTES,
     MAX_ULIMIT_NOFILE,
     SANDBOX_CHILD_GID,
     SANDBOX_CHILD_UID,
+    TMPFS_SIZE_BYTES,
+    WORK_DIR,
     Executor,
     ExecutorError,
     build_container_args,
@@ -70,8 +72,19 @@ def test_build_container_args_drops_network_and_publishes_no_ports() -> None:
     args = build_container_args(_request())
     assert "--network" in args
     assert args[args.index("--network") + 1] == "none"
+    # ``--dns`` accepts only an IP address; the string ``none`` makes Docker
+    # reject the container with exit 125 before the isolation policy runs.
+    # The ``none`` network already provides no external DNS or egress.
+    assert "--dns" not in args
     assert "--publish" not in args
     assert "-p" not in args
+
+
+def test_build_container_args_attaches_stdin_without_allocating_a_tty() -> None:
+    args = build_container_args(_request())
+    assert "--interactive" in args
+    assert "--tty" not in args
+    assert "-t" not in args
 
 
 def test_build_container_args_makes_root_read_only_with_sized_tmpfs_workdir() -> None:
@@ -79,6 +92,12 @@ def test_build_container_args_makes_root_read_only_with_sized_tmpfs_workdir() ->
     assert "--read-only" in args
     tmpfs = [args[i + 1] for i, token in enumerate(args) if token == "--tmpfs"]
     assert any("/work" in entry and "size=" in entry for entry in tmpfs), tmpfs
+
+
+def test_build_container_args_routes_temporary_files_to_the_tmpfs_workdir() -> None:
+    args = build_container_args(_request())
+    environment = [args[i + 1] for i, token in enumerate(args) if token == "--env"]
+    assert f"TMPDIR={WORK_DIR}" in environment
 
 
 def test_build_container_args_runs_as_numeric_non_root_user() -> None:
@@ -112,9 +131,32 @@ def test_build_container_args_enforces_resource_limits_without_swap_expansion() 
 def test_build_container_args_binds_file_size_descriptors_and_cpu_ulimits() -> None:
     args = build_container_args(_request())
     ulimits = [args[i + 1] for i, token in enumerate(args) if token == "--ulimit"]
-    assert f"fsize={MAX_ULIMIT_FSIZE_KB}:{MAX_ULIMIT_FSIZE_KB}" in ulimits
+    assert f"fsize={MAX_ULIMIT_FSIZE_BYTES}:{MAX_ULIMIT_FSIZE_BYTES}" in ulimits
     assert f"nofile={MAX_ULIMIT_NOFILE}:{MAX_ULIMIT_NOFILE}" in ulimits
     assert any(entry.startswith("cpu=") for entry in ulimits), ulimits
+
+
+def test_container_file_size_limit_uses_bytes_and_fits_the_tmpfs() -> None:
+    args = build_container_args(_request())
+    file_limit = next(
+        args[i + 1]
+        for i, token in enumerate(args)
+        if token == "--ulimit" and args[i + 1].startswith("fsize=")
+    )
+    soft, hard = map(int, file_limit.removeprefix("fsize=").split(":"))
+    assert soft == hard == MAX_ULIMIT_FSIZE_BYTES
+    assert hard <= TMPFS_SIZE_BYTES
+
+
+def test_container_cpu_ulimit_reserves_the_child_hard_kill_grace() -> None:
+    args = build_container_args(_request())
+    cpu_limit = next(
+        args[i + 1]
+        for i, token in enumerate(args)
+        if token == "--ulimit" and args[i + 1].startswith("cpu=")
+    )
+    soft, hard = map(int, cpu_limit.removeprefix("cpu=").split(":"))
+    assert hard == soft + 1
 
 
 def test_build_container_args_disables_restart_and_caps_stop_timeout() -> None:
@@ -271,6 +313,44 @@ def test_executor_raises_platform_error_when_docker_binary_is_missing(
     with pytest.raises(ExecutorError) as caught:
         executor.execute(_request(), secret=b"x" * 32)
     assert caught.value.category == "DOCKER_UNAVAILABLE"
+
+
+def test_executor_sends_the_runtime_request_as_a_protocol_frame(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from sandbox.protocol import MAGIC, decode_frame, encode_frame
+
+    request = _request()
+    run_input = b""
+
+    def _fake_run(args: list[str], **kwargs: Any) -> Any:
+        nonlocal run_input
+        if len(args) > 1 and args[1] == "run":
+            run_input = kwargs["input"]
+            return _FakeCompleted(
+                stdout=encode_frame(
+                    {
+                        "run_id": RUN_ID,
+                        "status": "PASSED",
+                        "passed": True,
+                        "stdout": "",
+                        "stderr": "",
+                        "tests": [],
+                        "trace_frames": None,
+                        "resource_usage": {"cpu_ms": 0, "wall_ms": 1},
+                        "stdout_truncated": False,
+                        "stderr_truncated": False,
+                        "trace_truncated": False,
+                    }
+                )
+            )
+        return _FakeCompleted(stdout=b"", returncode=0)
+
+    monkeypatch.setattr(subprocess, "run", _fake_run)
+    Executor().execute(request, secret=b"x" * 32)
+
+    assert run_input.startswith(MAGIC)
+    assert decode_frame(run_input) == request.model_dump(mode="json")
 
 
 def test_executor_invokes_run_then_cleanup_and_returns_normalized_result(
