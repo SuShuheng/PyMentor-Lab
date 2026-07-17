@@ -89,3 +89,6 @@ pythonpath = ["backend", "sandbox", "."]
 asyncio_mode = "auto"
 addopts = "-ra --strict-markers --strict-config"
 filterwarnings = ["error"]
+markers = [
+    "docker: requires a real Linux Docker Engine and the pinned runtime image",
+]
