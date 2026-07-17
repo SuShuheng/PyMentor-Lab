@@ -293,8 +293,11 @@ The internal request contains only:
 - fixed normalized policy and phase (`VISIBLE` or `HIDDEN`);
 - trace enabled flag.
 
-Canonical JSON is UTF-8, sorted-key, compact, and rejects NaN/infinity. The API sends
-the body digest and HMAC signature in headers. Maximum body size is 512 KiB. The
+Canonical JSON is UTF-8, sorted-key, compact, and rejects NaN/infinity. The HMAC
+message binds the uppercase HTTP method, normalized fixed route path, timestamp,
+nonce, and body digest so a signed execution request cannot be replayed as a cancel
+request or against a different run ID. The API sends the body digest and HMAC
+signature in headers. Maximum body size is 512 KiB. The
 Supervisor refuses stale timestamps, replayed nonces, invalid signatures, unknown
 fields/versions, over-limit payloads, and unsupported policies before calling Docker.
 There is one Supervisor instance per Docker Engine; it keeps a bounded nonce TTL cache
