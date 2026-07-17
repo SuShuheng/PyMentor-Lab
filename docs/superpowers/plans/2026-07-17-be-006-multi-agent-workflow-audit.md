@@ -285,7 +285,7 @@ git commit -m "feat(worker): route six agents with LangGraph"
 - Produces: `createAgentQueue`, `createAgentWorker`, `processAgentJob`,
   `publishAgentEvent`, `jobIdForEvent`, and bounded shutdown methods.
 
-- [ ] **Step 1: Write Red tests with an in-memory Redis port**
+- [x] **Step 1: Write Red tests with an in-memory Redis port**
 
 Test invalid envelope rejection before graph invocation, SHA-256 job identity,
 completed duplicate returning the cached proposal, interrupted duplicate
@@ -293,13 +293,13 @@ resuming the same thread, retryable versus final error classification,
 monotonic audit sequence, capped stream writes, and deterministic tool
 idempotency identities.
 
-- [ ] **Step 2: Run processor tests and verify Red**
+- [x] **Step 2: Run processor tests and verify Red**
 
 Run: `pnpm --filter @pymentor/agent-worker test -- src/queue/processor.test.ts`
 
 Expected: FAIL because queue runtime modules do not exist.
 
-- [ ] **Step 3: Implement the transport-independent processor**
+- [x] **Step 3: Implement the transport-independent processor**
 
 Parse the job before any Redis/provider operation. Use `SET key value NX` for
 the run claim, a completion record containing only the validated proposal, and
@@ -307,14 +307,14 @@ the same thread ID on retries. Emit `RUN_STARTED`, node/tool events,
 `CHECKPOINT_SAVED`, and one terminal event with monotonically increasing
 sequence numbers.
 
-- [ ] **Step 4: Implement BullMQ and Redis stream adapters**
+- [x] **Step 4: Implement BullMQ and Redis stream adapters**
 
 Use queue `pymentor:agent-jobs:v1`, event stream
 `pymentor:agent-events:v1`, bounded attempts, exponential backoff, and capped
 completed/failed retention. Use `XADD MAXLEN ~ 10000` for events. BullMQ job
 data remains the full versioned envelope while the custom job ID is its digest.
 
-- [ ] **Step 5: Verify Green**
+- [x] **Step 5: Verify Green**
 
 Run:
 
@@ -326,7 +326,7 @@ pnpm --filter @pymentor/agent-worker typecheck
 Expected: duplicate, retry, final-failure, event-order, and stream-bound tests
 pass.
 
-- [ ] **Step 6: Commit Task 4**
+- [x] **Step 6: Commit Task 4**
 
 ```powershell
 git add workers/agent-worker/src/queue workers/agent-worker/src/index.ts

@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import type { ZodType } from "zod";
 
 import type { AgentAuditSink, AgentNodeDefinition } from "./types.js";
+import { toolIdempotencyKey } from "../queue/identities.js";
 
 export interface ToolDefinition<TInput = unknown, TOutput = unknown> {
   readonly inputSchema: ZodType<TInput>;
@@ -87,9 +88,12 @@ export class ToolRegistry {
       },
     });
 
-    const idempotencyKey = createHash("sha256")
-      .update(`${context.eventId}|${definition.name}|${toolName}|${context.sequence}`)
-      .digest("hex");
+    const idempotencyKey = toolIdempotencyKey(
+      context.eventId,
+      definition.name,
+      toolName,
+      context.sequence,
+    );
 
     try {
       if (context.signal.aborted) {
