@@ -13,16 +13,18 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.contracts.auth import PendingRegistration, RegistrationDecisionRequest
 from app.db import get_db
+from app.evidence import record_audit
 from app.models.base import RoleName, TenantType, UserStatus
 from app.models.identity import Tenant, User
 from app.rbac import require_admin
 from app.services import get_user_by_id, set_user_status
+from app.uow import SqlAlchemyUnitOfWork
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -59,7 +61,13 @@ async def list_pending(
 
 
 def _decide_registration(
-    db: Session, user_id: UUID, new_status: UserStatus, error_detail: str
+    db: Session,
+    user_id: UUID,
+    new_status: UserStatus,
+    *,
+    action: str,
+    admin: User,
+    trace_id: str,
 ) -> User:
     """审核决定的共享逻辑。"""
     user = get_user_by_id(db, user_id)
@@ -70,8 +78,27 @@ def _decide_registration(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"user is not PENDING (current: {user.status.value})",
         )
-    set_user_status(db, user, new_status)
-    db.commit()
+    with SqlAlchemyUnitOfWork(accept_session=db) as uow:
+        set_user_status(db, user, new_status)
+        record_audit(
+            db,
+            tenant_id=user.tenant_id,
+            actor_user_id=admin.id,
+            action=action,
+            resource_type="user",
+            resource_id=str(user.id),
+            trace_id=trace_id,
+            detail={"new_status": new_status.value},
+        )
+        uow.publish(
+            event_type=action,
+            aggregate_type="user",
+            aggregate_id=str(user.id),
+            tenant_id=user.tenant_id,
+            trace_id=trace_id,
+            payload={"status": new_status.value},
+        )
+        uow.commit()
     return user
 
 
@@ -79,11 +106,19 @@ def _decide_registration(
 async def approve_registration(
     user_id: UUID,
     _body: RegistrationDecisionRequest,
+    request: Request,
     db: Session = Depends(get_db),
-    _admin: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
 ) -> dict[str, str]:
     """批准注册：PENDING → ACTIVE。仅管理端可访问。"""
-    user = _decide_registration(db, user_id, UserStatus.ACTIVE, "approve")
+    user = _decide_registration(
+        db,
+        user_id,
+        UserStatus.ACTIVE,
+        action="REGISTRATION_APPROVED",
+        admin=admin,
+        trace_id=str(request.state.trace_id),
+    )
     return {"user_id": str(user.id), "status": user.status.value}
 
 
@@ -91,11 +126,19 @@ async def approve_registration(
 async def reject_registration(
     user_id: UUID,
     _body: RegistrationDecisionRequest,
+    request: Request,
     db: Session = Depends(get_db),
-    _admin: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
 ) -> dict[str, str]:
     """拒绝注册：PENDING → REJECTED。REJECTED 用户不能登录。仅管理端可访问。"""
-    user = _decide_registration(db, user_id, UserStatus.REJECTED, "reject")
+    user = _decide_registration(
+        db,
+        user_id,
+        UserStatus.REJECTED,
+        action="REGISTRATION_REJECTED",
+        admin=admin,
+        trace_id=str(request.state.trace_id),
+    )
     return {"user_id": str(user.id), "status": user.status.value}
 
 
@@ -105,6 +148,7 @@ async def reject_registration(
 @router.post("/tenants/{tenant_id}/reset", status_code=status.HTTP_200_OK)
 async def reset_demo_tenant(
     tenant_id: UUID,
+    request: Request,
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ) -> dict[str, str]:
@@ -138,9 +182,29 @@ async def reset_demo_tenant(
     users_to_delete = list(
         db.scalars(select(User).where(User.tenant_id == tenant_id))
     )
-    for u in users_to_delete:
-        db.delete(u)
-    db.commit()
+    trace_id = str(request.state.trace_id)
+    with SqlAlchemyUnitOfWork(accept_session=db) as uow:
+        for u in users_to_delete:
+            db.delete(u)
+        record_audit(
+            db,
+            tenant_id=tenant_id,
+            actor_user_id=admin.id,
+            action="DEMO_TENANT_RESET",
+            resource_type="tenant",
+            resource_id=str(tenant_id),
+            trace_id=trace_id,
+            detail={"users_removed": len(users_to_delete)},
+        )
+        uow.publish(
+            event_type="DEMO_TENANT_RESET",
+            aggregate_type="tenant",
+            aggregate_id=str(tenant_id),
+            tenant_id=tenant_id,
+            trace_id=trace_id,
+            payload={"users_removed": len(users_to_delete)},
+        )
+        uow.commit()
 
     return {
         "tenant_id": str(tenant_id),

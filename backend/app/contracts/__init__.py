@@ -16,6 +16,13 @@ from app.contracts.auth import (
     TokenRefreshRequest,
     UserProfile,
 )
+from app.contracts.consistency import (
+    AuditEvent,
+    EvidenceEvent,
+    EvidenceEventType,
+    IdempotencyRecord,
+    OutboxEventModel,
+)
 from app.contracts.errors import ErrorCode, ErrorEnvelope, FieldError
 from app.contracts.health import HealthResponse, HealthStatus, SystemPingResponse
 from app.contracts.sandbox import (
@@ -44,16 +51,21 @@ from app.contracts.worker import (
 )
 
 __all__ = [
+    "AuditEvent",
     "AuthTokens",
     "ChatCompletionChunk",
     "ContentDeltaEvent",
     "DoneEvent",
     "ErrorCode",
     "ErrorEnvelope",
+    "EvidenceEvent",
+    "EvidenceEventType",
     "FieldError",
     "HealthResponse",
     "HealthStatus",
+    "IdempotencyRecord",
     "LoginRequest",
+    "OutboxEventModel",
     "PendingRegistration",
     "ProgressEvent",
     "ReasoningDeltaEvent",

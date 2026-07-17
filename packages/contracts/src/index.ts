@@ -8,6 +8,7 @@
  */
 
 export * from "./auth.js";
+export * from "./consistency.js";
 export * from "./errors.js";
 export * from "./health.js";
 export * from "./streaming.js";

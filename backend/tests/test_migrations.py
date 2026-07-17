@@ -21,6 +21,7 @@ DB_URL = os.environ.get(
 )
 
 EXPECTED_0002_TABLES = {"tenants", "users", "roles", "user_roles", "user_sessions"}
+EXPECTED_0003_TABLES = {"evidence_events", "audit_events", "outbox_events", "idempotency_keys"}
 
 
 def _skip_if_no_postgres() -> None:
@@ -71,3 +72,59 @@ def test_users_table_has_unique_constraints() -> None:
     constraint_names = {u["name"] for u in uniques}
     assert "uq_users_tenant_email" in constraint_names
     assert "uq_users_tenant_student_no" in constraint_names
+
+
+def test_migration_0003_creates_consistency_tables() -> None:
+    """0003 迁移必须创建一致性基础设施的全部表（设计 §15.1 第 8 组）。"""
+    _skip_if_no_postgres()
+    cfg = _make_config()
+    command.upgrade(cfg, "head")
+
+    from app.db import engine
+
+    inspector = inspect(engine)
+    actual_tables = set(inspector.get_table_names())
+    missing = EXPECTED_0003_TABLES - actual_tables
+    assert not missing, f"consistency tables missing: {missing}"
+
+
+def test_consistency_tables_have_unique_constraints() -> None:
+    """evidence/outbox/idempotency 表必须有 event_id/key 唯一约束（幂等与去重）。"""
+    _skip_if_no_postgres()
+    cfg = _make_config()
+    command.upgrade(cfg, "head")
+
+    from app.db import engine
+
+    inspector = inspect(engine)
+
+    ev_uniques = {u["name"] for u in inspector.get_unique_constraints("evidence_events")}
+    assert "uq_evidence_event_id" in ev_uniques
+
+    ob_uniques = {u["name"] for u in inspector.get_unique_constraints("outbox_events")}
+    assert "uq_outbox_event_id" in ob_uniques
+
+    ik_uniques = {u["name"] for u in inspector.get_unique_constraints("idempotency_keys")}
+    assert "uq_idempotency_keys_key" in ik_uniques
+
+
+def test_evidence_table_has_query_indexes_and_confidence_check() -> None:
+    """证据多维查询索引与置信度范围必须落到数据库约束。"""
+    _skip_if_no_postgres()
+    cfg = _make_config()
+    command.upgrade(cfg, "head")
+
+    from app.db import engine
+
+    inspector = inspect(engine)
+    index_names = {item["name"] for item in inspector.get_indexes("evidence_events")}
+    assert {
+        "ix_evidence_events_course_id",
+        "ix_evidence_events_node_id",
+        "ix_evidence_events_task_id",
+    } <= index_names
+
+    check_names = {
+        item["name"] for item in inspector.get_check_constraints("evidence_events")
+    }
+    assert "ck_evidence_confidence_range" in check_names

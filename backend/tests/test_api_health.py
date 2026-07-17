@@ -61,6 +61,7 @@ def test_unknown_route_returns_not_found_envelope() -> None:
     body = response.json()
     assert body["code"] == "NOT_FOUND"
     assert body["trace_id"]
+    assert body["trace_id"] == response.headers["x-trace-id"]
     assert body["retryable"] is False
 
 
@@ -84,3 +85,4 @@ def test_unhandled_error_returns_internal_error_envelope() -> None:
     assert body["retryable"] is False
     assert "secret stack detail" not in response.text
     assert body["trace_id"]
+    assert body["trace_id"] == response.headers["x-trace-id"]

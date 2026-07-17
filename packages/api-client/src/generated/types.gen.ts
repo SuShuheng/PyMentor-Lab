@@ -13,6 +13,26 @@ export type AuthTokens = {
     token_type?: 'Bearer';
 };
 
+/**
+ * 学习证据记录（append-only，event_id 唯一）。
+ */
+export type EvidenceEvent = {
+    course_id?: string | null;
+    created_at: string;
+    event_id: string;
+    event_type: string;
+    evidence_confidence?: number;
+    id: string;
+    node_id?: string | null;
+    payload?: {
+        [key: string]: unknown;
+    };
+    student_id: string;
+    task_id?: string | null;
+    tenant_id: string;
+    trace_id: string;
+};
+
 export type HttpValidationError = {
     detail?: Array<ValidationError>;
 };
@@ -317,6 +337,37 @@ export type RegisterApiV1AuthRegisterPostResponses = {
 };
 
 export type RegisterApiV1AuthRegisterPostResponse = RegisterApiV1AuthRegisterPostResponses[keyof RegisterApiV1AuthRegisterPostResponses];
+
+export type GetMyEvidenceApiV1EvidenceGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        course_id?: string | null;
+        node_id?: string | null;
+        event_type?: string | null;
+        limit?: number;
+        offset?: number;
+    };
+    url: '/api/v1/evidence';
+};
+
+export type GetMyEvidenceApiV1EvidenceGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetMyEvidenceApiV1EvidenceGetError = GetMyEvidenceApiV1EvidenceGetErrors[keyof GetMyEvidenceApiV1EvidenceGetErrors];
+
+export type GetMyEvidenceApiV1EvidenceGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: Array<EvidenceEvent>;
+};
+
+export type GetMyEvidenceApiV1EvidenceGetResponse = GetMyEvidenceApiV1EvidenceGetResponses[keyof GetMyEvidenceApiV1EvidenceGetResponses];
 
 export type HealthHealthGetData = {
     body?: never;

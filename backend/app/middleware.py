@@ -12,6 +12,7 @@ import uuid
 from collections.abc import MutableMapping
 from typing import Any
 
+from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 _HEADER = "x-trace-id"
@@ -36,8 +37,7 @@ class TraceIdMiddleware:
 
         async def send_wrapper(message: Message) -> None:
             if message["type"] == "http.response.start":
-                message.setdefault("headers", [])
-                message["headers"].append((_HEADER.encode(), trace_id.encode("ascii")))
+                MutableHeaders(scope=message)[_HEADER] = trace_id
             await send(message)
 
         await self.app(scope, receive, send_wrapper)

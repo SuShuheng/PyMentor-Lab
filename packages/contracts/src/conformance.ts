@@ -12,10 +12,14 @@ import { dirname, resolve } from "node:path";
 
 import {
   AuthTokens,
+  AuditEvent,
   ChatCompletionChunk,
   ErrorEnvelope,
+  EvidenceEvent,
   HealthResponse,
+  IdempotencyRecord,
   LoginRequest,
+  OutboxEvent,
   PendingRegistration,
   RegisterRequest,
   RegisterResponse,
@@ -216,6 +220,70 @@ const cases: Cases = {
   RegistrationDecisionRequest: {
     schema: RegistrationDecisionRequest,
     samples: [{}, { reason: "Missing student ID" }],
+  },
+  EvidenceEvent: {
+    schema: EvidenceEvent,
+    samples: [
+      {
+        id: "00000000-0000-0000-0000-000000000001",
+        tenant_id: "00000000-0000-0000-0000-000000000002",
+        student_id: "00000000-0000-0000-0000-000000000003",
+        event_id: "evt_001",
+        event_type: "CODE_RUN_COMPLETED",
+        trace_id: "trc_1",
+        payload: { stdout: "ok" },
+        evidence_confidence: 0.9,
+        created_at: "2026-07-17T00:00:00Z",
+        course_id: null,
+        node_id: null,
+        task_id: null,
+      },
+    ],
+  },
+  AuditEvent: {
+    schema: AuditEvent,
+    samples: [
+      {
+        id: "00000000-0000-0000-0000-000000000020",
+        tenant_id: "00000000-0000-0000-0000-000000000002",
+        action: "REGISTRATION_APPROVED",
+        resource_type: "user",
+        resource_id: "00000000-0000-0000-0000-000000000003",
+        trace_id: "trc_audit",
+        detail: {},
+        actor_user_id: null,
+        created_at: "2026-07-17T00:00:00Z",
+      },
+    ],
+  },
+  OutboxEvent: {
+    schema: OutboxEvent,
+    samples: [
+      {
+        id: "00000000-0000-0000-0000-000000000010",
+        tenant_id: "00000000-0000-0000-0000-000000000002",
+        event_type: "MASTERY_DECIDED",
+        event_id: "evt_ob_1",
+        aggregate_type: "mastery",
+        aggregate_id: "agg_1",
+        trace_id: "trc_ob",
+        payload: {},
+        published: false,
+        created_at: "2026-07-17T00:00:00Z",
+      },
+    ],
+  },
+  IdempotencyRecord: {
+    schema: IdempotencyRecord,
+    samples: [
+      {
+        key: "idem_1",
+        tenant_id: "00000000-0000-0000-0000-000000000002",
+        endpoint: "/api/v1/tasks/123/submit",
+        response_status: null,
+        response_body: null,
+      },
+    ],
   },
 };
 

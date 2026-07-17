@@ -14,11 +14,13 @@ from collections.abc import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.main import create_app
 from app.models.base import RoleName, TenantType, UserStatus
+from app.models.consistency import AuditEvent, OutboxEvent
 from app.models.identity import Tenant, User
 from app.security import hash_password
 from app.services import (
@@ -108,7 +110,7 @@ class TestAdminGuard:
 # --------------------------------------------------------------------------- #
 class TestRegistrationApproval:
     def test_approve_pending_user(self, client: TestClient, db_session: Session) -> None:
-        _make_admin(db_session)
+        admin = _make_admin(db_session)
         tenant = get_or_create_tenant(db_session, slug="default", name="Default Tenant")
         db_session.flush()
         pending = create_student_user(
@@ -122,7 +124,10 @@ class TestRegistrationApproval:
         resp = client.post(
             f"/api/v1/admin/registrations/{pending.id}/approve",
             json={},
-            headers={"Authorization": f"Bearer {admin_token}"},
+            headers={
+                "Authorization": f"Bearer {admin_token}",
+                "x-trace-id": "trc_approve_test",
+            },
         )
         assert resp.status_code == 200
         assert resp.json()["status"] == "ACTIVE"
@@ -133,6 +138,25 @@ class TestRegistrationApproval:
             json={"email": "pending@example.com", "password": "ValidPass1!"},
         )
         assert login_resp.status_code == 200
+
+        audit = db_session.scalar(
+            select(AuditEvent).where(
+                AuditEvent.action == "REGISTRATION_APPROVED",
+                AuditEvent.resource_id == str(pending.id),
+            )
+        )
+        assert audit is not None
+        assert audit.actor_user_id == admin.id
+        assert audit.trace_id == "trc_approve_test"
+
+        outbox = db_session.scalar(
+            select(OutboxEvent).where(
+                OutboxEvent.event_type == "REGISTRATION_APPROVED",
+                OutboxEvent.aggregate_id == str(pending.id),
+            )
+        )
+        assert outbox is not None
+        assert outbox.trace_id == "trc_approve_test"
 
     def test_reject_pending_user(self, client: TestClient, db_session: Session) -> None:
         _make_admin(db_session)
@@ -170,7 +194,7 @@ class TestDemoTenantReset:
         self, client: TestClient, db_session: Session
     ) -> None:
         """重置 demo 租户不影响其他租户（设计验收：demo reset leaves other tenants unchanged）。"""
-        _make_admin(db_session)
+        admin = _make_admin(db_session)
         admin_token = _login(client, "admin@uni.edu", "AdminPass1!")
 
         # 创建 demo 租户 + 其下的用户。
@@ -200,7 +224,10 @@ class TestDemoTenantReset:
         # 重置 demo 租户。
         resp = client.post(
             f"/api/v1/admin/tenants/{demo.id}/reset",
-            headers={"Authorization": f"Bearer {admin_token}"},
+            headers={
+                "Authorization": f"Bearer {admin_token}",
+                "x-trace-id": "trc_demo_reset",
+            },
         )
         assert resp.status_code == 200
 
@@ -210,6 +237,26 @@ class TestDemoTenantReset:
         assert get_user_by_id(db_session, demo_user.id) is None
         # 标准租户用户不受影响。
         assert get_user_by_id(db_session, standard_user.id) is not None
+
+        audit = db_session.scalar(
+            select(AuditEvent).where(
+                AuditEvent.action == "DEMO_TENANT_RESET",
+                AuditEvent.resource_id == str(demo.id),
+            )
+        )
+        assert audit is not None
+        assert audit.actor_user_id == admin.id
+        assert audit.trace_id == "trc_demo_reset"
+        assert audit.detail["users_removed"] == 1
+
+        outbox = db_session.scalar(
+            select(OutboxEvent).where(
+                OutboxEvent.event_type == "DEMO_TENANT_RESET",
+                OutboxEvent.aggregate_id == str(demo.id),
+            )
+        )
+        assert outbox is not None
+        assert outbox.trace_id == "trc_demo_reset"
 
     def test_non_admin_cannot_reset(self, client: TestClient, db_session: Session) -> None:
         """非 System Admin 不能重置租户。"""

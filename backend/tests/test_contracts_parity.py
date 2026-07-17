@@ -26,12 +26,16 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from app.contracts import (
+    AuditEvent,
     AuthTokens,
     ChatCompletionChunk,
     ErrorCode,
     ErrorEnvelope,
+    EvidenceEvent,
     HealthResponse,
+    IdempotencyRecord,
     LoginRequest,
+    OutboxEventModel,
     PendingRegistration,
     RegisterRequest,
     RegisterResponse,
@@ -201,6 +205,58 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
         {},
         {"reason": "Missing student ID"},
     ],
+    "EvidenceEvent": [
+        {
+            "id": "00000000-0000-0000-0000-000000000001",
+            "tenant_id": "00000000-0000-0000-0000-000000000002",
+            "student_id": "00000000-0000-0000-0000-000000000003",
+            "event_id": "evt_001",
+            "event_type": "CODE_RUN_COMPLETED",
+            "trace_id": "trc_1",
+            "payload": {"stdout": "ok"},
+            "evidence_confidence": 0.9,
+            "created_at": "2026-07-17T00:00:00Z",
+            "course_id": None,
+            "node_id": None,
+            "task_id": None,
+        }
+    ],
+    "AuditEvent": [
+        {
+            "id": "00000000-0000-0000-0000-000000000020",
+            "tenant_id": "00000000-0000-0000-0000-000000000002",
+            "action": "REGISTRATION_APPROVED",
+            "resource_type": "user",
+            "resource_id": "00000000-0000-0000-0000-000000000003",
+            "trace_id": "trc_audit",
+            "detail": {},
+            "actor_user_id": None,
+            "created_at": "2026-07-17T00:00:00Z",
+        }
+    ],
+    "OutboxEvent": [
+        {
+            "id": "00000000-0000-0000-0000-000000000010",
+            "tenant_id": "00000000-0000-0000-0000-000000000002",
+            "event_type": "MASTERY_DECIDED",
+            "event_id": "evt_ob_1",
+            "aggregate_type": "mastery",
+            "aggregate_id": "agg_1",
+            "trace_id": "trc_ob",
+            "payload": {},
+            "published": False,
+            "created_at": "2026-07-17T00:00:00Z",
+        }
+    ],
+    "IdempotencyRecord": [
+        {
+            "key": "idem_1",
+            "tenant_id": "00000000-0000-0000-0000-000000000002",
+            "endpoint": "/api/v1/tasks/123/submit",
+            "response_status": None,
+            "response_body": None,
+        }
+    ],
 }
 
 MODEL_BY_NAME: dict[str, type[BaseModel]] = {
@@ -218,6 +274,10 @@ MODEL_BY_NAME: dict[str, type[BaseModel]] = {
     "UserProfile": UserProfile,
     "PendingRegistration": PendingRegistration,
     "RegistrationDecisionRequest": RegistrationDecisionRequest,
+    "AuditEvent": AuditEvent,
+    "EvidenceEvent": EvidenceEvent,
+    "OutboxEvent": OutboxEventModel,
+    "IdempotencyRecord": IdempotencyRecord,
 }
 
 

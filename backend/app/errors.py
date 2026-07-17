@@ -22,6 +22,9 @@ from app.contracts.errors import ErrorCode, ErrorEnvelope, FieldError
 def _new_trace_id(request: Request) -> str:
     """Use the inbound trace id if provided, else mint one."""
 
+    state_trace_id = getattr(request.state, "trace_id", None)
+    if state_trace_id:
+        return str(state_trace_id)
     existing = request.headers.get("x-trace-id")
     if existing:
         return existing
@@ -46,7 +49,11 @@ def _envelope(
         field_errors=field_errors,
         details=details,
     )
-    return JSONResponse(status_code=status_code, content=envelope.model_dump(mode="json"))
+    return JSONResponse(
+        status_code=status_code,
+        content=envelope.model_dump(mode="json"),
+        headers={"x-trace-id": trace_id},
+    )
 
 
 def install_error_handlers(app: FastAPI) -> None:

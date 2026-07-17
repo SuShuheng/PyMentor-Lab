@@ -14,6 +14,7 @@ from fastapi import FastAPI
 
 from app.api.admin import router as admin_router
 from app.api.auth import router as auth_router
+from app.api.evidence import router as evidence_router
 from app.api.health import router as system_router
 from app.config import get_settings
 from app.errors import install_error_handlers
@@ -52,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(system_router)
     app.include_router(auth_router)
     app.include_router(admin_router)
+    app.include_router(evidence_router)
 
     return app
 

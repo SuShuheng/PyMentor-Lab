@@ -15,10 +15,14 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 import {
   AuthTokens,
+  AuditEvent,
   ChatCompletionChunk,
   ErrorEnvelope,
+  EvidenceEvent,
   HealthResponse,
+  IdempotencyRecord,
   LoginRequest,
+  OutboxEvent,
   PendingRegistration,
   RegisterRequest,
   RegisterResponse,
@@ -53,6 +57,10 @@ const schemas = {
     RegistrationDecisionRequest,
     "RegistrationDecisionRequest",
   ),
+  EvidenceEvent: zodToJsonSchema(EvidenceEvent, "EvidenceEvent"),
+  AuditEvent: zodToJsonSchema(AuditEvent, "AuditEvent"),
+  OutboxEvent: zodToJsonSchema(OutboxEvent, "OutboxEvent"),
+  IdempotencyRecord: zodToJsonSchema(IdempotencyRecord, "IdempotencyRecord"),
 } as const;
 
 writeFileSync(OUT, JSON.stringify(schemas, null, 2) + "\n", "utf8");
