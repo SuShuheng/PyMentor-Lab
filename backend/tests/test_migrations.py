@@ -47,6 +47,7 @@ EXPECTED_0005_TABLES = {
     "test_results",
     "hint_usages",
 }
+EXPECTED_0006_TABLES = {"agent_definitions", "agent_runs", "agent_tool_calls"}
 
 
 def _skip_if_no_postgres() -> None:
@@ -217,3 +218,35 @@ def test_code_evidence_database_constraints_are_named() -> None:
         "ck_hint_usage_level_range",
         "ck_hint_usage_cost_range",
     } <= checks["hint_usages"]
+
+
+def test_migration_0006_creates_agent_audit_tables() -> None:
+    """0006 creates normalized agent definitions, runs, and tool calls."""
+    _skip_if_no_postgres()
+    cfg = _make_config()
+    command.upgrade(cfg, "head")
+
+    from app.db import engine
+
+    actual_tables = set(inspect(engine).get_table_names())
+    missing = EXPECTED_0006_TABLES - actual_tables
+    assert not missing, f"agent-audit tables missing: {missing}"
+
+
+def test_agent_audit_uniques_and_checks_are_named() -> None:
+    """Run/event and per-run tool sequence idempotency are database-enforced."""
+    _skip_if_no_postgres()
+    cfg = _make_config()
+    command.upgrade(cfg, "head")
+
+    from app.db import engine
+
+    inspector = inspect(engine)
+    run_uniques = {row["name"] for row in inspector.get_unique_constraints("agent_runs")}
+    tool_uniques = {row["name"] for row in inspector.get_unique_constraints("agent_tool_calls")}
+    run_checks = {row["name"] for row in inspector.get_check_constraints("agent_runs")}
+    tool_checks = {row["name"] for row in inspector.get_check_constraints("agent_tool_calls")}
+    assert {"uq_agent_runs_event_id", "uq_agent_runs_external_run_id"} <= run_uniques
+    assert "uq_agent_tool_calls_run_sequence" in tool_uniques
+    assert "ck_agent_runs_latest_sequence_nonnegative" in run_checks
+    assert "ck_agent_tool_calls_sequence_positive" in tool_checks

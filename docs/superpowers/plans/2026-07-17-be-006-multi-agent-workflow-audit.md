@@ -422,7 +422,7 @@ git commit -m "feat(worker): persist and replay LangGraph checkpoints"
   `ingest_agent_audit(db, event)`, `ingest_agent_proposal(db, proposal)`, and
   `get_agent_replay_metadata(db, event_id)`.
 
-- [ ] **Step 1: Write model, migration, and ingestion Red tests**
+- [x] **Step 1: Write model, migration, and ingestion Red tests**
 
 Test that migration 0006 creates all three tables and round-trips; event ID is
 unique; `(agent_run_id, sequence)` is unique for tool calls; duplicate audit
@@ -430,7 +430,7 @@ messages do not create rows; terminal proposals update rather than replace the
 run; out-of-order terminal events retain monotonic status; and persisted JSON
 contains no forbidden detail keys.
 
-- [ ] **Step 2: Run focused tests and verify Red**
+- [x] **Step 2: Run focused tests and verify Red**
 
 Run:
 
@@ -441,21 +441,21 @@ uv run --no-cache pytest -p no:cacheprovider backend/tests/test_agent_audit.py b
 
 Expected: FAIL because migration 0006 and Agent models do not exist.
 
-- [ ] **Step 3: Implement normalized models and reversible migration**
+- [x] **Step 3: Implement normalized models and reversible migration**
 
 Use UUID primary/foreign keys, tenant/student/run indexes, named unique/check
 constraints, timezone-aware timestamps, bounded strings, and JSONB only for
 safe input/output snapshots. `AgentRun.event_id` is unique and every tool call
 has a unique run/sequence pair.
 
-- [ ] **Step 4: Implement idempotent ingestion**
+- [x] **Step 4: Implement idempotent ingestion**
 
 Use row locks where a run already exists. Create run/tool rows from audit
 events, update terminal status only through valid transitions, save checkpoint
 metadata on the run, and reject any detail key outside the contract allowlist.
 No function imports or modifies a learning-domain model.
 
-- [ ] **Step 5: Verify Green, Ruff, and mypy**
+- [x] **Step 5: Verify Green, Ruff, and mypy**
 
 Run:
 
@@ -468,7 +468,7 @@ uv run --no-cache mypy backend/app/models/agent.py backend/app/agent_audit.py
 
 Expected: all commands exit 0.
 
-- [ ] **Step 6: Commit Task 6**
+- [x] **Step 6: Commit Task 6**
 
 ```powershell
 git add backend/app/models/agent.py backend/app/models/__init__.py backend/app/agent_audit.py backend/migrations/versions/0006_agent_audit.py backend/tests/test_agent_audit.py backend/tests/test_migrations.py
