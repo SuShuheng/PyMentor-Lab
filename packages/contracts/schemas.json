@@ -441,9 +441,11 @@
           "status": {
             "type": "string",
             "enum": [
-              "PASSED",
-              "FAILED",
-              "ERROR",
+              "QUEUED",
+              "RUNNING",
+              "COMPLETED",
+              "USER_ERROR",
+              "PLATFORM_ERROR",
               "TIMEOUT",
               "CANCELLED"
             ]
@@ -462,21 +464,60 @@
             "items": {
               "type": "object",
               "properties": {
-                "name": {
+                "case_id": {
                   "type": "string",
-                  "minLength": 1
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "display_name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256
+                },
+                "visibility": {
+                  "type": "string",
+                  "enum": [
+                    "VISIBLE",
+                    "HIDDEN"
+                  ]
+                },
+                "comparison": {
+                  "type": "string",
+                  "enum": [
+                    "EQUAL",
+                    "APPROX",
+                    "UNORDERED",
+                    "MATCHES"
+                  ]
+                },
+                "transfer": {
+                  "type": "boolean"
                 },
                 "passed": {
                   "type": "boolean"
                 },
                 "message": {
-                  "type": "string"
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "default": null
                 },
                 "stdout": {
-                  "type": "string"
+                  "type": "string",
+                  "default": ""
                 },
                 "stderr": {
-                  "type": "string"
+                  "type": "string",
+                  "default": ""
+                },
+                "stdout_truncated": {
+                  "type": "boolean",
+                  "default": false
+                },
+                "stderr_truncated": {
+                  "type": "boolean",
+                  "default": false
                 },
                 "duration_ms": {
                   "type": "integer",
@@ -484,64 +525,125 @@
                 }
               },
               "required": [
-                "name",
+                "case_id",
+                "display_name",
+                "visibility",
+                "comparison",
+                "transfer",
                 "passed",
                 "duration_ms"
               ],
               "additionalProperties": false
-            }
+            },
+            "maxItems": 256
           },
-          "trace": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "line": {
-                  "type": "integer",
-                  "exclusiveMinimum": 0
-                },
-                "event": {
-                  "type": "string",
-                  "enum": [
-                    "call",
-                    "line",
-                    "return",
-                    "exception"
-                  ]
-                },
-                "func_name": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "locals": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "string"
-                  }
-                }
-              },
-              "required": [
-                "line",
-                "event",
-                "func_name"
-              ],
-              "additionalProperties": false
-            }
-          },
-          "duration_ms": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "peak_memory_kb": {
+          "trace_frames": {
             "anyOf": [
               {
-                "type": "integer",
-                "minimum": 0
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "sequence": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "line": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "event": {
+                      "type": "string",
+                      "enum": [
+                        "call",
+                        "line",
+                        "return",
+                        "exception"
+                      ]
+                    },
+                    "func_name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    },
+                    "locals": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "sequence",
+                    "line",
+                    "event",
+                    "func_name"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 1000
               },
               {
                 "type": "null"
               }
             ]
+          },
+          "resource_usage": {
+            "type": "object",
+            "properties": {
+              "cpu_ms": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "wall_ms": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "peak_memory_kb": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "exit_code": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "cpu_ms",
+              "wall_ms",
+              "peak_memory_kb",
+              "exit_code"
+            ],
+            "additionalProperties": false
+          },
+          "stdout_truncated": {
+            "type": "boolean"
+          },
+          "stderr_truncated": {
+            "type": "boolean"
+          },
+          "trace_truncated": {
+            "type": "boolean"
           },
           "user_error": {
             "type": [
@@ -563,10 +665,1029 @@
           "stdout",
           "stderr",
           "tests",
-          "duration_ms",
-          "peak_memory_kb",
+          "trace_frames",
+          "resource_usage",
+          "stdout_truncated",
+          "stderr_truncated",
+          "trace_truncated",
           "user_error",
           "platform_error"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "CodeRunRequest": {
+    "$ref": "#/definitions/CodeRunRequest",
+    "definitions": {
+      "CodeRunRequest": {
+        "type": "object",
+        "properties": {
+          "task_instance_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 65536
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "RUN",
+              "TRACE"
+            ]
+          },
+          "expected_task_version": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "trace_enabled": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "task_instance_id",
+          "source_code",
+          "mode",
+          "expected_task_version"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "CodeSubmissionRequest": {
+    "$ref": "#/definitions/CodeSubmissionRequest",
+    "definitions": {
+      "CodeSubmissionRequest": {
+        "type": "object",
+        "properties": {
+          "task_instance_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 65536
+          },
+          "expected_task_version": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "task_instance_id",
+          "source_code",
+          "expected_task_version"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "CodeRunView": {
+    "$ref": "#/definitions/CodeRunView",
+    "definitions": {
+      "CodeRunView": {
+        "type": "object",
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "task_instance_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "RUN",
+              "TRACE",
+              "SUBMIT"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "QUEUED",
+              "RUNNING",
+              "COMPLETED",
+              "USER_ERROR",
+              "PLATFORM_ERROR",
+              "TIMEOUT",
+              "CANCELLED"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "revision": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sequence": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              },
+              "source_digest": {
+                "type": "string",
+                "minLength": 64,
+                "maxLength": 64
+              },
+              "created_at": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "id",
+              "sequence",
+              "source_digest",
+              "created_at"
+            ],
+            "additionalProperties": false
+          },
+          "result": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "run_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "status": {
+                    "$ref": "#/definitions/CodeRunView/properties/status"
+                  },
+                  "passed": {
+                    "type": "boolean"
+                  },
+                  "stdout": {
+                    "type": "string"
+                  },
+                  "stderr": {
+                    "type": "string"
+                  },
+                  "tests": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "case_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 128
+                        },
+                        "display_name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256
+                        },
+                        "visibility": {
+                          "type": "string",
+                          "enum": [
+                            "VISIBLE",
+                            "HIDDEN"
+                          ]
+                        },
+                        "comparison": {
+                          "type": "string",
+                          "enum": [
+                            "EQUAL",
+                            "APPROX",
+                            "UNORDERED",
+                            "MATCHES"
+                          ]
+                        },
+                        "transfer": {
+                          "type": "boolean"
+                        },
+                        "passed": {
+                          "type": "boolean"
+                        },
+                        "message": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "default": null
+                        },
+                        "stdout": {
+                          "type": "string",
+                          "default": ""
+                        },
+                        "stderr": {
+                          "type": "string",
+                          "default": ""
+                        },
+                        "stdout_truncated": {
+                          "type": "boolean",
+                          "default": false
+                        },
+                        "stderr_truncated": {
+                          "type": "boolean",
+                          "default": false
+                        },
+                        "duration_ms": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "case_id",
+                        "display_name",
+                        "visibility",
+                        "comparison",
+                        "transfer",
+                        "passed",
+                        "duration_ms"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 256
+                  },
+                  "trace_frames": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "sequence": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0
+                            },
+                            "line": {
+                              "type": "integer",
+                              "exclusiveMinimum": 0
+                            },
+                            "event": {
+                              "type": "string",
+                              "enum": [
+                                "call",
+                                "line",
+                                "return",
+                                "exception"
+                              ]
+                            },
+                            "func_name": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 256
+                            },
+                            "locals": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "additionalProperties": {
+                                    "type": "string"
+                                  }
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "sequence",
+                            "line",
+                            "event",
+                            "func_name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "maxItems": 1000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "resource_usage": {
+                    "type": "object",
+                    "properties": {
+                      "cpu_ms": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "wall_ms": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "peak_memory_kb": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "exit_code": {
+                        "anyOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "cpu_ms",
+                      "wall_ms",
+                      "peak_memory_kb",
+                      "exit_code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "stdout_truncated": {
+                    "type": "boolean"
+                  },
+                  "stderr_truncated": {
+                    "type": "boolean"
+                  },
+                  "trace_truncated": {
+                    "type": "boolean"
+                  },
+                  "user_error": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "platform_error": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "run_id",
+                  "status",
+                  "passed",
+                  "stdout",
+                  "stderr",
+                  "tests",
+                  "trace_frames",
+                  "resource_usage",
+                  "stdout_truncated",
+                  "stderr_truncated",
+                  "trace_truncated",
+                  "user_error",
+                  "platform_error"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evidence_event_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requested_at": {
+            "type": "string",
+            "minLength": 1
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "run_id",
+          "task_instance_id",
+          "mode",
+          "status",
+          "version",
+          "revision",
+          "requested_at"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "HintRequest": {
+    "$ref": "#/definitions/HintRequest",
+    "definitions": {
+      "HintRequest": {
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "revision_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expected_task_version": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "level",
+          "expected_task_version"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "HintUsageView": {
+    "$ref": "#/definitions/HintUsageView",
+    "definitions": {
+      "HintUsageView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "task_instance_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "revision_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sequence": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "hint_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "level": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "cost": {
+            "type": "number",
+            "minimum": 0
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8192
+          },
+          "created_at": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "task_instance_id",
+          "sequence",
+          "hint_key",
+          "level",
+          "cost",
+          "content",
+          "created_at"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "SandboxExecutionRequest": {
+    "$ref": "#/definitions/SandboxExecutionRequest",
+    "definitions": {
+      "SandboxExecutionRequest": {
+        "type": "object",
+        "properties": {
+          "protocol_version": {
+            "type": "string",
+            "const": "1"
+          },
+          "request_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "run_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "trace_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "source_code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 65536
+          },
+          "entrypoint": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "FUNCTION",
+                  "SCRIPT"
+                ]
+              },
+              "name": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          "cases": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "args": {
+                  "type": "array",
+                  "items": {},
+                  "default": []
+                },
+                "kwargs": {
+                  "type": "object",
+                  "additionalProperties": {},
+                  "default": {}
+                },
+                "expected": {},
+                "stdin": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 65536
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "expected_stdout": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 65536
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "comparison": {
+                  "type": "string",
+                  "enum": [
+                    "EQUAL",
+                    "APPROX",
+                    "UNORDERED",
+                    "MATCHES"
+                  ],
+                  "default": "EQUAL"
+                },
+                "transfer": {
+                  "type": "boolean",
+                  "default": false
+                }
+              },
+              "required": [
+                "id"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 256
+          },
+          "allowed_imports": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 32
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "VISIBLE",
+              "HIDDEN"
+            ]
+          },
+          "policy": {
+            "type": "object",
+            "properties": {
+              "timeout_ms": {
+                "type": "integer",
+                "minimum": 100,
+                "maximum": 30000
+              },
+              "memory_mb": {
+                "type": "integer",
+                "minimum": 16,
+                "maximum": 1024
+              },
+              "pids_limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 128
+              },
+              "output_limit_bytes": {
+                "type": "integer",
+                "minimum": 1024,
+                "maximum": 1048576
+              },
+              "test_limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 256
+              },
+              "trace_frame_limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            "required": [
+              "timeout_ms",
+              "memory_mb",
+              "pids_limit",
+              "output_limit_bytes",
+              "test_limit",
+              "trace_frame_limit"
+            ],
+            "additionalProperties": false
+          },
+          "trace_enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "protocol_version",
+          "request_id",
+          "run_id",
+          "trace_id",
+          "source_code",
+          "entrypoint",
+          "cases",
+          "allowed_imports",
+          "phase",
+          "policy",
+          "trace_enabled"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "SandboxExecutionResponse": {
+    "$ref": "#/definitions/SandboxExecutionResponse",
+    "definitions": {
+      "SandboxExecutionResponse": {
+        "type": "object",
+        "properties": {
+          "protocol_version": {
+            "type": "string",
+            "const": "1"
+          },
+          "request_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "run_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "result": {
+            "type": "object",
+            "properties": {
+              "run_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "QUEUED",
+                  "RUNNING",
+                  "COMPLETED",
+                  "USER_ERROR",
+                  "PLATFORM_ERROR",
+                  "TIMEOUT",
+                  "CANCELLED"
+                ]
+              },
+              "passed": {
+                "type": "boolean"
+              },
+              "stdout": {
+                "type": "string"
+              },
+              "stderr": {
+                "type": "string"
+              },
+              "tests": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "case_id": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128
+                    },
+                    "display_name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    },
+                    "visibility": {
+                      "type": "string",
+                      "enum": [
+                        "VISIBLE",
+                        "HIDDEN"
+                      ]
+                    },
+                    "comparison": {
+                      "type": "string",
+                      "enum": [
+                        "EQUAL",
+                        "APPROX",
+                        "UNORDERED",
+                        "MATCHES"
+                      ]
+                    },
+                    "transfer": {
+                      "type": "boolean"
+                    },
+                    "passed": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "default": null
+                    },
+                    "stdout": {
+                      "type": "string",
+                      "default": ""
+                    },
+                    "stderr": {
+                      "type": "string",
+                      "default": ""
+                    },
+                    "stdout_truncated": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "stderr_truncated": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "duration_ms": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "case_id",
+                    "display_name",
+                    "visibility",
+                    "comparison",
+                    "transfer",
+                    "passed",
+                    "duration_ms"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 256
+              },
+              "trace_frames": {
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "sequence": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "line": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "event": {
+                          "type": "string",
+                          "enum": [
+                            "call",
+                            "line",
+                            "return",
+                            "exception"
+                          ]
+                        },
+                        "func_name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256
+                        },
+                        "locals": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "string"
+                              }
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "sequence",
+                        "line",
+                        "event",
+                        "func_name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "maxItems": 1000
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "resource_usage": {
+                "type": "object",
+                "properties": {
+                  "cpu_ms": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "wall_ms": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "peak_memory_kb": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "exit_code": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "cpu_ms",
+                  "wall_ms",
+                  "peak_memory_kb",
+                  "exit_code"
+                ],
+                "additionalProperties": false
+              },
+              "stdout_truncated": {
+                "type": "boolean"
+              },
+              "stderr_truncated": {
+                "type": "boolean"
+              },
+              "trace_truncated": {
+                "type": "boolean"
+              },
+              "user_error": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "platform_error": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "run_id",
+              "status",
+              "passed",
+              "stdout",
+              "stderr",
+              "tests",
+              "trace_frames",
+              "resource_usage",
+              "stdout_truncated",
+              "stderr_truncated",
+              "trace_truncated",
+              "user_error",
+              "platform_error"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "protocol_version",
+          "request_id",
+          "run_id",
+          "result"
         ],
         "additionalProperties": false
       }

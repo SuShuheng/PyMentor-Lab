@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import uuid
 
-from app.contracts.sandbox import SandboxResult, SandboxRunStatus
+from app.contracts.sandbox import CodeRunStatus, SandboxResourceUsage, SandboxResult
 
 
 def stub_result() -> SandboxResult:
@@ -24,13 +24,21 @@ def stub_result() -> SandboxResult:
 
     return SandboxResult(
         run_id=f"run_{uuid.uuid4().hex}",
-        status=SandboxRunStatus.PASSED,
+        status=CodeRunStatus.COMPLETED,
         passed=True,
         stdout="",
         stderr="",
         tests=[],
-        duration_ms=0,
-        peak_memory_kb=None,
+        trace_frames=None,
+        resource_usage=SandboxResourceUsage(
+            cpu_ms=0,
+            wall_ms=0,
+            peak_memory_kb=None,
+            exit_code=0,
+        ),
+        stdout_truncated=False,
+        stderr_truncated=False,
+        trace_truncated=False,
         user_error=None,
         platform_error=None,
     )

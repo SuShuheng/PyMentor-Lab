@@ -127,8 +127,47 @@ def _task_version(db_session: Session, user: User):
         definition,
         CompileInput(
             prompt="Fix the loop boundary",
-            tests_policy={"hidden": ["upper_bound"]},
-            hint_policy={"max_level": 2},
+            tests_policy={
+                "entrypoint": {"kind": "FUNCTION", "name": "solve"},
+                "allowed_imports": ["math"],
+                "visible": [
+                    {
+                        "id": "visible-boundary",
+                        "args": [[1, 2]],
+                        "kwargs": {},
+                        "expected": 3,
+                        "comparison": "EQUAL",
+                        "transfer": False,
+                    }
+                ],
+                "hidden": [
+                    {
+                        "id": "hidden-upper-bound",
+                        "args": [[0, 0]],
+                        "kwargs": {},
+                        "expected": 0,
+                        "comparison": "EQUAL",
+                        "transfer": True,
+                    }
+                ],
+            },
+            hint_policy={
+                "max_level": 2,
+                "hints": [
+                    {
+                        "key": "inspect-range",
+                        "level": 1,
+                        "content": "Inspect the range bounds.",
+                        "independence_cost": 10,
+                    },
+                    {
+                        "key": "compare-stop",
+                        "level": 2,
+                        "content": "Compare the stop value with the target.",
+                        "independence_cost": 25,
+                    },
+                ],
+            },
             mastery_policy={
                 "independence_min": 0.7,
                 "transfer_min": 0.6,
@@ -258,6 +297,11 @@ def test_task_start_replay_returns_same_instance_and_commits_events(
     second = client.post(f"/api/v1/tasks/{version.id}/start", headers=headers)
     assert first.status_code == second.status_code == 200
     assert first.json()["id"] == second.json()["id"]
+    public_snapshot = first.json()["snapshot"]
+    assert "hidden" not in public_snapshot["tests_policy"]
+    assert public_snapshot["hint_policy"] == {"max_level": 2}
+    assert "hidden-upper-bound" not in first.text
+    assert "Compare the stop value with the target." not in first.text
     assert (
         db_session.scalar(select(AuditEvent).where(AuditEvent.trace_id == "trc_start_task"))
         is not None

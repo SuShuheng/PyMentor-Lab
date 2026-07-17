@@ -15,9 +15,14 @@ import {
   AuthTokens,
   AuditEvent,
   ChatCompletionChunk,
+  CodeRunRequest,
+  CodeRunView,
+  CodeSubmissionRequest,
   ErrorEnvelope,
   EvidenceEvent,
   HealthResponse,
+  HintRequest,
+  HintUsageView,
   IdempotencyRecord,
   LoginRequest,
   MasteryView,
@@ -32,6 +37,8 @@ import {
   RegistrationDecisionRequest,
   ReviewRescheduleRequest,
   ReviewView,
+  SandboxExecutionRequest,
+  SandboxExecutionResponse,
   SandboxResult,
   StreamEvent,
   SystemPingResponse,
@@ -71,7 +78,12 @@ const cases: Cases = {
     schema: HealthResponse,
     samples: [
       { status: "ok", service: "api", version: "0.0.0", timestamp: "2026-07-17T00:00:00Z" },
-      { status: "degraded", service: "worker", version: "1.2.3", timestamp: "2026-07-17T00:00:00Z" },
+      {
+        status: "degraded",
+        service: "worker",
+        version: "1.2.3",
+        timestamp: "2026-07-17T00:00:00Z",
+      },
     ],
   },
   SystemPingResponse: {
@@ -102,7 +114,12 @@ const cases: Cases = {
       {
         type: "content_delta",
         event_id: "evt_1",
-        chunk: { id: "chat_1", chunk_index: 0, delta_content: "Hi", timestamp: "2026-07-17T00:00:00Z" },
+        chunk: {
+          id: "chat_1",
+          chunk_index: 0,
+          delta_content: "Hi",
+          timestamp: "2026-07-17T00:00:00Z",
+        },
       },
       { type: "done", event_id: "evt_2" },
       {
@@ -118,30 +135,194 @@ const cases: Cases = {
     samples: [
       {
         run_id: "run_1",
-        status: "PASSED",
+        status: "COMPLETED",
         passed: true,
         stdout: "",
         stderr: "",
         tests: [
-          { name: "test_a", passed: true, duration_ms: 12 },
-          { name: "test_b", passed: false, message: "assert", duration_ms: 3, stderr: "AssertionError" },
+          {
+            case_id: "visible-basic",
+            display_name: "visible-basic",
+            visibility: "VISIBLE",
+            comparison: "EQUAL",
+            transfer: false,
+            passed: true,
+            message: null,
+            stdout: "",
+            stderr: "",
+            stdout_truncated: false,
+            stderr_truncated: false,
+            duration_ms: 12,
+          },
         ],
-        duration_ms: 20,
-        peak_memory_kb: 1024,
+        trace_frames: [
+          {
+            sequence: 1,
+            line: 1,
+            event: "line",
+            func_name: "solve",
+            locals: { value: "3" },
+          },
+        ],
+        resource_usage: {
+          cpu_ms: 10,
+          wall_ms: 20,
+          peak_memory_kb: 1024,
+          exit_code: 0,
+        },
+        stdout_truncated: false,
+        stderr_truncated: false,
+        trace_truncated: false,
         user_error: null,
         platform_error: null,
       },
       {
         run_id: "run_2",
-        status: "ERROR",
+        status: "PLATFORM_ERROR",
         passed: false,
         stdout: "",
         stderr: "",
         tests: [],
-        duration_ms: 0,
-        peak_memory_kb: null,
+        trace_frames: null,
+        resource_usage: {
+          cpu_ms: 0,
+          wall_ms: 0,
+          peak_memory_kb: null,
+          exit_code: null,
+        },
+        stdout_truncated: false,
+        stderr_truncated: false,
+        trace_truncated: false,
         user_error: null,
         platform_error: "runner crashed",
+      },
+    ],
+  },
+  CodeRunRequest: {
+    schema: CodeRunRequest,
+    samples: [
+      {
+        task_instance_id: "tsk_1",
+        source_code: "def solve(value):\n    return value + 1\n",
+        mode: "TRACE",
+        expected_task_version: 3,
+        trace_enabled: true,
+      },
+    ],
+  },
+  CodeSubmissionRequest: {
+    schema: CodeSubmissionRequest,
+    samples: [
+      {
+        task_instance_id: "tsk_1",
+        source_code: "def solve(value):\n    return value + 1\n",
+        expected_task_version: 3,
+      },
+    ],
+  },
+  CodeRunView: {
+    schema: CodeRunView,
+    samples: [
+      {
+        run_id: "run_1",
+        task_instance_id: "tsk_1",
+        mode: "RUN",
+        status: "COMPLETED",
+        version: 1,
+        revision: {
+          id: "rev_1",
+          sequence: 1,
+          source_digest: "a".repeat(64),
+          created_at: "2026-07-17T00:00:00Z",
+        },
+        result: null,
+        evidence_event_id: null,
+        requested_at: "2026-07-17T00:00:00Z",
+        started_at: null,
+        completed_at: null,
+      },
+    ],
+  },
+  HintRequest: {
+    schema: HintRequest,
+    samples: [{ level: 1, revision_id: "rev_1", expected_task_version: 3 }],
+  },
+  HintUsageView: {
+    schema: HintUsageView,
+    samples: [
+      {
+        id: "hint_1",
+        task_instance_id: "tsk_1",
+        revision_id: "rev_1",
+        sequence: 1,
+        hint_key: "loop-bound",
+        level: 1,
+        cost: 0.1,
+        content: "Check the loop boundary.",
+        created_at: "2026-07-17T00:00:00Z",
+      },
+    ],
+  },
+  SandboxExecutionRequest: {
+    schema: SandboxExecutionRequest,
+    samples: [
+      {
+        protocol_version: "1",
+        request_id: "req_1",
+        run_id: "run_1",
+        trace_id: "trc_1",
+        source_code: "def solve(value):\n    return value + 1\n",
+        entrypoint: { kind: "FUNCTION", name: "solve" },
+        cases: [
+          {
+            id: "visible-basic",
+            args: [1],
+            expected: 2,
+            comparison: "EQUAL",
+            transfer: false,
+          },
+        ],
+        allowed_imports: ["math"],
+        phase: "VISIBLE",
+        policy: {
+          timeout_ms: 2000,
+          memory_mb: 128,
+          pids_limit: 32,
+          output_limit_bytes: 65536,
+          test_limit: 256,
+          trace_frame_limit: 1000,
+        },
+        trace_enabled: false,
+      },
+    ],
+  },
+  SandboxExecutionResponse: {
+    schema: SandboxExecutionResponse,
+    samples: [
+      {
+        protocol_version: "1",
+        request_id: "req_1",
+        run_id: "run_1",
+        result: {
+          run_id: "run_1",
+          status: "COMPLETED",
+          passed: true,
+          stdout: "",
+          stderr: "",
+          tests: [],
+          trace_frames: null,
+          resource_usage: {
+            cpu_ms: 10,
+            wall_ms: 20,
+            peak_memory_kb: 1024,
+            exit_code: 0,
+          },
+          stdout_truncated: false,
+          stderr_truncated: false,
+          trace_truncated: false,
+          user_error: null,
+          platform_error: null,
+        },
       },
     ],
   },
@@ -440,7 +621,9 @@ let failed = 0;
 for (const [name, { schema, samples }] of Object.entries(cases)) {
   // Each sample must parse cleanly.
   for (const [i, sample] of samples.entries()) {
-    const parsed = (schema as { safeParse: (v: unknown) => { success: boolean; error?: { message: string } } }).safeParse(sample);
+    const parsed = (
+      schema as { safeParse: (v: unknown) => { success: boolean; error?: { message: string } } }
+    ).safeParse(sample);
     if (!parsed.success) {
       console.error(`✗ ${name}[${i}] failed to parse: ${parsed.error?.message}`);
       failed += 1;
@@ -453,7 +636,9 @@ let schemasRaw: string;
 try {
   schemasRaw = readFileSync(SCHEMAS_PATH, "utf8");
 } catch {
-  console.error(`✗ ${SCHEMAS_PATH} missing — run "pnpm contracts:check" which exports schemas first.`);
+  console.error(
+    `✗ ${SCHEMAS_PATH} missing — run "pnpm contracts:check" which exports schemas first.`,
+  );
   failed += 1;
   schemasRaw = "{}";
 }

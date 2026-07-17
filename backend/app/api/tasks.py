@@ -34,6 +34,7 @@ from app.models import (
 )
 from app.rbac import get_current_user
 from app.task_compiler import start_task_instance
+from app.task_policy import public_task_snapshot
 from app.uow import SqlAlchemyUnitOfWork
 
 router = APIRouter(prefix="/api/v1/tasks", tags=["learning-tasks"])
@@ -44,7 +45,7 @@ def _start_response(instance: TaskInstance) -> TaskStartResponse:
         id=str(instance.id),
         task_version_id=str(instance.task_version_id),
         status=instance.status.value,
-        snapshot=instance.snapshot,
+        snapshot=public_task_snapshot(instance.snapshot),
         started_at=instance.started_at.isoformat(),
         version=instance.version,
     )

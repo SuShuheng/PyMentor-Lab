@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.contracts.sandbox import SandboxResult, SandboxRunStatus
+from app.contracts.sandbox import CodeRunStatus, SandboxResult
 from sandbox.runner import stub_result
 
 
@@ -10,9 +10,11 @@ def test_stub_result_is_bounded_contract_shape() -> None:
     """The stub returns a valid SandboxResult that downstream policy can consume."""
     result = stub_result()
     assert isinstance(result, SandboxResult)
-    assert result.status == SandboxRunStatus.PASSED
+    assert result.status == CodeRunStatus.COMPLETED
     assert result.passed is True
     assert result.run_id.startswith("run_")
+    assert result.resource_usage.exit_code == 0
+    assert result.stdout_truncated is False
 
 
 def test_user_and_platform_error_are_separated() -> None:
