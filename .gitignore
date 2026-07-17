@@ -1,0 +1,41 @@
+# ---- Secrets / local config (never commit) ----
+.env
+.env.*
+!.env.example
+*.local.yaml
+local.yaml
+
+# ---- Node / pnpm ----
+node_modules/
+dist/
+build/
+coverage/
+.nyc_output/
+*.tsbuildinfo
+.eslintcache
+
+# ---- Python ----
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---- Generated artifacts ----
+# NOTE: packages/api-client/src/generated/ IS committed on purpose. The
+# freshness gate (pnpm freshness) regenerates it and fails on diff, so a
+# stale client cannot merge. Renderers consume the committed client directly.
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# ---- Competition raw inputs (design-only, not runtime) ----
+raw/

@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": ".",
+    "types": ["node"]
+  },
+  // Generated code (src/generated/**) is owned by openapi-ts and excluded from
+  // type-checking per the standard generated-code convention; its correctness
+  // is enforced by the freshness gate (pnpm freshness) and the vitest suite.
+  "include": ["src/index.ts"],
+  "exclude": ["src/generated/**", "src/**/*.test.ts"]
+}

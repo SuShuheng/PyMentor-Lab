@@ -1,0 +1,9 @@
+node_modules
+dist
+build
+coverage
+pnpm-lock.yaml
+packages/api-client/src/generated
+.venv
+__pycache__
+*.pyc

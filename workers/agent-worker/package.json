@@ -1,0 +1,26 @@
+{
+  "name": "@pymentor/agent-worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "LangGraph.js worker: six-agent orchestration, resource generation, provider adapters.",
+  "main": "./src/index.ts",
+  "scripts": {
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "@pymentor/contracts": "workspace:*",
+    "@hono/node-server": "^1.13.7",
+    "hono": "^4.6.12"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.11",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

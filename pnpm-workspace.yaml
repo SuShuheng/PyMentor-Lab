@@ -1,0 +1,6 @@
+packages:
+  - "workers/agent-worker"
+  - "packages/contracts"
+  - "packages/api-client"
+allowBuilds:
+  esbuild: true
