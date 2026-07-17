@@ -30,6 +30,19 @@ class Settings:
         "postgresql+psycopg://pymentor:pymentor_dev@localhost:5432/pymentor",
     )
 
+    # Agent audit stream consumer (BE-006). It is opt-in so unit tests and
+    # one-off API processes never start a background Redis loop implicitly.
+    redis_url: str = _env("PYMENTOR_REDIS_URL", "redis://127.0.0.1:6379/0")
+    agent_event_consumer_enabled: bool = (
+        _env("PYMENTOR_AGENT_EVENT_CONSUMER_ENABLED", "false").lower() == "true"
+    )
+    agent_event_stream: str = _env("PYMENTOR_AGENT_EVENT_STREAM", "pymentor:agent-events:v1")
+    agent_event_group: str = _env("PYMENTOR_AGENT_EVENT_GROUP", "pymentor-api-v1")
+    agent_event_consumer: str = _env("PYMENTOR_AGENT_EVENT_CONSUMER", "api-1")
+    agent_event_block_ms: int = int(_env("PYMENTOR_AGENT_EVENT_BLOCK_MS", "1000"))
+    agent_event_batch_size: int = int(_env("PYMENTOR_AGENT_EVENT_BATCH_SIZE", "25"))
+    agent_event_claim_idle_ms: int = int(_env("PYMENTOR_AGENT_EVENT_CLAIM_IDLE_MS", "30000"))
+
     # JWT — the secret MUST be provided in any non-test environment.
     # Dev default is long enough to satisfy HS256's 32-byte recommendation.
     jwt_secret: str = _env(

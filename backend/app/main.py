@@ -6,9 +6,10 @@ trace_id 中间件。启动时执行幂等引导（初始 admin、角色种子�
 
 from __future__ import annotations
 
+import asyncio
 import os
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 
@@ -41,7 +42,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
         with SessionLocal() as db:
             run_bootstrap(db)
-    yield
+    settings = get_settings()
+    consumer_task: asyncio.Task[None] | None = None
+    if settings.agent_event_consumer_enabled:
+        from app.agent_event_consumer import create_agent_event_redis, run_agent_event_consumer
+        from app.db import SessionLocal
+
+        consumer_task = asyncio.create_task(
+            run_agent_event_consumer(create_agent_event_redis(settings), SessionLocal, settings),
+            name="agent-event-consumer",
+        )
+        app.state.agent_event_consumer_task = consumer_task
+    try:
+        yield
+    finally:
+        if consumer_task is not None:
+            consumer_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await consumer_task
 
 
 def create_app() -> FastAPI:

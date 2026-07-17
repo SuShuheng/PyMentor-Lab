@@ -59,6 +59,11 @@ services:
     environment:
       PYMENTOR_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-pymentor}:${POSTGRES_PASSWORD:-pymentor_dev}@postgres:5432/${POSTGRES_DB:-pymentor}
       PYMENTOR_SERVICE_NAME: api
+      PYMENTOR_REDIS_URL: redis://redis:6379/0
+      PYMENTOR_AGENT_EVENT_CONSUMER_ENABLED: "true"
+      PYMENTOR_AGENT_EVENT_STREAM: pymentor:agent-events:v1
+      PYMENTOR_AGENT_EVENT_GROUP: pymentor-api-v1
+      PYMENTOR_AGENT_EVENT_CONSUMER: api-1
     ports:
       - "8000:8000"
     depends_on:
