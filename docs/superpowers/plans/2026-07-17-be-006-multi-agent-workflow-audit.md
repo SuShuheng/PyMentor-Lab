@@ -349,7 +349,7 @@ git commit -m "feat(worker): process versioned Redis jobs idempotently"
 - Produces: `createCheckpointSaver`, `threadIdForJob`,
   `getCheckpointHistory`, and `replayFromCheckpoint`.
 
-- [ ] **Step 1: Write skip-gated real Redis Red tests**
+- [x] **Step 1: Write skip-gated real Redis Red tests**
 
 The integration test requires `PYMENTOR_REDIS_URL`. It invokes a two-node run,
 asserts a checkpoint at every super-step, selects the checkpoint before the
@@ -358,7 +358,7 @@ re-executed, and proves original history remains unchanged. Add an unsafe ID
 case containing `*?[\\]` and assert the derived thread ID is a safe fixed-length
 digest.
 
-- [ ] **Step 2: Start the pinned Redis service and verify Red**
+- [x] **Step 2: Start the pinned Redis service and verify Red**
 
 Run:
 
@@ -370,20 +370,20 @@ pnpm --filter @pymentor/agent-worker test -- src/workflow/checkpoints.integratio
 
 Expected: FAIL because RedisSaver setup and replay functions do not exist.
 
-- [ ] **Step 3: Pin Redis Stack and implement saver lifecycle**
+- [x] **Step 3: Pin Redis Stack and implement saver lifecycle**
 
 Change Compose to `redis/redis-stack-server:7.4.0-v8`, preserve AOF and the
-existing volume/health contract, create `RedisSaver.fromUrl`, run its `setup()`
-once at startup, compile the graph with synchronous durability, and close the
-underlying client at shutdown.
+existing volume/health contract, and create `RedisSaver.fromUrl`. Version
+1.0.10 creates its indexes during `fromUrl()` and exposes `end()` for shutdown;
+compile the graph with that saver and close it during bounded shutdown.
 
-- [ ] **Step 4: Implement safe replay**
+- [x] **Step 4: Implement safe replay**
 
 Derive the original thread from tenant plus original event identity, load and
 validate the requested checkpoint, invoke from that checkpoint with a new replay
 event identity, and publish an audit link between original and replay runs.
 
-- [ ] **Step 5: Verify real Redis Green and Compose validity**
+- [x] **Step 5: Verify real Redis Green and Compose validity**
 
 Run:
 
@@ -396,7 +396,7 @@ docker compose exec -T redis redis-cli MODULE LIST
 Expected: replay tests pass; Compose exits 0; RedisJSON and Search modules are
 listed.
 
-- [ ] **Step 6: Commit Task 5**
+- [x] **Step 6: Commit Task 5**
 
 ```powershell
 git add workers/agent-worker/src/workflow docker-compose.yml .env.example

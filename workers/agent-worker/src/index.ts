@@ -9,5 +9,7 @@ export * from "./queue/events.js";
 export * from "./queue/identities.js";
 export * from "./queue/processor.js";
 export * from "./queue/runtime.js";
+export * from "./workflow/checkpoints.js";
 export * from "./workflow/graph.js";
+export * from "./workflow/replay.js";
 export * from "./workflow/state.js";

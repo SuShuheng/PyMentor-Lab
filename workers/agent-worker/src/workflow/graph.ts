@@ -56,6 +56,7 @@ export interface AgentGraphResult {
   readonly envelope: AgentProposalEnvelope;
   readonly executedNodes: AgentWorkflowStateValue["executedNodes"];
   readonly auditSequence: number;
+  readonly checkpointId?: string;
 }
 
 function createNodeContext(
@@ -177,6 +178,7 @@ export type CompiledAgentGraph = ReturnType<typeof compileAgentGraph>;
 export interface AgentGraphRuntime {
   readonly compiled: CompiledAgentGraph;
   invoke(job: unknown, options: AgentGraphInvokeOptions): Promise<AgentGraphResult>;
+  resume(options: AgentGraphInvokeOptions): Promise<AgentGraphResult>;
 }
 
 export function buildAgentGraph(dependencies: AgentGraphDependencies): AgentGraphRuntime {
@@ -184,6 +186,56 @@ export function buildAgentGraph(dependencies: AgentGraphDependencies): AgentGrap
   return {
     compiled,
     invoke: (job, options) => invokeAgentGraph(compiled, dependencies, job, options),
+    resume: (options) => resumeAgentGraph(compiled, dependencies, options),
+  };
+}
+
+function graphConfig(options: AgentGraphInvokeOptions) {
+  return {
+    configurable: {
+      thread_id: options.threadId,
+      ...(options.checkpointId === undefined ? {} : { checkpoint_id: options.checkpointId }),
+    },
+  };
+}
+
+async function resultFromState(
+  compiled: CompiledAgentGraph,
+  dependencies: AgentGraphDependencies,
+  state: AgentWorkflowStateValue,
+  options: AgentGraphInvokeOptions,
+): Promise<AgentGraphResult> {
+  if (state.route === null || state.proposal === null) {
+    throw new WorkflowPolicyError(
+      "INCOMPLETE_WORKFLOW",
+      "Agent graph ended without a specialist proposal.",
+    );
+  }
+
+  const job = WorkerJobEnvelope.parse(state.job);
+  const envelope = AgentProposalEnvelope.parse({
+    schema_version: 1,
+    agent_run_id: options.agentRunId ?? options.threadId,
+    event_id: job.event_id,
+    trace_id: job.trace_id,
+    tenant_id: job.tenant_id,
+    student_id: job.student_id,
+    node: state.route,
+    status: "SUCCEEDED",
+    proposal: state.proposal,
+    fallback_used: state.fallbackUsed,
+    completed_at: (dependencies.now ?? (() => new Date()))().toISOString(),
+  });
+  const snapshot =
+    dependencies.checkpointer === undefined || dependencies.checkpointer === false
+      ? undefined
+      : await compiled.getState(graphConfig(options));
+  const checkpointId = snapshot?.config.configurable?.checkpoint_id;
+  return {
+    envelope,
+    executedNodes: state.executedNodes,
+    auditSequence: state.auditSequence,
+    ...(typeof checkpointId === "string" ? { checkpointId } : {}),
   };
 }
 
@@ -194,40 +246,15 @@ export async function invokeAgentGraph(
   options: AgentGraphInvokeOptions,
 ): Promise<AgentGraphResult> {
   const parsedJob = WorkerJobEnvelope.parse(job);
-  const state = await compiled.invoke(
-    { job: parsedJob },
-    {
-      configurable: {
-        thread_id: options.threadId,
-        ...(options.checkpointId === undefined ? {} : { checkpoint_id: options.checkpointId }),
-      },
-    },
-  );
+  const state = await compiled.invoke({ job: parsedJob }, graphConfig(options));
+  return resultFromState(compiled, dependencies, state, options);
+}
 
-  if (state.route === null || state.proposal === null) {
-    throw new WorkflowPolicyError(
-      "INCOMPLETE_WORKFLOW",
-      "Agent graph ended without a specialist proposal.",
-    );
-  }
-
-  const envelope = AgentProposalEnvelope.parse({
-    schema_version: 1,
-    agent_run_id: options.agentRunId ?? options.threadId,
-    event_id: parsedJob.event_id,
-    trace_id: parsedJob.trace_id,
-    tenant_id: parsedJob.tenant_id,
-    student_id: parsedJob.student_id,
-    node: state.route,
-    status: "SUCCEEDED",
-    proposal: state.proposal,
-    fallback_used: state.fallbackUsed,
-    completed_at: (dependencies.now ?? (() => new Date()))().toISOString(),
-  });
-
-  return {
-    envelope,
-    executedNodes: state.executedNodes,
-    auditSequence: state.auditSequence,
-  };
+export async function resumeAgentGraph(
+  compiled: CompiledAgentGraph,
+  dependencies: AgentGraphDependencies,
+  options: AgentGraphInvokeOptions,
+): Promise<AgentGraphResult> {
+  const state = await compiled.invoke(null as never, graphConfig(options));
+  return resultFromState(compiled, dependencies, state, options);
 }
