@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
-from uuid import UUID, uuid4
+from datetime import timedelta
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import func, select
@@ -42,135 +41,14 @@ from app.models import (
     HintUsage,
     IdempotencyKey,
     OutboxEvent,
-    TaskDefinition,
-    TaskInstance,
-    TaskInstanceStatus,
-    TaskVersion,
-    Tenant,
-    User,
-    UserStatus,
 )
 from app.models import (
     TestResult as CodeTestResult,
 )
-
-NOW = datetime(2026, 7, 17, 8, 0, tzinfo=UTC)
-COURSE_ID = UUID("00000000-0000-0000-0000-000000000501")
-NODE_ID = UUID("00000000-0000-0000-0000-000000000502")
-
-
-@dataclass(slots=True)
-class CodeContext:
-    tenant: Tenant
-    student: User
-    task: TaskInstance
-    idempotency: IdempotencyKey
-
-
-def _snapshot() -> dict[str, object]:
-    return {
-        "prompt": "Return the sum.",
-        "tests_policy": {
-            "entrypoint": {"kind": "FUNCTION", "name": "solve"},
-            "allowed_imports": ["math"],
-            "visible": [
-                {
-                    "id": "visible-basic",
-                    "args": [[1, 2]],
-                    "expected": 3,
-                    "comparison": "EQUAL",
-                    "transfer": False,
-                }
-            ],
-            "hidden": [
-                {
-                    "id": "hidden-transfer",
-                    "args": [[0, 0]],
-                    "expected": 0,
-                    "comparison": "EQUAL",
-                    "transfer": True,
-                }
-            ],
-        },
-        "hint_policy": {
-            "max_level": 2,
-            "hints": [
-                {
-                    "key": "inspect-input",
-                    "level": 1,
-                    "content": "Inspect the input shape.",
-                    "independence_cost": 10,
-                },
-                {
-                    "key": "check-bound",
-                    "level": 2,
-                    "content": "Check the boundary.",
-                    "independence_cost": 25,
-                },
-            ],
-        },
-        "mastery_policy": {},
-        "resource_versions": {},
-        "scenario_key": "sum-v1",
-    }
-
-
-@pytest.fixture()
-def code_context(db_session: Session) -> CodeContext:
-    suffix = uuid4().hex
-    tenant = Tenant(slug=f"code-{suffix}", name="Code Evidence")
-    db_session.add(tenant)
-    db_session.flush()
-    student = User(
-        tenant_id=tenant.id,
-        email=f"code-{suffix}@example.com",
-        password_hash="not-used",
-        status=UserStatus.ACTIVE,
-    )
-    db_session.add(student)
-    db_session.flush()
-    definition = TaskDefinition(
-        tenant_id=tenant.id,
-        course_id=COURSE_ID,
-        node_id=NODE_ID,
-        key=f"sum-{suffix}",
-        title="Sum task",
-    )
-    db_session.add(definition)
-    db_session.flush()
-    snapshot = _snapshot()
-    version = TaskVersion(
-        tenant_id=tenant.id,
-        definition_id=definition.id,
-        version=1,
-        snapshot=snapshot,
-        snapshot_digest="a" * 64,
-        scenario_key="sum-v1",
-        published=True,
-        published_at=NOW,
-    )
-    db_session.add(version)
-    db_session.flush()
-    task = TaskInstance(
-        tenant_id=tenant.id,
-        student_id=student.id,
-        task_version_id=version.id,
-        active_key=f"code-{suffix}",
-        status=TaskInstanceStatus.ACTIVE,
-        snapshot=snapshot,
-        snapshot_digest=version.snapshot_digest,
-        version=1,
-    )
-    idempotency = IdempotencyKey(
-        key=f"idem-{suffix}",
-        tenant_id=tenant.id,
-        user_id=student.id,
-        endpoint="POST /api/v1/code/runs",
-        expires_at=NOW + timedelta(days=1),
-    )
-    db_session.add_all([task, idempotency])
-    db_session.flush()
-    return CodeContext(tenant, student, task, idempotency)
+from tests.conftest import (
+    NOW,
+    CodeContext,
+)
 
 
 def _new_idempotency(db: Session, context: CodeContext) -> IdempotencyKey:
