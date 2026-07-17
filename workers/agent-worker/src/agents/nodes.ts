@@ -30,6 +30,7 @@ import type {
 import {
   AGENT_TOOL_ALLOWLISTS,
   DEFAULT_AGENT_TIMEOUT_MS,
+  EXPECTED_ROUTE_BY_KIND,
   FORBIDDEN_AGENT_PERMISSIONS,
 } from "./policies.js";
 import type { AgentNodeDefinition } from "./types.js";
@@ -48,8 +49,8 @@ export const agentNodes = Object.freeze({
     allowedTools: AGENT_TOOL_ALLOWLISTS.orchestrator,
     forbiddenPermissions: FORBIDDEN_AGENT_PERMISSIONS,
     timeoutMs: DEFAULT_AGENT_TIMEOUT_MS,
-    fallback: () => ({
-      route: "coach",
+    fallback: (input) => ({
+      route: EXPECTED_ROUTE_BY_KIND[input.kind],
       intent_code: "SAFE_FALLBACK",
       summary: "The request needs a safe coaching response.",
     }),

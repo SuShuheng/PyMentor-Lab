@@ -59,6 +59,26 @@ describe("agent node policies", () => {
     }
   });
 
+  it.each([
+    ["profile_diagnose", "profile"],
+    ["path_recommend", "path"],
+    ["resource_generate", "resource"],
+    ["tutoring_answer", "resource"],
+    ["coding_coach", "coach"],
+    ["assessment_feedback", "assessment"],
+  ] as const)("falls back from %s only to %s", (kind, route) => {
+    expect(
+      agentNodes.orchestrator.fallback(
+        {
+          kind,
+          request: "Route this validated request.",
+          context: { evidence_event_ids: [] },
+        },
+        "PROVIDER_ERROR",
+      ).route,
+    ).toBe(route);
+  });
+
   it("rejects invalid input before invoking the provider", async () => {
     const complete = vi.fn();
 

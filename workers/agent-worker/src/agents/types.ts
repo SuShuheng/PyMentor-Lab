@@ -46,4 +46,11 @@ export interface AgentExecutionContext {
   readonly provider: AgentProviderPort;
   readonly audit: AgentAuditSink;
   readonly eventId: string;
+  readonly onOutcome?: (outcome: AgentExecutionOutcome) => void;
+}
+
+export interface AgentExecutionOutcome {
+  readonly fallback: boolean;
+  readonly retryCount: number;
+  readonly code?: string;
 }

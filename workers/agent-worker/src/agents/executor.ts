@@ -90,6 +90,11 @@ export async function executeNode<TInput, TOutput>(
       status: "SUCCEEDED",
       detail,
     });
+    context.onOutcome?.({
+      fallback,
+      retryCount,
+      ...(code === undefined ? {} : { code }),
+    });
     return output;
   };
 

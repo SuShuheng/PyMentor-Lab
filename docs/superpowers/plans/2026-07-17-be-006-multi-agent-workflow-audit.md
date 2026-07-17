@@ -214,7 +214,7 @@ git commit -m "feat(worker): enforce six independent agent policies"
 - Produces: `buildAgentGraph(dependencies)` and
   `invokeAgentGraph(job, { threadId, checkpointId? })`.
 
-- [ ] **Step 1: Write graph topology and route Red tests**
+- [x] **Step 1: Write graph topology and route Red tests**
 
 Assert that the drawable graph contains exactly six business nodes plus
 START/END; every job kind executes `orchestrator` then exactly one specialist;
@@ -236,20 +236,20 @@ it.each([
 });
 ```
 
-- [ ] **Step 2: Run graph tests and verify Red**
+- [x] **Step 2: Run graph tests and verify Red**
 
 Run: `pnpm --filter @pymentor/agent-worker test -- src/workflow/graph.test.ts`
 
 Expected: FAIL because the graph factory does not exist.
 
-- [ ] **Step 3: Implement graph state and six-node topology**
+- [x] **Step 3: Implement graph state and six-node topology**
 
 Define a typed StateGraph state with validated job, route, executed-node list,
 proposal, audit sequence, and terminal failure/fallback. Add START to
 orchestrator, conditional edges to the five specialists, and each specialist to
 END. Do not add generic node loops or free-form Agent chat.
 
-- [ ] **Step 4: Verify Green and graph checkpoint compatibility**
+- [x] **Step 4: Verify Green and graph checkpoint compatibility**
 
 Run:
 
@@ -260,7 +260,7 @@ pnpm --filter @pymentor/agent-worker typecheck
 
 Expected: topology and all six routing cases pass.
 
-- [ ] **Step 5: Commit Task 3**
+- [x] **Step 5: Commit Task 3**
 
 ```powershell
 git add workers/agent-worker/src/workflow workers/agent-worker/src/index.ts

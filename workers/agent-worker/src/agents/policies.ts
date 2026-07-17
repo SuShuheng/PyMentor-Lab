@@ -15,3 +15,13 @@ export const AGENT_TOOL_ALLOWLISTS = Object.freeze({
 } as const);
 
 export const DEFAULT_AGENT_TIMEOUT_MS = 30_000;
+
+export const EXPECTED_ROUTE_BY_KIND = Object.freeze({
+  profile_diagnose: "profile",
+  path_recommend: "path",
+  resource_generate: "resource",
+  tutoring_answer: "resource",
+  coding_coach: "coach",
+  assessment_feedback: "assessment",
+}) satisfies Readonly<Record<WorkerJobKind, SpecialistAgentNodeName>>;
+import type { SpecialistAgentNodeName, WorkerJobKind } from "@pymentor/contracts";
