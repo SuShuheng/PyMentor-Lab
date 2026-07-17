@@ -54,7 +54,7 @@ Alembic, redis-py, PostgreSQL 16, Docker Compose.
   `AgentProposalEnvelope`, `AgentAuditEnvelope`, `AgentReplayRequest`, and exact
   Pydantic mirrors exported by both contract packages.
 
-- [ ] **Step 1: Write golden and rejection tests before schema changes**
+- [x] **Step 1: Write golden and rejection tests before schema changes**
 
 Add table-driven Zod tests that parse one golden input/output for every node and
 reject unknown fields, overlong IDs, invalid timestamps, unsupported proposal
@@ -79,20 +79,20 @@ it("rejects replay identity reuse", () => {
 });
 ```
 
-- [ ] **Step 2: Run the contract tests and capture the expected Red**
+- [x] **Step 2: Run the contract tests and capture the expected Red**
 
 Run: `pnpm --filter @pymentor/contracts test`
 
 Expected: FAIL because the new Agent schemas are not exported.
 
-- [ ] **Step 3: Implement bounded Zod schemas and Pydantic mirrors**
+- [x] **Step 3: Implement bounded Zod schemas and Pydantic mirrors**
 
 Use `z.object(...).strict()`, maximum lengths, ISO datetime validation, and an
 allowlist validator for audit-detail keys. Define proposal bodies as a
 discriminated union rather than an unbounded record. Mirror every field and
 validator in `backend/app/contracts/worker.py` with `extra="forbid"`.
 
-- [ ] **Step 4: Pin compatible dependencies**
+- [x] **Step 4: Pin compatible dependencies**
 
 Run:
 
@@ -101,7 +101,7 @@ pnpm --filter @pymentor/contracts add zod@3.25.76 zod-to-json-schema@3.25.2 --sa
 pnpm --filter @pymentor/agent-worker add @langchain/langgraph@1.4.8 @langchain/core@1.2.3 @langchain/langgraph-checkpoint-redis@1.0.10 bullmq@5.79.3 ioredis@5.11.1 --save-exact
 ```
 
-- [ ] **Step 5: Verify Green and cross-language parity**
+- [x] **Step 5: Verify Green and cross-language parity**
 
 Run:
 
@@ -115,7 +115,7 @@ pnpm typecheck
 Expected: all commands exit 0; JSON Schema generation reports no Pydantic-Zod
 drift.
 
-- [ ] **Step 6: Commit Task 1**
+- [x] **Step 6: Commit Task 1**
 
 ```powershell
 git add packages/contracts backend/app/contracts backend/tests/test_contracts_parity.py workers/agent-worker/package.json pnpm-lock.yaml
@@ -140,7 +140,7 @@ git commit -m "feat(contracts): define BE-006 agent workflow envelopes"
   `executeNode(definition, input, context)`, and `agentNodes` keyed by all six
   `AgentNodeName` values.
 
-- [ ] **Step 1: Write one focused Red test per policy behavior**
+- [x] **Step 1: Write one focused Red test per policy behavior**
 
 Tests must assert exact allowlists/forbidden permissions for all six nodes,
 input rejection before provider invocation, forbidden-tool rejection, malicious
@@ -157,13 +157,13 @@ it("rejects a tool that the active node does not allow", async () => {
 });
 ```
 
-- [ ] **Step 2: Run executor tests and verify Red**
+- [x] **Step 2: Run executor tests and verify Red**
 
 Run: `pnpm --filter @pymentor/agent-worker test -- src/agents/executor.test.ts`
 
 Expected: FAIL because node definitions and executor do not exist.
 
-- [ ] **Step 3: Implement immutable definitions and the minimal executor**
+- [x] **Step 3: Implement immutable definitions and the minimal executor**
 
 `AgentNodeDefinition` contains `name`, `inputSchema`, `outputSchema`,
 `allowedTools`, `forbiddenPermissions`, `timeoutMs`, and `fallback`. The executor
@@ -172,14 +172,14 @@ one repair attempt, validates output, and invokes the node fallback if both
 outputs are invalid or the provider times out. It records only safe sizes,
 digests, status, latency, and stable codes.
 
-- [ ] **Step 4: Implement the tool registry as the only capability gateway**
+- [x] **Step 4: Implement the tool registry as the only capability gateway**
 
 Each tool has Zod input/output schemas and an `invoke(input, signal,
 idempotencyKey)` method. The registry checks the node allowlist before lookup,
 derives `sha256(eventId|node|tool|sequence)`, validates both sides, applies the
 same deadline, and emits `TOOL_STARTED` plus `TOOL_COMPLETED` or `TOOL_FAILED`.
 
-- [ ] **Step 5: Run focused and Worker tests**
+- [x] **Step 5: Run focused and Worker tests**
 
 Run:
 
@@ -191,7 +191,7 @@ pnpm --filter @pymentor/agent-worker typecheck
 Expected: all policy, timeout, repair, fallback, prompt-injection, and redaction
 tests pass with no TypeScript errors.
 
-- [ ] **Step 6: Commit Task 2**
+- [x] **Step 6: Commit Task 2**
 
 ```powershell
 git add workers/agent-worker/src/agents
