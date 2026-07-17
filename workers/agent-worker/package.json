@@ -13,9 +13,14 @@
     "start": "tsx src/server.ts"
   },
   "dependencies": {
-    "@pymentor/contracts": "workspace:*",
     "@hono/node-server": "^1.13.7",
-    "hono": "^4.6.12"
+    "@langchain/core": "1.2.3",
+    "@langchain/langgraph": "1.4.8",
+    "@langchain/langgraph-checkpoint-redis": "1.0.10",
+    "@pymentor/contracts": "workspace:*",
+    "bullmq": "5.79.3",
+    "hono": "^4.6.12",
+    "ioredis": "5.11.1"
   },
   "devDependencies": {
     "@types/node": "^20.16.11",

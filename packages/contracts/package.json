@@ -19,8 +19,8 @@
     "contracts:check": "tsx src/export-json-schema.ts && tsx src/conformance.ts"
   },
   "dependencies": {
-    "zod": "3.23.8",
-    "zod-to-json-schema": "3.23.5"
+    "zod": "3.25.76",
+    "zod-to-json-schema": "3.25.2"
   },
   "devDependencies": {
     "@types/node": "^20.16.11",

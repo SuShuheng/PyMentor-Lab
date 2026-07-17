@@ -11,10 +11,17 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 import {
+  AgentAuditEnvelope,
+  AgentProposalEnvelope,
+  AgentReplayRequest,
   AssessmentSubmission,
+  AssessmentAgentInput,
+  AssessmentAgentOutput,
   AuthTokens,
   AuditEvent,
   ChatCompletionChunk,
+  CoachAgentInput,
+  CoachAgentOutput,
   CodeRunRequest,
   CodeRunView,
   CodeSubmissionRequest,
@@ -27,16 +34,24 @@ import {
   LoginRequest,
   MasteryView,
   OutboxEvent,
+  OrchestratorAgentInput,
+  OrchestratorAgentOutput,
+  PathAgentInput,
+  PathAgentOutput,
   PathSnapshot,
   PendingRegistration,
   ProfileDisputeRequest,
   ProfileDisputeView,
   ProfileSnapshot,
+  ProfileAgentInput,
+  ProfileAgentOutput,
   RegisterRequest,
   RegisterResponse,
   RegistrationDecisionRequest,
   ReviewRescheduleRequest,
   ReviewView,
+  ResourceAgentInput,
+  ResourceAgentOutput,
   SandboxExecutionRequest,
   SandboxExecutionResponse,
   SandboxResult,
@@ -54,6 +69,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const SCHEMAS_PATH = resolve(__dirname, "..", "schemas.json");
 
 type Cases = Record<string, { schema: unknown; samples: unknown[] }>;
+
+const agentContext = {
+  course_id: "course_python_1",
+  node_id: "node_loops",
+  task_id: "task_loop_boundary",
+  evidence_event_ids: ["evt_code_1"],
+};
 
 const cases: Cases = {
   ErrorEnvelope: {
@@ -338,6 +360,184 @@ const cases: Cases = {
         kind: "resource_generate",
         payload: { need: "loops" },
         enqueued_at: "2026-07-17T00:00:00Z",
+      },
+    ],
+  },
+  OrchestratorAgentInput: {
+    schema: OrchestratorAgentInput,
+    samples: [{ kind: "coding_coach", request: "Explain the failed loop test.", context: agentContext }],
+  },
+  OrchestratorAgentOutput: {
+    schema: OrchestratorAgentOutput,
+    samples: [{ route: "coach", intent_code: "CODE_FAILURE", summary: "Coach the failed test." }],
+  },
+  ProfileAgentInput: {
+    schema: ProfileAgentInput,
+    samples: [
+      { evidence_summary: "Three loop-boundary failures.", current_profile_version: 3, context: agentContext },
+    ],
+  },
+  ProfileAgentOutput: {
+    schema: ProfileAgentOutput,
+    samples: [
+      {
+        kind: "profile_change",
+        changes: [
+          { dimension: "DEBUGGING", delta: -0.1, reason: "Repeated boundary misses." },
+        ],
+      },
+    ],
+  },
+  PathAgentInput: {
+    schema: PathAgentInput,
+    samples: [
+      {
+        profile_summary: "Needs loop-boundary remediation.",
+        available_minutes: 30,
+        candidate_node_ids: ["node_loops", "node_ranges"],
+        context: agentContext,
+      },
+    ],
+  },
+  PathAgentOutput: {
+    schema: PathAgentOutput,
+    samples: [
+      {
+        kind: "path_plan",
+        steps: [
+          { node_id: "node_ranges", action: "REMEDIATE", reason: "Repair range semantics." },
+        ],
+      },
+    ],
+  },
+  ResourceAgentInput: {
+    schema: ResourceAgentInput,
+    samples: [
+      {
+        learning_need: "Understand exclusive range bounds.",
+        resource_types: ["MICRO_LECTURE", "STRUCTURE_CARD"],
+        tutoring_question: "Why is the last item missing?",
+        context: agentContext,
+      },
+    ],
+  },
+  ResourceAgentOutput: {
+    schema: ResourceAgentOutput,
+    samples: [
+      {
+        kind: "resource_request",
+        requests: [
+          {
+            resource_type: "MICRO_LECTURE",
+            objective: "Contrast inclusive and exclusive bounds.",
+          },
+        ],
+        answer: "Python range excludes its stop value.",
+      },
+    ],
+  },
+  CoachAgentInput: {
+    schema: CoachAgentInput,
+    samples: [
+      {
+        error_summary: "Expected 4 values, received 3.",
+        test_summary: "Hidden upper-bound case failed.",
+        hint_level: 1,
+        context: agentContext,
+      },
+    ],
+  },
+  CoachAgentOutput: {
+    schema: CoachAgentOutput,
+    samples: [
+      {
+        kind: "coaching_feedback",
+        diagnosis: "The loop stops one step early.",
+        hints: ["Inspect the stop argument."],
+        next_test: "Try the smallest non-empty boundary.",
+      },
+    ],
+  },
+  AssessmentAgentInput: {
+    schema: AssessmentAgentInput,
+    samples: [
+      {
+        response_summary: "Student explains the exclusive stop value.",
+        rubric_keys: ["CONCEPT", "TRANSFER"],
+        context: agentContext,
+      },
+    ],
+  },
+  AssessmentAgentOutput: {
+    schema: AssessmentAgentOutput,
+    samples: [
+      {
+        kind: "assessment_feedback",
+        rubric_scores: { CONCEPT: 0.9, TRANSFER: 0.7 },
+        feedback: "Correct explanation with partial transfer.",
+        evidence_claims: ["Explains exclusive bounds."],
+      },
+    ],
+  },
+  AgentProposalEnvelope: {
+    schema: AgentProposalEnvelope,
+    samples: [
+      {
+        schema_version: 1,
+        agent_run_id: "run_agent_1",
+        event_id: "evt_job_1",
+        trace_id: "trc_1",
+        tenant_id: "tnt_demo",
+        student_id: "stu_1",
+        node: "coach",
+        status: "SUCCEEDED",
+        proposal: {
+          kind: "coaching_feedback",
+          diagnosis: "The loop stops one step early.",
+          hints: ["Inspect the stop argument."],
+          next_test: "Try the smallest non-empty boundary.",
+        },
+        fallback_used: false,
+        completed_at: "2026-07-17T00:00:00Z",
+      },
+    ],
+  },
+  AgentAuditEnvelope: {
+    schema: AgentAuditEnvelope,
+    samples: [
+      {
+        schema_version: 1,
+        agent_run_id: "run_agent_1",
+        event_id: "evt_job_1",
+        trace_id: "trc_1",
+        tenant_id: "tnt_demo",
+        student_id: "stu_1",
+        sequence: 1,
+        event_type: "TOOL_COMPLETED",
+        node: "coach",
+        tool_name: "llm.complete",
+        detail: {
+          status: "SUCCEEDED",
+          latency_ms: 12,
+          argument_digest: "a".repeat(64),
+          result_digest: "b".repeat(64),
+          retry_count: 0,
+          fallback: false,
+        },
+        occurred_at: "2026-07-17T00:00:00Z",
+      },
+    ],
+  },
+  AgentReplayRequest: {
+    schema: AgentReplayRequest,
+    samples: [
+      {
+        schema_version: 1,
+        tenant_id: "tnt_demo",
+        original_event_id: "evt_job_1",
+        replay_event_id: "evt_job_1_replay_1",
+        checkpoint_id: "chk_1",
+        requested_at: "2026-07-17T00:00:00Z",
       },
     ],
   },

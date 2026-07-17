@@ -40,7 +40,9 @@ without crossing that task boundary.
   RedisJSON and RediSearch, so Compose uses the pinned Redis 7 Stack server
   image `redis/redis-stack-server:7.4.0-v8` instead of module-free
   `redis:7-alpine`.
-- BullMQ 5.80.6 and ioredis 5.11.1, pinned exactly.
+- BullMQ 5.79.3 and ioredis 5.11.1, pinned exactly. BullMQ 5.79.3 has passed
+  pnpm's 24-hour minimum-release-age gate; the newer 5.80.6 had not at the time
+  of implementation.
 - Zod 3.25.76 and zod-to-json-schema 3.25.2, pinned exactly across the shared
   contract package so LangGraph's peer constraint and Pydantic parity generation
   both remain supported.

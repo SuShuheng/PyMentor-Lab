@@ -1,4 +1,578 @@
 {
+  "AgentAuditEnvelope": {
+    "$ref": "#/definitions/AgentAuditEnvelope",
+    "definitions": {
+      "AgentAuditEnvelope": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "type": "number",
+            "const": 1
+          },
+          "agent_run_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+          },
+          "event_id": {
+            "$ref": "#/definitions/AgentAuditEnvelope/properties/agent_run_id"
+          },
+          "trace_id": {
+            "$ref": "#/definitions/AgentAuditEnvelope/properties/agent_run_id"
+          },
+          "tenant_id": {
+            "$ref": "#/definitions/AgentAuditEnvelope/properties/agent_run_id"
+          },
+          "student_id": {
+            "$ref": "#/definitions/AgentAuditEnvelope/properties/agent_run_id"
+          },
+          "sequence": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 1000000
+          },
+          "event_type": {
+            "type": "string",
+            "enum": [
+              "RUN_STARTED",
+              "NODE_STARTED",
+              "TOOL_STARTED",
+              "TOOL_COMPLETED",
+              "TOOL_FAILED",
+              "NODE_COMPLETED",
+              "NODE_FAILED",
+              "CHECKPOINT_SAVED",
+              "RUN_COMPLETED",
+              "RUN_FAILED",
+              "RUN_CANCELLED",
+              "REPLAY_STARTED"
+            ]
+          },
+          "node": {
+            "type": "string",
+            "enum": [
+              "orchestrator",
+              "profile",
+              "path",
+              "resource",
+              "coach",
+              "assessment"
+            ]
+          },
+          "tool_name": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+          },
+          "checkpoint_id": {
+            "$ref": "#/definitions/AgentAuditEnvelope/properties/agent_run_id"
+          },
+          "detail": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "QUEUED",
+                  "RUNNING",
+                  "SUCCEEDED",
+                  "FAILED_RETRYABLE",
+                  "FAILED_FINAL",
+                  "CANCELLED"
+                ]
+              },
+              "code": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+              },
+              "latency_ms": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 3600000
+              },
+              "input_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1048576
+              },
+              "output_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1048576
+              },
+              "argument_digest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "result_digest": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "retry_count": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10
+              },
+              "fallback": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "schema_version",
+          "agent_run_id",
+          "event_id",
+          "trace_id",
+          "tenant_id",
+          "student_id",
+          "sequence",
+          "event_type",
+          "detail",
+          "occurred_at"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "AgentProposalEnvelope": {
+    "$ref": "#/definitions/AgentProposalEnvelope",
+    "definitions": {
+      "AgentProposalEnvelope": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "type": "number",
+            "const": 1
+          },
+          "agent_run_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+          },
+          "event_id": {
+            "$ref": "#/definitions/AgentProposalEnvelope/properties/agent_run_id"
+          },
+          "trace_id": {
+            "$ref": "#/definitions/AgentProposalEnvelope/properties/agent_run_id"
+          },
+          "tenant_id": {
+            "$ref": "#/definitions/AgentProposalEnvelope/properties/agent_run_id"
+          },
+          "student_id": {
+            "$ref": "#/definitions/AgentProposalEnvelope/properties/agent_run_id"
+          },
+          "node": {
+            "type": "string",
+            "enum": [
+              "profile",
+              "path",
+              "resource",
+              "coach",
+              "assessment"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SUCCEEDED",
+              "FAILED_RETRYABLE",
+              "FAILED_FINAL"
+            ]
+          },
+          "proposal": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "profile_change"
+                      },
+                      "changes": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "dimension": {
+                              "type": "string",
+                              "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                            },
+                            "delta": {
+                              "type": "number",
+                              "minimum": -1,
+                              "maximum": 1
+                            },
+                            "reason": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 1000
+                            }
+                          },
+                          "required": [
+                            "dimension",
+                            "delta",
+                            "reason"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "minItems": 1,
+                        "maxItems": 16
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "changes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "path_plan"
+                      },
+                      "steps": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "node_id": {
+                              "$ref": "#/definitions/AgentProposalEnvelope/properties/agent_run_id"
+                            },
+                            "action": {
+                              "type": "string",
+                              "enum": [
+                                "LEARN",
+                                "REMEDIATE",
+                                "REVIEW",
+                                "PRACTICE"
+                              ]
+                            },
+                            "reason": {
+                              "$ref": "#/definitions/AgentProposalEnvelope/properties/proposal/anyOf/0/anyOf/0/properties/changes/items/properties/reason"
+                            }
+                          },
+                          "required": [
+                            "node_id",
+                            "action",
+                            "reason"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "minItems": 1,
+                        "maxItems": 32
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "steps"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "resource_request"
+                      },
+                      "requests": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "resource_type": {
+                              "type": "string",
+                              "enum": [
+                                "MICRO_LECTURE",
+                                "STRUCTURE_CARD",
+                                "TRACE_ANIMATION",
+                                "LAYERED_EXERCISE",
+                                "NOTEBOOK_TASK"
+                              ]
+                            },
+                            "objective": {
+                              "$ref": "#/definitions/AgentProposalEnvelope/properties/proposal/anyOf/0/anyOf/0/properties/changes/items/properties/reason"
+                            }
+                          },
+                          "required": [
+                            "resource_type",
+                            "objective"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "minItems": 1,
+                        "maxItems": 5
+                      },
+                      "answer": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 8000
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "requests"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "coaching_feedback"
+                      },
+                      "diagnosis": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 8000
+                      },
+                      "hints": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/definitions/AgentProposalEnvelope/properties/proposal/anyOf/0/anyOf/0/properties/changes/items/properties/reason"
+                        },
+                        "minItems": 1,
+                        "maxItems": 3
+                      },
+                      "next_test": {
+                        "$ref": "#/definitions/AgentProposalEnvelope/properties/proposal/anyOf/0/anyOf/0/properties/changes/items/properties/reason"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "diagnosis",
+                      "hints",
+                      "next_test"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "assessment_feedback"
+                      },
+                      "rubric_scores": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1
+                        },
+                        "propertyNames": {
+                          "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                        }
+                      },
+                      "feedback": {
+                        "$ref": "#/definitions/AgentProposalEnvelope/properties/proposal/anyOf/0/anyOf/3/properties/diagnosis"
+                      },
+                      "evidence_claims": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/definitions/AgentProposalEnvelope/properties/proposal/anyOf/0/anyOf/0/properties/changes/items/properties/reason"
+                        },
+                        "maxItems": 16
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "rubric_scores",
+                      "feedback",
+                      "evidence_claims"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "$ref": "#/definitions/AgentProposalEnvelope/properties/proposal/anyOf/0/anyOf/0/properties/changes/items/properties/dimension"
+          },
+          "fallback_used": {
+            "type": "boolean"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "schema_version",
+          "agent_run_id",
+          "event_id",
+          "trace_id",
+          "tenant_id",
+          "student_id",
+          "node",
+          "status",
+          "proposal",
+          "fallback_used",
+          "completed_at"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "AgentReplayRequest": {
+    "$ref": "#/definitions/AgentReplayRequest",
+    "definitions": {
+      "AgentReplayRequest": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "type": "number",
+            "const": 1
+          },
+          "tenant_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+          },
+          "original_event_id": {
+            "$ref": "#/definitions/AgentReplayRequest/properties/tenant_id"
+          },
+          "replay_event_id": {
+            "$ref": "#/definitions/AgentReplayRequest/properties/tenant_id"
+          },
+          "checkpoint_id": {
+            "$ref": "#/definitions/AgentReplayRequest/properties/tenant_id"
+          },
+          "requested_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "schema_version",
+          "tenant_id",
+          "original_event_id",
+          "replay_event_id",
+          "checkpoint_id",
+          "requested_at"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "AssessmentAgentInput": {
+    "$ref": "#/definitions/AssessmentAgentInput",
+    "definitions": {
+      "AssessmentAgentInput": {
+        "type": "object",
+        "properties": {
+          "response_summary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8000
+          },
+          "rubric_keys": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+            },
+            "minItems": 1,
+            "maxItems": 16
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "course_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+              },
+              "node_id": {
+                "$ref": "#/definitions/AssessmentAgentInput/properties/context/properties/course_id"
+              },
+              "task_id": {
+                "$ref": "#/definitions/AssessmentAgentInput/properties/context/properties/course_id"
+              },
+              "evidence_event_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/AssessmentAgentInput/properties/context/properties/course_id"
+                },
+                "maxItems": 64
+              }
+            },
+            "required": [
+              "evidence_event_ids"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "response_summary",
+          "rubric_keys",
+          "context"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "AssessmentAgentOutput": {
+    "$ref": "#/definitions/AssessmentAgentOutput",
+    "definitions": {
+      "AssessmentAgentOutput": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "assessment_feedback"
+          },
+          "rubric_scores": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "propertyNames": {
+              "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+            }
+          },
+          "feedback": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8000
+          },
+          "evidence_claims": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "maxItems": 16
+          }
+        },
+        "required": [
+          "kind",
+          "rubric_scores",
+          "feedback",
+          "evidence_claims"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
   "ErrorEnvelope": {
     "$ref": "#/definitions/ErrorEnvelope",
     "definitions": {
@@ -202,6 +776,103 @@
           "id",
           "chunk_index",
           "timestamp"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "CoachAgentInput": {
+    "$ref": "#/definitions/CoachAgentInput",
+    "definitions": {
+      "CoachAgentInput": {
+        "type": "object",
+        "properties": {
+          "error_summary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8000
+          },
+          "test_summary": {
+            "$ref": "#/definitions/CoachAgentInput/properties/error_summary"
+          },
+          "hint_level": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "course_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+              },
+              "node_id": {
+                "$ref": "#/definitions/CoachAgentInput/properties/context/properties/course_id"
+              },
+              "task_id": {
+                "$ref": "#/definitions/CoachAgentInput/properties/context/properties/course_id"
+              },
+              "evidence_event_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/CoachAgentInput/properties/context/properties/course_id"
+                },
+                "maxItems": 64
+              }
+            },
+            "required": [
+              "evidence_event_ids"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "error_summary",
+          "test_summary",
+          "hint_level",
+          "context"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "CoachAgentOutput": {
+    "$ref": "#/definitions/CoachAgentOutput",
+    "definitions": {
+      "CoachAgentOutput": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "coaching_feedback"
+          },
+          "diagnosis": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8000
+          },
+          "hints": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            "minItems": 1,
+            "maxItems": 3
+          },
+          "next_test": {
+            "$ref": "#/definitions/CoachAgentOutput/properties/hints/items"
+          }
+        },
+        "required": [
+          "kind",
+          "diagnosis",
+          "hints",
+          "next_test"
         ],
         "additionalProperties": false
       }
@@ -1709,19 +2380,16 @@
           },
           "event_id": {
             "type": "string",
-            "minLength": 1
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
           },
           "trace_id": {
-            "type": "string",
-            "minLength": 1
+            "$ref": "#/definitions/WorkerJobEnvelope/properties/event_id"
           },
           "tenant_id": {
-            "type": "string",
-            "minLength": 1
+            "$ref": "#/definitions/WorkerJobEnvelope/properties/event_id"
           },
           "student_id": {
-            "type": "string",
-            "minLength": 1
+            "$ref": "#/definitions/WorkerJobEnvelope/properties/event_id"
           },
           "kind": {
             "type": "string",
@@ -1736,11 +2404,14 @@
           },
           "payload": {
             "type": "object",
-            "additionalProperties": {}
+            "additionalProperties": {},
+            "propertyNames": {
+              "maxLength": 64
+            }
           },
           "enqueued_at": {
             "type": "string",
-            "minLength": 1
+            "format": "date-time"
           }
         },
         "required": [
@@ -2196,6 +2867,217 @@
     },
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
+  "OrchestratorAgentInput": {
+    "$ref": "#/definitions/OrchestratorAgentInput",
+    "definitions": {
+      "OrchestratorAgentInput": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "profile_diagnose",
+              "path_recommend",
+              "resource_generate",
+              "coding_coach",
+              "assessment_feedback",
+              "tutoring_answer"
+            ]
+          },
+          "request": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "course_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+              },
+              "node_id": {
+                "$ref": "#/definitions/OrchestratorAgentInput/properties/context/properties/course_id"
+              },
+              "task_id": {
+                "$ref": "#/definitions/OrchestratorAgentInput/properties/context/properties/course_id"
+              },
+              "evidence_event_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/OrchestratorAgentInput/properties/context/properties/course_id"
+                },
+                "maxItems": 64
+              }
+            },
+            "required": [
+              "evidence_event_ids"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "kind",
+          "request",
+          "context"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "OrchestratorAgentOutput": {
+    "$ref": "#/definitions/OrchestratorAgentOutput",
+    "definitions": {
+      "OrchestratorAgentOutput": {
+        "type": "object",
+        "properties": {
+          "route": {
+            "type": "string",
+            "enum": [
+              "profile",
+              "path",
+              "resource",
+              "coach",
+              "assessment"
+            ]
+          },
+          "intent_code": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "route",
+          "intent_code",
+          "summary"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "PathAgentInput": {
+    "$ref": "#/definitions/PathAgentInput",
+    "definitions": {
+      "PathAgentInput": {
+        "type": "object",
+        "properties": {
+          "profile_summary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8000
+          },
+          "available_minutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1440
+          },
+          "candidate_node_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+            },
+            "minItems": 1,
+            "maxItems": 64
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "course_id": {
+                "$ref": "#/definitions/PathAgentInput/properties/candidate_node_ids/items"
+              },
+              "node_id": {
+                "$ref": "#/definitions/PathAgentInput/properties/candidate_node_ids/items"
+              },
+              "task_id": {
+                "$ref": "#/definitions/PathAgentInput/properties/candidate_node_ids/items"
+              },
+              "evidence_event_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/PathAgentInput/properties/candidate_node_ids/items"
+                },
+                "maxItems": 64
+              }
+            },
+            "required": [
+              "evidence_event_ids"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "profile_summary",
+          "available_minutes",
+          "candidate_node_ids",
+          "context"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "PathAgentOutput": {
+    "$ref": "#/definitions/PathAgentOutput",
+    "definitions": {
+      "PathAgentOutput": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "path_plan"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "node_id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+                },
+                "action": {
+                  "type": "string",
+                  "enum": [
+                    "LEARN",
+                    "REMEDIATE",
+                    "REVIEW",
+                    "PRACTICE"
+                  ]
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1000
+                }
+              },
+              "required": [
+                "node_id",
+                "action",
+                "reason"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 32
+          }
+        },
+        "required": [
+          "kind",
+          "steps"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
   "IdempotencyRecord": {
     "$ref": "#/definitions/IdempotencyRecord",
     "definitions": {
@@ -2319,6 +3201,108 @@
           "version",
           "source_event_id",
           "dimensions"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "ProfileAgentInput": {
+    "$ref": "#/definitions/ProfileAgentInput",
+    "definitions": {
+      "ProfileAgentInput": {
+        "type": "object",
+        "properties": {
+          "evidence_summary": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8000
+          },
+          "current_profile_version": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "course_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+              },
+              "node_id": {
+                "$ref": "#/definitions/ProfileAgentInput/properties/context/properties/course_id"
+              },
+              "task_id": {
+                "$ref": "#/definitions/ProfileAgentInput/properties/context/properties/course_id"
+              },
+              "evidence_event_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/ProfileAgentInput/properties/context/properties/course_id"
+                },
+                "maxItems": 64
+              }
+            },
+            "required": [
+              "evidence_event_ids"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "evidence_summary",
+          "current_profile_version",
+          "context"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "ProfileAgentOutput": {
+    "$ref": "#/definitions/ProfileAgentOutput",
+    "definitions": {
+      "ProfileAgentOutput": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "profile_change"
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "dimension": {
+                  "type": "string",
+                  "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+                },
+                "delta": {
+                  "type": "number",
+                  "minimum": -1,
+                  "maximum": 1
+                },
+                "reason": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1000
+                }
+              },
+              "required": [
+                "dimension",
+                "delta",
+                "reason"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 16
+          }
+        },
+        "required": [
+          "kind",
+          "changes"
         ],
         "additionalProperties": false
       }
@@ -2799,6 +3783,129 @@
         "required": [
           "due_at",
           "expected_version"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "ResourceAgentInput": {
+    "$ref": "#/definitions/ResourceAgentInput",
+    "definitions": {
+      "ResourceAgentInput": {
+        "type": "object",
+        "properties": {
+          "learning_need": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8000
+          },
+          "resource_types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "MICRO_LECTURE",
+                "STRUCTURE_CARD",
+                "TRACE_ANIMATION",
+                "LAYERED_EXERCISE",
+                "NOTEBOOK_TASK"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 5
+          },
+          "tutoring_question": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "course_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+              },
+              "node_id": {
+                "$ref": "#/definitions/ResourceAgentInput/properties/context/properties/course_id"
+              },
+              "task_id": {
+                "$ref": "#/definitions/ResourceAgentInput/properties/context/properties/course_id"
+              },
+              "evidence_event_ids": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/ResourceAgentInput/properties/context/properties/course_id"
+                },
+                "maxItems": 64
+              }
+            },
+            "required": [
+              "evidence_event_ids"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "learning_need",
+          "resource_types",
+          "context"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "ResourceAgentOutput": {
+    "$ref": "#/definitions/ResourceAgentOutput",
+    "definitions": {
+      "ResourceAgentOutput": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "resource_request"
+          },
+          "requests": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "resource_type": {
+                  "type": "string",
+                  "enum": [
+                    "MICRO_LECTURE",
+                    "STRUCTURE_CARD",
+                    "TRACE_ANIMATION",
+                    "LAYERED_EXERCISE",
+                    "NOTEBOOK_TASK"
+                  ]
+                },
+                "objective": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1000
+                }
+              },
+              "required": [
+                "resource_type",
+                "objective"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 5
+          },
+          "answer": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8000
+          }
+        },
+        "required": [
+          "kind",
+          "requests"
         ],
         "additionalProperties": false
       }

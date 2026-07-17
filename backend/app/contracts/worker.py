@@ -1,14 +1,37 @@
-"""Worker job envelope contract (Pydantic mirror).
+"""Versioned FastAPI ↔ Agent Worker contract mirrors.
 
-Mirror of ``packages/contracts/src/worker.ts``.
+Mirror of :mod:`packages/contracts/src/worker.ts`. The Worker emits proposals,
+progress, and redacted audit only; FastAPI owns formal learning state.
 """
 
 from __future__ import annotations
 
+from datetime import datetime
 from enum import StrEnum
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+SafeId = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+    ),
+]
+SafeCode = Annotated[
+    str,
+    Field(min_length=1, max_length=64, pattern=r"^[A-Z][A-Z0-9_]{0,63}$"),
+]
+Sha256Digest = Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
+Summary = Annotated[str, Field(min_length=1, max_length=8_000)]
+ShortText = Annotated[str, Field(min_length=1, max_length=1_000)]
+UnitScore = Annotated[float, Field(ge=0, le=1)]
+
+
+class StrictModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
 
 class WorkerJobKind(StrEnum):
@@ -29,16 +52,229 @@ class WorkerJobStatus(StrEnum):
     CANCELLED = "CANCELLED"
 
 
-class WorkerJobEnvelope(BaseModel):
+class AgentNodeName(StrEnum):
+    ORCHESTRATOR = "orchestrator"
+    PROFILE = "profile"
+    PATH = "path"
+    RESOURCE = "resource"
+    COACH = "coach"
+    ASSESSMENT = "assessment"
+
+
+class SpecialistAgentNodeName(StrEnum):
+    PROFILE = "profile"
+    PATH = "path"
+    RESOURCE = "resource"
+    COACH = "coach"
+    ASSESSMENT = "assessment"
+
+
+class AgentContext(StrictModel):
+    course_id: SafeId | None = None
+    node_id: SafeId | None = None
+    task_id: SafeId | None = None
+    evidence_event_ids: list[SafeId] = Field(max_length=64)
+
+
+class OrchestratorAgentInput(StrictModel):
+    kind: WorkerJobKind
+    request: str = Field(min_length=1, max_length=4_000)
+    context: AgentContext
+
+
+class OrchestratorAgentOutput(StrictModel):
+    route: SpecialistAgentNodeName
+    intent_code: SafeCode
+    summary: ShortText
+
+
+class ProfileAgentInput(StrictModel):
+    evidence_summary: Summary
+    current_profile_version: int = Field(gt=0)
+    context: AgentContext
+
+
+class ProfileChange(StrictModel):
+    dimension: SafeCode
+    delta: float = Field(ge=-1, le=1)
+    reason: ShortText
+
+
+class ProfileAgentOutput(StrictModel):
+    kind: Literal["profile_change"]
+    changes: list[ProfileChange] = Field(min_length=1, max_length=16)
+
+
+class PathAgentInput(StrictModel):
+    profile_summary: Summary
+    available_minutes: int = Field(ge=1, le=1_440)
+    candidate_node_ids: list[SafeId] = Field(min_length=1, max_length=64)
+    context: AgentContext
+
+
+class PathStepProposal(StrictModel):
+    node_id: SafeId
+    action: Literal["LEARN", "REMEDIATE", "REVIEW", "PRACTICE"]
+    reason: ShortText
+
+
+class PathAgentOutput(StrictModel):
+    kind: Literal["path_plan"]
+    steps: list[PathStepProposal] = Field(min_length=1, max_length=32)
+
+
+class LearningResourceType(StrEnum):
+    MICRO_LECTURE = "MICRO_LECTURE"
+    STRUCTURE_CARD = "STRUCTURE_CARD"
+    TRACE_ANIMATION = "TRACE_ANIMATION"
+    LAYERED_EXERCISE = "LAYERED_EXERCISE"
+    NOTEBOOK_TASK = "NOTEBOOK_TASK"
+
+
+class ResourceAgentInput(StrictModel):
+    learning_need: Summary
+    resource_types: list[LearningResourceType] = Field(min_length=1, max_length=5)
+    tutoring_question: str | None = Field(default=None, min_length=1, max_length=4_000)
+    context: AgentContext
+
+
+class ResourceRequest(StrictModel):
+    resource_type: LearningResourceType
+    objective: ShortText
+
+
+class ResourceAgentOutput(StrictModel):
+    kind: Literal["resource_request"]
+    requests: list[ResourceRequest] = Field(min_length=1, max_length=5)
+    answer: str | None = Field(default=None, min_length=1, max_length=8_000)
+
+
+class CoachAgentInput(StrictModel):
+    error_summary: Summary
+    test_summary: Summary
+    hint_level: int = Field(ge=1, le=3)
+    context: AgentContext
+
+
+class CoachAgentOutput(StrictModel):
+    kind: Literal["coaching_feedback"]
+    diagnosis: Summary
+    hints: list[ShortText] = Field(min_length=1, max_length=3)
+    next_test: ShortText
+
+
+class AssessmentAgentInput(StrictModel):
+    response_summary: Summary
+    rubric_keys: list[SafeCode] = Field(min_length=1, max_length=16)
+    context: AgentContext
+
+
+class AssessmentAgentOutput(StrictModel):
+    kind: Literal["assessment_feedback"]
+    rubric_scores: dict[SafeCode, UnitScore]
+    feedback: Summary
+    evidence_claims: list[ShortText] = Field(max_length=16)
+
+
+AgentProposal = Annotated[
+    ProfileAgentOutput
+    | PathAgentOutput
+    | ResourceAgentOutput
+    | CoachAgentOutput
+    | AssessmentAgentOutput,
+    Field(discriminator="kind"),
+]
+
+
+class WorkerJobEnvelope(StrictModel):
     """Versioned envelope: idempotent by event_id, replay-safe, traceable."""
 
-    model_config = ConfigDict(extra="forbid")
-
     schema_version: Literal[1] = 1
-    event_id: str = Field(min_length=1)
-    trace_id: str = Field(min_length=1)
-    tenant_id: str = Field(min_length=1)
-    student_id: str = Field(min_length=1)
+    event_id: SafeId
+    trace_id: SafeId
+    tenant_id: SafeId
+    student_id: SafeId
     kind: WorkerJobKind
-    payload: dict[str, object] = Field(default_factory=dict)
-    enqueued_at: str = Field(min_length=1)
+    payload: dict[Annotated[str, Field(max_length=64)], object] = Field(default_factory=dict)
+    enqueued_at: datetime
+
+
+class AgentProposalEnvelope(StrictModel):
+    schema_version: Literal[1] = 1
+    agent_run_id: SafeId
+    event_id: SafeId
+    trace_id: SafeId
+    tenant_id: SafeId
+    student_id: SafeId
+    node: SpecialistAgentNodeName
+    status: Literal["SUCCEEDED", "FAILED_RETRYABLE", "FAILED_FINAL"]
+    proposal: AgentProposal | None
+    error_code: SafeCode | None = None
+    fallback_used: bool
+    completed_at: datetime
+
+    @model_validator(mode="after")
+    def validate_terminal_shape(self) -> AgentProposalEnvelope:
+        if self.status == "SUCCEEDED" and self.proposal is None:
+            raise ValueError("successful Agent run requires a proposal")
+        if self.status != "SUCCEEDED" and self.error_code is None:
+            raise ValueError("failed Agent run requires an error code")
+        return self
+
+
+class AgentAuditEventType(StrEnum):
+    RUN_STARTED = "RUN_STARTED"
+    NODE_STARTED = "NODE_STARTED"
+    TOOL_STARTED = "TOOL_STARTED"
+    TOOL_COMPLETED = "TOOL_COMPLETED"
+    TOOL_FAILED = "TOOL_FAILED"
+    NODE_COMPLETED = "NODE_COMPLETED"
+    NODE_FAILED = "NODE_FAILED"
+    CHECKPOINT_SAVED = "CHECKPOINT_SAVED"
+    RUN_COMPLETED = "RUN_COMPLETED"
+    RUN_FAILED = "RUN_FAILED"
+    RUN_CANCELLED = "RUN_CANCELLED"
+    REPLAY_STARTED = "REPLAY_STARTED"
+
+
+class AgentAuditDetail(StrictModel):
+    status: WorkerJobStatus | None = None
+    code: SafeCode | None = None
+    latency_ms: int | None = Field(default=None, ge=0, le=3_600_000)
+    input_bytes: int | None = Field(default=None, ge=0, le=1_048_576)
+    output_bytes: int | None = Field(default=None, ge=0, le=1_048_576)
+    argument_digest: Sha256Digest | None = None
+    result_digest: Sha256Digest | None = None
+    retry_count: int | None = Field(default=None, ge=0, le=10)
+    fallback: bool | None = None
+
+
+class AgentAuditEnvelope(StrictModel):
+    schema_version: Literal[1] = 1
+    agent_run_id: SafeId
+    event_id: SafeId
+    trace_id: SafeId
+    tenant_id: SafeId
+    student_id: SafeId
+    sequence: int = Field(gt=0, le=1_000_000)
+    event_type: AgentAuditEventType
+    node: AgentNodeName | None = None
+    tool_name: SafeId | None = None
+    checkpoint_id: SafeId | None = None
+    detail: AgentAuditDetail
+    occurred_at: datetime
+
+
+class AgentReplayRequest(StrictModel):
+    schema_version: Literal[1] = 1
+    tenant_id: SafeId
+    original_event_id: SafeId
+    replay_event_id: SafeId
+    checkpoint_id: SafeId
+    requested_at: datetime
+
+    @model_validator(mode="after")
+    def distinct_replay_identity(self) -> AgentReplayRequest:
+        if self.original_event_id == self.replay_event_id:
+            raise ValueError("replay event identity must differ from the original")
+        return self

@@ -12,7 +12,7 @@ routes through the orchestrator to exactly one specialist. BullMQ provides the
 at-least-once queue, RedisSaver provides super-step checkpoints, and a capped
 Redis stream feeds a FastAPI consumer that owns PostgreSQL Agent audit tables.
 
-**Tech Stack:** Node.js 20, TypeScript, LangGraph.js 1.4.8, BullMQ 5.80.6,
+**Tech Stack:** Node.js 20, TypeScript, LangGraph.js 1.4.8, BullMQ 5.79.3,
 Redis Stack 7.4, Zod 3.25, Vitest, Python 3.13, FastAPI, Pydantic, SQLAlchemy,
 Alembic, redis-py, PostgreSQL 16, Docker Compose.
 
@@ -98,7 +98,7 @@ Run:
 
 ```powershell
 pnpm --filter @pymentor/contracts add zod@3.25.76 zod-to-json-schema@3.25.2 --save-exact
-pnpm --filter @pymentor/agent-worker add @langchain/langgraph@1.4.8 @langchain/core@1.2.3 @langchain/langgraph-checkpoint-redis@1.0.10 bullmq@5.80.6 ioredis@5.11.1 --save-exact
+pnpm --filter @pymentor/agent-worker add @langchain/langgraph@1.4.8 @langchain/core@1.2.3 @langchain/langgraph-checkpoint-redis@1.0.10 bullmq@5.79.3 ioredis@5.11.1 --save-exact
 ```
 
 - [ ] **Step 5: Verify Green and cross-language parity**
