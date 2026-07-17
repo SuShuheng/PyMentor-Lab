@@ -86,15 +86,33 @@ services:
         condition: service_healthy
 
   sandbox:
+    # Sandbox SUPERVISOR (BE-005). Signed internal service only; no host port.
+    # Bound to the internal Compose network with the API. The Docker Engine
+    # socket is mounted read-only so the executor can create/remove job
+    # containers; production uses a dedicated sandbox host or rootless engine,
+    # never a shared rootful daemon socket.
     build:
       context: .
       dockerfile: infra/sandbox.Dockerfile
-    # No network access to host mounts by default (isolation enforced in BE-005).
-    deploy:
-      resources:
-        limits:
-          cpus: "1.0"
-          memory: 256M
+    environment:
+      PYMENTOR_SANDBOX_SECRET: ${PYMENTOR_SANDBOX_SECRET:-dev-only-insecure-sandbox-secret-change-me-min-32-bytes}
+      PYMENTOR_SANDBOX_RUNTIME_IMAGE: ${PYMENTOR_SANDBOX_RUNTIME_IMAGE:-pymentor/sandbox-runtime:1.0}
+      PYMENTOR_SANDBOX_REQUEST_TIMEOUT_SECONDS: "30"
+    expose:
+      - "8090"
+    volumes:
+      # Read-only engine socket; the supervisor creates/removes labeled job
+      # containers only and exposes no generic Docker operation.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8090/healthz',timeout=2).status==200 else 1)\" || exit 0"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
 
 volumes:
   pgdata:

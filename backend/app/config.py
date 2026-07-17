@@ -48,6 +48,23 @@ class Settings:
     default_tenant_id: str = _env("PYMENTOR_DEFAULT_TENANT_ID", "tnt_default")
     demo_tenant_id: str = _env("PYMENTOR_DEMO_TENANT_ID", "tnt_demo")
 
+    # Sandbox Supervisor (BE-005). The API signs execution requests to the
+    # Supervisor using this shared secret; the Supervisor verifies them. The
+    # runtime image and request timeout are also surfaced so the API can refuse
+    # an unpinned image or an unreasonable timeout at startup.
+    sandbox_secret: str = _env("PYMENTOR_SANDBOX_SECRET", "")
+    sandbox_runtime_image: str = _env(
+        "PYMENTOR_SANDBOX_RUNTIME_IMAGE",
+        "pymentor/sandbox-runtime:1.0",
+    )
+    sandbox_supervisor_url: str = _env(
+        "PYMENTOR_SANDBOX_SUPERVISOR_URL",
+        "http://sandbox:8090",
+    )
+    sandbox_request_timeout_seconds: int = int(
+        _env("PYMENTOR_SANDBOX_REQUEST_TIMEOUT_SECONDS", "30")
+    )
+
 
 def get_settings() -> Settings:
     """Return the current settings (re-reads env; cheap enough for bootstrap)."""

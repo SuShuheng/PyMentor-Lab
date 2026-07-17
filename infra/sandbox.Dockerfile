@@ -1,17 +1,16 @@
 # syntax=docker/dockerfile:1
-# Sandbox runtime image (Python 3.13).
+# Sandbox SUPERVISOR image (Python 3.13).
 #
-# This is the untrusted-student execution boundary. The pinned image contains
-# only the trusted harness and Python standard library — no Docker client and
-# no service secret. The Supervisor (separate image) orchestrates this image
-# via the executor in sandbox/executor.py, which builds the hardened
-# `docker run` argument list: network=none, read-only root, tmpfs work dir,
-# non-root numeric UID/GID, all capabilities dropped, no-new-privileges,
-# bounded memory/cpu/pids/fsize/nofile, no restart, --rm cleanup.
+# This is the trusted orchestrator — the only component allowed to create job
+# containers. It runs the signed FastAPI Supervisor in sandbox/service.py and
+# shells out to the Docker CLI through sandbox/executor.py. It has no database,
+# Redis, object-store, provider, or JWT credential; its only secret is the
+# HMAC shared secret used to verify execution requests from the FastAPI API.
 #
-# Network and host mounts are denied at run time by the executor, not by this
-# image; the contract is enforced in sandbox/executor.build_container_args.
-FROM python:3.13-slim AS base
+# The runtime image (the untrusted boundary) is built separately from
+# infra/sandbox-runtime.Dockerfile and is what the Supervisor launches per run.
+# Compose binds the Supervisor to an internal-only network with no host port.
+FROM python:3.13-slim AS supervisor
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
@@ -26,13 +25,15 @@ COPY sandbox ./sandbox
 
 RUN uv pip install --system -e ".[dev]"
 
-# Create the fixed non-root student identity the executor pins via --user.
-# UID/GID 10001 matches SANDBOX_CHILD_UID/SANDBOX_CHILD_GID in sandbox/executor.py.
-RUN groupadd --gid 10001 student && \
-    useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin student
+# Install the Docker CLI so the executor can create/remove job containers.
+# The daemon socket is supplied at run time (mounted read-only from the host or
+# a rootless engine); it is NOT baked into the image.
+RUN apt-get update && apt-get install -y --no-install-recommends docker.io && \
+    rm -rf /var/lib/apt/lists/*
 
-# Entrypoint matches the fixed command the executor assembles:
-# `python -S -m sandbox.harness`. The harness reads one authenticated,
-# length-prefixed request frame from stdin and writes exactly one trusted
-# protocol frame to stdout.
-ENTRYPOINT ["python", "-S", "-m", "sandbox.harness"]
+# The Supervisor reads its shared secret, runtime image reference, and request
+# limits from the environment at startup (see backend/app/config.py SandboxSettings).
+# Production startup rejects an unpinned runtime image or a short secret.
+EXPOSE 8090
+
+CMD ["uvicorn", "sandbox.service:create_app_factory", "--factory", "--host", "0.0.0.0", "--port", "8090"]
