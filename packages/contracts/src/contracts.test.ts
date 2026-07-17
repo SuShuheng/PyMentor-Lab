@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   ChatCompletionChunk,
+  CodeRunStatus,
   CodeRunRequest,
   CodeRunView,
   CodeSubmissionRequest,
@@ -13,6 +14,7 @@ import {
   SandboxExecutionRequest,
   SandboxExecutionResponse,
   SandboxResult,
+  SandboxRunStatus,
   StreamEvent,
   SystemPingResponse,
   WorkerJobEnvelope,
@@ -96,7 +98,7 @@ describe("contracts", () => {
   it("separates sandbox user_error from platform_error", () => {
     const parsed = SandboxResult.safeParse({
       run_id: "r1",
-      status: "PLATFORM_ERROR",
+      status: "ERROR",
       passed: false,
       stdout: "",
       stderr: "",
@@ -115,6 +117,12 @@ describe("contracts", () => {
       platform_error: "runner crashed",
     });
     expect(parsed.success).toBe(true);
+  });
+
+  it("keeps sandbox outcomes separate from persisted run lifecycle", () => {
+    expect(SandboxRunStatus.safeParse("PASSED").success).toBe(true);
+    expect(SandboxRunStatus.safeParse("PLATFORM_ERROR").success).toBe(false);
+    expect(CodeRunStatus.safeParse("PLATFORM_ERROR").success).toBe(true);
   });
 
   it("parses code-run, submission, and hint API contracts", () => {
@@ -191,7 +199,7 @@ describe("contracts", () => {
 
     const result = {
       run_id: "run_1",
-      status: "COMPLETED",
+      status: "PASSED",
       passed: true,
       stdout: "",
       stderr: "",

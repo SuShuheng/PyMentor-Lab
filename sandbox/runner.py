@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import uuid
 
-from app.contracts.sandbox import CodeRunStatus, SandboxResourceUsage, SandboxResult
+from app.contracts.sandbox import SandboxResourceUsage, SandboxResult, SandboxRunStatus
 
 
 def stub_result() -> SandboxResult:
@@ -24,7 +24,7 @@ def stub_result() -> SandboxResult:
 
     return SandboxResult(
         run_id=f"run_{uuid.uuid4().hex}",
-        status=CodeRunStatus.COMPLETED,
+        status=SandboxRunStatus.PASSED,
         passed=True,
         stdout="",
         stderr="",

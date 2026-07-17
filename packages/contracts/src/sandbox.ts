@@ -16,7 +16,7 @@ export const CodeRunStatus = z.enum([
 ]);
 export type CodeRunStatus = z.infer<typeof CodeRunStatus>;
 
-export const SandboxRunStatus = CodeRunStatus;
+export const SandboxRunStatus = z.enum(["PASSED", "FAILED", "ERROR", "TIMEOUT", "CANCELLED"]);
 export type SandboxRunStatus = z.infer<typeof SandboxRunStatus>;
 
 export const TestVisibility = z.enum(["VISIBLE", "HIDDEN"]);
@@ -135,7 +135,7 @@ export type SandboxResourceUsage = z.infer<typeof SandboxResourceUsage>;
 export const SandboxResult = z
   .object({
     run_id: z.string().min(1),
-    status: CodeRunStatus,
+    status: SandboxRunStatus,
     passed: z.boolean(),
     stdout: z.string(),
     stderr: z.string(),

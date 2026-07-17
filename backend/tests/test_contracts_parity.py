@@ -56,6 +56,7 @@ from app.contracts import (
     SandboxExecutionRequest,
     SandboxExecutionResponse,
     SandboxResult,
+    SandboxRunStatus,
     SystemPingResponse,
     TaskStartResponse,
     TaskSubmissionResponse,
@@ -118,7 +119,7 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
     "SandboxResult": [
         {
             "run_id": "run_1",
-            "status": "COMPLETED",
+            "status": "PASSED",
             "passed": True,
             "stdout": "",
             "stderr": "",
@@ -161,7 +162,7 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
         },
         {
             "run_id": "run_2",
-            "status": "PLATFORM_ERROR",
+            "status": "ERROR",
             "passed": False,
             "stdout": "",
             "stderr": "",
@@ -267,7 +268,7 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
             "run_id": "run_1",
             "result": {
                 "run_id": "run_1",
-                "status": "COMPLETED",
+                "status": "PASSED",
                 "passed": True,
                 "stdout": "",
                 "stderr": "",
@@ -556,6 +557,18 @@ MODEL_BY_NAME: dict[str, type[BaseModel]] = {
 def test_error_code_count_matches_contract() -> None:
     """CONTRACT.md lists exactly 15 stable error codes."""
     assert len(list(ErrorCode)) == 15
+
+
+def test_sandbox_outcome_status_is_not_the_persisted_run_lifecycle() -> None:
+    assert {status.value for status in SandboxRunStatus} == {
+        "PASSED",
+        "FAILED",
+        "ERROR",
+        "TIMEOUT",
+        "CANCELLED",
+    }
+    with pytest.raises(ValidationError):
+        SandboxResult.model_validate({**FIXTURES["SandboxResult"][0], "status": "PLATFORM_ERROR"})
 
 
 @pytest.mark.parametrize("model_name", sorted(MODEL_BY_NAME))

@@ -135,7 +135,7 @@ const cases: Cases = {
     samples: [
       {
         run_id: "run_1",
-        status: "COMPLETED",
+        status: "PASSED",
         passed: true,
         stdout: "",
         stderr: "",
@@ -178,7 +178,7 @@ const cases: Cases = {
       },
       {
         run_id: "run_2",
-        status: "PLATFORM_ERROR",
+        status: "ERROR",
         passed: false,
         stdout: "",
         stderr: "",
@@ -305,7 +305,7 @@ const cases: Cases = {
         run_id: "run_1",
         result: {
           run_id: "run_1",
-          status: "COMPLETED",
+          status: "PASSED",
           passed: true,
           stdout: "",
           stderr: "",

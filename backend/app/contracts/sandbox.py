@@ -33,8 +33,12 @@ class CodeRunStatus(StrEnum):
     CANCELLED = "CANCELLED"
 
 
-# Compatibility name retained for imports while the richer lifecycle is adopted.
-SandboxRunStatus = CodeRunStatus
+class SandboxRunStatus(StrEnum):
+    PASSED = "PASSED"
+    FAILED = "FAILED"
+    ERROR = "ERROR"
+    TIMEOUT = "TIMEOUT"
+    CANCELLED = "CANCELLED"
 
 
 class TestVisibility(StrEnum):
@@ -139,7 +143,7 @@ class SandboxResult(StrictContract):
     """A bounded result; platform errors remain separate from user errors."""
 
     run_id: str = Field(min_length=1)
-    status: CodeRunStatus
+    status: SandboxRunStatus
     passed: bool
     stdout: str
     stderr: str
