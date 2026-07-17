@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -155,6 +155,31 @@ class SandboxResult(StrictContract):
     trace_truncated: bool
     user_error: str | None = None
     platform_error: str | None = None
+
+    @classmethod
+    def platform_failure(cls, *, run_id: str, category: str, message: str) -> Self:
+        """Build a bounded infrastructure failure with no student evidence."""
+
+        return cls(
+            run_id=run_id,
+            status=SandboxRunStatus.ERROR,
+            passed=False,
+            stdout="",
+            stderr="",
+            tests=[],
+            trace_frames=None,
+            resource_usage=SandboxResourceUsage(
+                cpu_ms=0,
+                wall_ms=0,
+                peak_memory_kb=None,
+                exit_code=None,
+            ),
+            stdout_truncated=False,
+            stderr_truncated=False,
+            trace_truncated=False,
+            user_error=None,
+            platform_error=f"{category}: {message}",
+        )
 
 
 class SandboxExecutionRequest(StrictContract):
