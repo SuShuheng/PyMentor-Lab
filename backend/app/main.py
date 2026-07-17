@@ -16,6 +16,12 @@ from app.api.admin import router as admin_router
 from app.api.auth import router as auth_router
 from app.api.evidence import router as evidence_router
 from app.api.health import router as system_router
+from app.api.learning import router as learning_router
+from app.api.mastery import router as mastery_router
+from app.api.paths import router as paths_router
+from app.api.profiles import router as profiles_router
+from app.api.reviews import router as reviews_router
+from app.api.tasks import router as tasks_router
 from app.config import get_settings
 from app.errors import install_error_handlers
 from app.middleware import TraceIdMiddleware
@@ -54,6 +60,12 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(admin_router)
     app.include_router(evidence_router)
+    app.include_router(profiles_router)
+    app.include_router(learning_router)
+    app.include_router(paths_router)
+    app.include_router(tasks_router)
+    app.include_router(mastery_router)
+    app.include_router(reviews_router)
 
     return app
 

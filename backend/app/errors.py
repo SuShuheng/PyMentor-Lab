@@ -97,6 +97,75 @@ def install_error_handlers(app: FastAPI) -> None:
             status_code=exc.status_code,
         )
 
+    from app.command_idempotency import IdempotencyInProgressError
+    from app.idempotency import IdempotencyScopeConflictError
+    from app.mastery import InvalidAssessmentFacts, MasteryScopeError
+    from app.pathing import InvalidPathProposal, PathScopeError, PathVersionConflict
+    from app.profile_projection import (
+        InvalidProfileUpdate,
+        ProfileScopeError,
+        ProfileVersionConflict,
+    )
+    from app.reviews import InvalidReviewOperation, ReviewVersionConflict
+    from app.task_compiler import (
+        InvalidTaskCompileInput,
+        TaskScopeError,
+        TaskVersionUnavailable,
+    )
+
+    conflict_errors = (
+        IdempotencyInProgressError,
+        IdempotencyScopeConflictError,
+        PathVersionConflict,
+        ProfileVersionConflict,
+        ReviewVersionConflict,
+    )
+    for conflict_type in conflict_errors:
+        app.add_exception_handler(
+            conflict_type,
+            _domain_handler(
+                code=ErrorCode.CONFLICT,
+                status_code=409,
+                message="Command conflicts with current formal state.",
+            ),
+        )
+
+    validation_errors = (
+        InvalidAssessmentFacts,
+        InvalidPathProposal,
+        InvalidProfileUpdate,
+        InvalidReviewOperation,
+        InvalidTaskCompileInput,
+    )
+    for validation_type in validation_errors:
+        app.add_exception_handler(
+            validation_type,
+            _domain_handler(
+                code=ErrorCode.VALIDATION_ERROR,
+                status_code=422,
+                message="Command violates deterministic policy.",
+            ),
+        )
+
+    scope_errors = (MasteryScopeError, PathScopeError, ProfileScopeError, TaskScopeError)
+    for scope_type in scope_errors:
+        app.add_exception_handler(
+            scope_type,
+            _domain_handler(
+                code=ErrorCode.NOT_FOUND,
+                status_code=404,
+                message="Scoped resource was not found.",
+            ),
+        )
+    app.add_exception_handler(
+        TaskVersionUnavailable,
+        _domain_handler(
+            code=ErrorCode.NOT_FOUND,
+            status_code=404,
+            message="Published task version was not found.",
+        ),
+    )
+
     @app.exception_handler(Exception)
     async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         """Last-resort handler: never leak the exception text to the client."""
@@ -126,3 +195,17 @@ def _map_http_status(status_code: int) -> tuple[ErrorCode, bool]:
     if status_code in (400, 422):
         return ErrorCode.VALIDATION_ERROR, False
     return ErrorCode.INTERNAL_ERROR, False
+
+
+def _domain_handler(*, code: ErrorCode, status_code: int, message: str) -> Any:
+    async def _handler(request: Request, exc: Exception) -> JSONResponse:
+        del exc
+        return _envelope(
+            code=code,
+            message=message,
+            trace_id=_new_trace_id(request),
+            retryable=False,
+            status_code=status_code,
+        )
+
+    return _handler

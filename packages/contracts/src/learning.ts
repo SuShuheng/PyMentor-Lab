@@ -55,6 +55,13 @@ export const ProfileDisputeRequest = z.object({
 });
 export type ProfileDisputeRequest = z.infer<typeof ProfileDisputeRequest>;
 
+export const ProfileDisputeView = z.object({
+  id: z.string().min(1),
+  profile_version_id: z.string().min(1),
+  reason: z.string().min(1).max(2000),
+});
+export type ProfileDisputeView = z.infer<typeof ProfileDisputeView>;
+
 export const PathStepView = z.object({
   id: z.string().min(1),
   position: z.number().int().min(1),
@@ -101,6 +108,17 @@ export const AssessmentSubmission = z.object({
   expected_task_version: z.number().int().min(1),
 });
 export type AssessmentSubmission = z.infer<typeof AssessmentSubmission>;
+
+export const TaskSubmissionResponse = z.object({
+  assessment_id: z.string().min(1),
+  task_instance_id: z.string().min(1),
+  course_id: z.string().min(1),
+  node_id: z.string().min(1),
+  status: z.union([MasteryStatus, z.literal("PLATFORM_ERROR")]),
+  version: z.number().int().min(0),
+  review_due_at: z.string().nullish(),
+});
+export type TaskSubmissionResponse = z.infer<typeof TaskSubmissionResponse>;
 
 export const MasteryView = z.object({
   id: z.string().min(1),

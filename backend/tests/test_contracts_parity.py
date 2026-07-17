@@ -41,6 +41,7 @@ from app.contracts import (
     PathSnapshot,
     PendingRegistration,
     ProfileDisputeRequest,
+    ProfileDisputeView,
     ProfileSnapshot,
     RegisterRequest,
     RegisterResponse,
@@ -50,6 +51,7 @@ from app.contracts import (
     SandboxResult,
     SystemPingResponse,
     TaskStartResponse,
+    TaskSubmissionResponse,
     TodayItem,
     TokenRefreshRequest,
     UserProfile,
@@ -278,6 +280,13 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
             "reason": "The debugging score misses my latest attempt.",
         }
     ],
+    "ProfileDisputeView": [
+        {
+            "id": "00000000-0000-0000-0000-000000000041",
+            "profile_version_id": "00000000-0000-0000-0000-000000000031",
+            "reason": "The debugging score misses my latest attempt.",
+        }
+    ],
     "PathSnapshot": [
         {
             "id": "00000000-0000-0000-0000-000000000032",
@@ -322,6 +331,17 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
         {
             "evidence_event_id": "evt_assessment_1",
             "expected_task_version": 1,
+        }
+    ],
+    "TaskSubmissionResponse": [
+        {
+            "assessment_id": "00000000-0000-0000-0000-000000000042",
+            "task_instance_id": "00000000-0000-0000-0000-000000000037",
+            "course_id": "00000000-0000-0000-0000-000000000033",
+            "node_id": "00000000-0000-0000-0000-000000000035",
+            "status": "INITIAL_MASTERY",
+            "version": 2,
+            "review_due_at": "2026-07-24T00:00:00Z",
         }
     ],
     "MasteryView": [
@@ -370,10 +390,12 @@ MODEL_BY_NAME: dict[str, type[BaseModel]] = {
     "IdempotencyRecord": IdempotencyRecord,
     "ProfileSnapshot": ProfileSnapshot,
     "ProfileDisputeRequest": ProfileDisputeRequest,
+    "ProfileDisputeView": ProfileDisputeView,
     "PathSnapshot": PathSnapshot,
     "TodayItem": TodayItem,
     "TaskStartResponse": TaskStartResponse,
     "AssessmentSubmission": AssessmentSubmission,
+    "TaskSubmissionResponse": TaskSubmissionResponse,
     "MasteryView": MasteryView,
     "ReviewView": ReviewView,
     "ReviewRescheduleRequest": ReviewRescheduleRequest,

@@ -25,6 +25,7 @@ import {
   PathSnapshot,
   PendingRegistration,
   ProfileDisputeRequest,
+  ProfileDisputeView,
   ProfileSnapshot,
   RegisterRequest,
   RegisterResponse,
@@ -35,6 +36,7 @@ import {
   StreamEvent,
   SystemPingResponse,
   TaskStartResponse,
+  TaskSubmissionResponse,
   TodayItem,
   TokenRefreshRequest,
   UserProfile,
@@ -322,6 +324,16 @@ const cases: Cases = {
       },
     ],
   },
+  ProfileDisputeView: {
+    schema: ProfileDisputeView,
+    samples: [
+      {
+        id: "00000000-0000-0000-0000-000000000041",
+        profile_version_id: "00000000-0000-0000-0000-000000000031",
+        reason: "The debugging score misses my latest attempt.",
+      },
+    ],
+  },
   PathSnapshot: {
     schema: PathSnapshot,
     samples: [
@@ -374,6 +386,20 @@ const cases: Cases = {
   AssessmentSubmission: {
     schema: AssessmentSubmission,
     samples: [{ evidence_event_id: "evt_assessment_1", expected_task_version: 1 }],
+  },
+  TaskSubmissionResponse: {
+    schema: TaskSubmissionResponse,
+    samples: [
+      {
+        assessment_id: "00000000-0000-0000-0000-000000000042",
+        task_instance_id: "00000000-0000-0000-0000-000000000037",
+        course_id: "00000000-0000-0000-0000-000000000033",
+        node_id: "00000000-0000-0000-0000-000000000035",
+        status: "INITIAL_MASTERY",
+        version: 2,
+        review_due_at: "2026-07-24T00:00:00Z",
+      },
+    ],
   },
   MasteryView: {
     schema: MasteryView,

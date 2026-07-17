@@ -8,7 +8,7 @@ accepted evidence identifier rather than client-asserted correctness facts.
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -91,6 +91,14 @@ class ProfileDisputeRequest(BaseModel):
     reason: str = Field(min_length=1, max_length=2000)
 
 
+class ProfileDisputeView(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(min_length=1)
+    profile_version_id: str = Field(min_length=1)
+    reason: str = Field(min_length=1, max_length=2000)
+
+
 class PathStepView(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -141,6 +149,18 @@ class AssessmentSubmission(BaseModel):
 
     evidence_event_id: str = Field(min_length=1, max_length=128)
     expected_task_version: int = Field(ge=1)
+
+
+class TaskSubmissionResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    assessment_id: str = Field(min_length=1)
+    task_instance_id: str = Field(min_length=1)
+    course_id: str = Field(min_length=1)
+    node_id: str = Field(min_length=1)
+    status: MasteryStatusContract | Literal["PLATFORM_ERROR"]
+    version: int = Field(ge=0)
+    review_due_at: str | None = None
 
 
 class MasteryView(BaseModel):

@@ -1,6 +1,28 @@
 {
   "components": {
     "schemas": {
+      "AssessmentSubmission": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence_event_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Evidence Event Id",
+            "type": "string"
+          },
+          "expected_task_version": {
+            "minimum": 1.0,
+            "title": "Expected Task Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "evidence_event_id",
+          "expected_task_version"
+        ],
+        "title": "AssessmentSubmission",
+        "type": "object"
+      },
       "AuthTokens": {
         "additionalProperties": false,
         "description": "\u4ee4\u724c\u5bf9\u3002access_token \u77ed\u671f\uff0crefresh_token \u957f\u671f\uff08\u8bbe\u8ba1 \u00a717.3.3\uff09\u3002",
@@ -187,6 +209,14 @@
         "title": "HealthStatus",
         "type": "string"
       },
+      "LearningPathStatusContract": {
+        "enum": [
+          "CURRENT",
+          "SUPERSEDED"
+        ],
+        "title": "LearningPathStatusContract",
+        "type": "string"
+      },
       "LoginRequest": {
         "additionalProperties": false,
         "description": "\u767b\u5f55\u8bf7\u6c42\uff08\u5b66\u751f/\u7ba1\u7406\u5458\u901a\u7528\uff09\u3002",
@@ -208,6 +238,172 @@
         ],
         "title": "LoginRequest",
         "type": "object"
+      },
+      "MasteryStatusContract": {
+        "enum": [
+          "UNSEEN",
+          "LEARNING",
+          "PASSED_WITH_HELP",
+          "INITIAL_MASTERY",
+          "STABLE_MASTERY",
+          "REVIEW_REQUIRED"
+        ],
+        "title": "MasteryStatusContract",
+        "type": "string"
+      },
+      "MasteryView": {
+        "additionalProperties": false,
+        "properties": {
+          "course_id": {
+            "minLength": 1,
+            "title": "Course Id",
+            "type": "string"
+          },
+          "id": {
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "node_id": {
+            "minLength": 1,
+            "title": "Node Id",
+            "type": "string"
+          },
+          "review_due_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Due At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/MasteryStatusContract"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "course_id",
+          "node_id",
+          "status",
+          "version"
+        ],
+        "title": "MasteryView",
+        "type": "object"
+      },
+      "PathSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "course_id": {
+            "minLength": 1,
+            "title": "Course Id",
+            "type": "string"
+          },
+          "id": {
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LearningPathStatusContract"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/PathStepView"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "course_id",
+          "version",
+          "status",
+          "steps"
+        ],
+        "title": "PathSnapshot",
+        "type": "object"
+      },
+      "PathStepKindContract": {
+        "enum": [
+          "REVIEW",
+          "LEARN",
+          "PRACTICE",
+          "ASSESSMENT"
+        ],
+        "title": "PathStepKindContract",
+        "type": "string"
+      },
+      "PathStepView": {
+        "additionalProperties": false,
+        "properties": {
+          "estimated_minutes": {
+            "minimum": 1.0,
+            "title": "Estimated Minutes",
+            "type": "integer"
+          },
+          "id": {
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PathStepKindContract"
+          },
+          "node_id": {
+            "minLength": 1,
+            "title": "Node Id",
+            "type": "string"
+          },
+          "position": {
+            "minimum": 1.0,
+            "title": "Position",
+            "type": "integer"
+          },
+          "scenario_key": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Scenario Key",
+            "type": "string"
+          },
+          "validation_status": {
+            "$ref": "#/components/schemas/PathValidationStatusContract"
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "node_id",
+          "kind",
+          "estimated_minutes",
+          "scenario_key",
+          "validation_status"
+        ],
+        "title": "PathStepView",
+        "type": "object"
+      },
+      "PathValidationStatusContract": {
+        "enum": [
+          "VALIDATED",
+          "REPAIRED",
+          "FALLBACK"
+        ],
+        "title": "PathValidationStatusContract",
+        "type": "string"
       },
       "PendingRegistration": {
         "additionalProperties": false,
@@ -252,6 +448,146 @@
           "created_at"
         ],
         "title": "PendingRegistration",
+        "type": "object"
+      },
+      "ProfileDimensionContract": {
+        "enum": [
+          "CONCEPT_KNOWLEDGE",
+          "EXECUTION_MODEL",
+          "IMPLEMENTATION",
+          "DECOMPOSITION",
+          "DEBUGGING",
+          "TESTING",
+          "TRANSFER",
+          "INDEPENDENCE_SUPPORT"
+        ],
+        "title": "ProfileDimensionContract",
+        "type": "string"
+      },
+      "ProfileDimensionView": {
+        "additionalProperties": false,
+        "properties": {
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "dimension": {
+            "$ref": "#/components/schemas/ProfileDimensionContract"
+          },
+          "scope_key": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Scope Key",
+            "type": "string"
+          },
+          "score": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "number"
+          },
+          "support_level": {
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Support Level",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dimension",
+          "scope_key",
+          "score",
+          "confidence",
+          "support_level"
+        ],
+        "title": "ProfileDimensionView",
+        "type": "object"
+      },
+      "ProfileDisputeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "profile_version_id": {
+            "minLength": 1,
+            "title": "Profile Version Id",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile_version_id",
+          "reason"
+        ],
+        "title": "ProfileDisputeRequest",
+        "type": "object"
+      },
+      "ProfileDisputeView": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "profile_version_id": {
+            "minLength": 1,
+            "title": "Profile Version Id",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "profile_version_id",
+          "reason"
+        ],
+        "title": "ProfileDisputeView",
+        "type": "object"
+      },
+      "ProfileSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "dimensions": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileDimensionView"
+            },
+            "title": "Dimensions",
+            "type": "array"
+          },
+          "source_event_id": {
+            "minLength": 1,
+            "title": "Source Event Id",
+            "type": "string"
+          },
+          "student_id": {
+            "minLength": 1,
+            "title": "Student Id",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "student_id",
+          "version",
+          "source_event_id",
+          "dimensions"
+        ],
+        "title": "ProfileSnapshot",
         "type": "object"
       },
       "RegisterRequest": {
@@ -343,6 +679,93 @@
         "title": "RegistrationDecisionRequest",
         "type": "object"
       },
+      "ReviewRescheduleRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "due_at": {
+            "minLength": 1,
+            "title": "Due At",
+            "type": "string"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "due_at",
+          "expected_version"
+        ],
+        "title": "ReviewRescheduleRequest",
+        "type": "object"
+      },
+      "ReviewStatusContract": {
+        "enum": [
+          "SCHEDULED",
+          "DUE",
+          "COMPLETED",
+          "CANCELLED"
+        ],
+        "title": "ReviewStatusContract",
+        "type": "string"
+      },
+      "ReviewView": {
+        "additionalProperties": false,
+        "properties": {
+          "course_id": {
+            "minLength": 1,
+            "title": "Course Id",
+            "type": "string"
+          },
+          "due_at": {
+            "minLength": 1,
+            "title": "Due At",
+            "type": "string"
+          },
+          "id": {
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "node_id": {
+            "minLength": 1,
+            "title": "Node Id",
+            "type": "string"
+          },
+          "reschedule_count": {
+            "minimum": 0.0,
+            "title": "Reschedule Count",
+            "type": "integer"
+          },
+          "scenario_key": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Scenario Key",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReviewStatusContract"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "course_id",
+          "node_id",
+          "scenario_key",
+          "due_at",
+          "status",
+          "reschedule_count",
+          "version"
+        ],
+        "title": "ReviewView",
+        "type": "object"
+      },
       "SystemPingResponse": {
         "additionalProperties": false,
         "description": "Body of the public ``GET /system/ping`` connectivity-test endpoint.",
@@ -369,6 +792,181 @@
           "timestamp"
         ],
         "title": "SystemPingResponse",
+        "type": "object"
+      },
+      "TaskInstanceStatusContract": {
+        "enum": [
+          "ACTIVE",
+          "SUBMITTED",
+          "COMPLETED",
+          "CANCELLED"
+        ],
+        "title": "TaskInstanceStatusContract",
+        "type": "string"
+      },
+      "TaskStartResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "snapshot": {
+            "additionalProperties": true,
+            "title": "Snapshot",
+            "type": "object"
+          },
+          "started_at": {
+            "minLength": 1,
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskInstanceStatusContract"
+          },
+          "task_version_id": {
+            "minLength": 1,
+            "title": "Task Version Id",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "task_version_id",
+          "status",
+          "snapshot",
+          "started_at",
+          "version"
+        ],
+        "title": "TaskStartResponse",
+        "type": "object"
+      },
+      "TaskSubmissionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "assessment_id": {
+            "minLength": 1,
+            "title": "Assessment Id",
+            "type": "string"
+          },
+          "course_id": {
+            "minLength": 1,
+            "title": "Course Id",
+            "type": "string"
+          },
+          "node_id": {
+            "minLength": 1,
+            "title": "Node Id",
+            "type": "string"
+          },
+          "review_due_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Due At"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MasteryStatusContract"
+              },
+              {
+                "const": "PLATFORM_ERROR",
+                "type": "string"
+              }
+            ],
+            "title": "Status"
+          },
+          "task_instance_id": {
+            "minLength": 1,
+            "title": "Task Instance Id",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 0.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "assessment_id",
+          "task_instance_id",
+          "course_id",
+          "node_id",
+          "status",
+          "version"
+        ],
+        "title": "TaskSubmissionResponse",
+        "type": "object"
+      },
+      "TodayItem": {
+        "additionalProperties": false,
+        "properties": {
+          "course_id": {
+            "minLength": 1,
+            "title": "Course Id",
+            "type": "string"
+          },
+          "due_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due At"
+          },
+          "estimated_minutes": {
+            "minimum": 1.0,
+            "title": "Estimated Minutes",
+            "type": "integer"
+          },
+          "id": {
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PathStepKindContract"
+          },
+          "node_id": {
+            "minLength": 1,
+            "title": "Node Id",
+            "type": "string"
+          },
+          "task_version_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Version Id"
+          }
+        },
+        "required": [
+          "id",
+          "course_id",
+          "node_id",
+          "kind",
+          "estimated_minutes"
+        ],
+        "title": "TodayItem",
         "type": "object"
       },
       "TokenRefreshRequest": {
@@ -966,6 +1564,371 @@
         "summary": "Get My Evidence",
         "tags": [
           "evidence"
+        ]
+      }
+    },
+    "/api/v1/learning/today": {
+      "get": {
+        "operationId": "get_today_api_v1_learning_today_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TodayItem"
+                  },
+                  "title": "Response Get Today Api V1 Learning Today Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Today",
+        "tags": [
+          "learning"
+        ]
+      }
+    },
+    "/api/v1/mastery": {
+      "get": {
+        "operationId": "get_mastery_api_v1_mastery_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "course_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Course Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MasteryView"
+                  },
+                  "title": "Response Get Mastery Api V1 Mastery Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Mastery",
+        "tags": [
+          "learning-mastery"
+        ]
+      }
+    },
+    "/api/v1/paths/current": {
+      "get": {
+        "operationId": "get_current_path_api_v1_paths_current_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "course_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Course Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PathSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Current Path",
+        "tags": [
+          "learning-paths"
+        ]
+      }
+    },
+    "/api/v1/profiles/current": {
+      "get": {
+        "operationId": "get_current_profile_api_v1_profiles_current_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileSnapshot"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Current Profile",
+        "tags": [
+          "learning-profiles"
+        ]
+      }
+    },
+    "/api/v1/profiles/disputes": {
+      "post": {
+        "operationId": "dispute_profile_api_v1_profiles_disputes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileDisputeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileDisputeView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Dispute Profile",
+        "tags": [
+          "learning-profiles"
+        ]
+      }
+    },
+    "/api/v1/reviews/due": {
+      "get": {
+        "operationId": "get_due_reviews_api_v1_reviews_due_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReviewView"
+                  },
+                  "title": "Response Get Due Reviews Api V1 Reviews Due Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Due Reviews",
+        "tags": [
+          "learning-reviews"
+        ]
+      }
+    },
+    "/api/v1/reviews/{review_id}/reschedule": {
+      "post": {
+        "operationId": "postpone_review_api_v1_reviews__review_id__reschedule_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "review_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Review Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRescheduleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Postpone Review",
+        "tags": [
+          "learning-reviews"
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_instance_id}/submit": {
+      "post": {
+        "operationId": "submit_task_api_v1_tasks__task_instance_id__submit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_instance_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Instance Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssessmentSubmission"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskSubmissionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Task",
+        "tags": [
+          "learning-tasks"
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_version_id}/start": {
+      "post": {
+        "operationId": "start_task_api_v1_tasks__task_version_id__start_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Version Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskStartResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Task",
+        "tags": [
+          "learning-tasks"
         ]
       }
     },

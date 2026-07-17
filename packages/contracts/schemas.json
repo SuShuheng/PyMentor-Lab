@@ -1226,6 +1226,36 @@
     },
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
+  "ProfileDisputeView": {
+    "$ref": "#/definitions/ProfileDisputeView",
+    "definitions": {
+      "ProfileDisputeView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "profile_version_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "id",
+          "profile_version_id",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
   "PathSnapshot": {
     "$ref": "#/definitions/PathSnapshot",
     "definitions": {
@@ -1444,6 +1474,71 @@
         "required": [
           "evidence_event_id",
           "expected_task_version"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "TaskSubmissionResponse": {
+    "$ref": "#/definitions/TaskSubmissionResponse",
+    "definitions": {
+      "TaskSubmissionResponse": {
+        "type": "object",
+        "properties": {
+          "assessment_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "task_instance_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "node_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "UNSEEN",
+                  "LEARNING",
+                  "PASSED_WITH_HELP",
+                  "INITIAL_MASTERY",
+                  "STABLE_MASTERY",
+                  "REVIEW_REQUIRED"
+                ]
+              },
+              {
+                "type": "string",
+                "const": "PLATFORM_ERROR"
+              }
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "review_due_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "assessment_id",
+          "task_instance_id",
+          "course_id",
+          "node_id",
+          "status",
+          "version"
         ],
         "additionalProperties": false
       }
