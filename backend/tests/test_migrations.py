@@ -40,6 +40,13 @@ EXPECTED_0004_TABLES = {
     "task_status_history",
     "task_versions",
 }
+EXPECTED_0005_TABLES = {
+    "code_revisions",
+    "code_runs",
+    "code_run_status_history",
+    "test_results",
+    "hint_usages",
+}
 
 
 def _skip_if_no_postgres() -> None:
@@ -172,3 +179,41 @@ def test_learning_loop_unique_constraints() -> None:
     mastery_uniques = {row["name"] for row in inspector.get_unique_constraints("mastery_states")}
     assert "uq_profile_student_version" in profile_uniques
     assert "uq_mastery_student_course_node" in mastery_uniques
+
+
+def test_migration_0005_creates_code_evidence_tables() -> None:
+    """0005 creates all normalized code-evidence tables after a full round trip."""
+    _skip_if_no_postgres()
+    cfg = _make_config()
+    command.upgrade(cfg, "head")
+
+    from app.db import engine
+
+    actual_tables = set(inspect(engine).get_table_names())
+    missing = EXPECTED_0005_TABLES - actual_tables
+    assert not missing, f"code-evidence tables missing: {missing}"
+
+
+def test_code_evidence_database_constraints_are_named() -> None:
+    """0005 keeps byte, sequence, version, ordinal, level, and cost bounds in PG."""
+    _skip_if_no_postgres()
+    cfg = _make_config()
+    command.upgrade(cfg, "head")
+
+    from app.db import engine
+
+    inspector = inspect(engine)
+    checks = {
+        table: {row["name"] for row in inspector.get_check_constraints(table)}
+        for table in ["code_revisions", "code_runs", "test_results", "hint_usages"]
+    }
+    assert {
+        "ck_code_revision_sequence_positive",
+        "ck_code_revision_source_bytes",
+    } <= checks["code_revisions"]
+    assert "ck_code_run_version_positive" in checks["code_runs"]
+    assert "ck_test_result_ordinal_positive" in checks["test_results"]
+    assert {
+        "ck_hint_usage_level_range",
+        "ck_hint_usage_cost_range",
+    } <= checks["hint_usages"]
