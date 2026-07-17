@@ -93,6 +93,18 @@ class CodeCommand:
     trace_id: str = SANDBOX_TRACE_ID
 
 
+@dataclass(frozen=True, slots=True)
+class ReservedRun:
+    """Identity of a reserved run, detached from any session.
+
+    Carries only the DB primary key and the opaque run_id the Supervisor and
+    finalize path need; the ORM object stays inside its transaction.
+    """
+
+    id: UUID
+    run_id: str
+
+
 def _now() -> datetime:
     return datetime.now(UTC)
 
@@ -111,13 +123,14 @@ def _execution_request(
     command: CodeCommand,
     *,
     policy: CompiledTaskPolicy,
+    snapshot: dict[str, Any],
     phase_cases: list[Any],
     phase: SandboxPhase,
     run_id: str,
 ) -> SandboxExecutionRequest:
     """Build a per-phase execution request from the command and policy."""
 
-    policy_snapshot = _policy_snapshot(command.task.snapshot)
+    policy_snapshot = _policy_snapshot(snapshot)
     return SandboxExecutionRequest(
         protocol_version="1",
         request_id=f"{run_id}-{phase.value.lower()}",
@@ -197,18 +210,25 @@ def _combine_results(
 def _view_from_run(run: CodeRun) -> dict[str, Any]:
     """Build the public ``CodeRunView`` projection (no source/hidden policy)."""
 
+    from sqlalchemy.orm import object_session
+
+    from app.models import CodeRevision
+
+    session = object_session(run)
+    revision = session.get(CodeRevision, run.revision_id) if session else None
+    revision_view = {
+        "id": str(run.revision_id),
+        "sequence": revision.sequence if revision else 1,
+        "source_digest": revision.source_digest if revision else "0" * 64,
+        "created_at": (revision.created_at if revision else run.requested_at).isoformat(),
+    }
     return {
         "run_id": run.run_id,
         "task_instance_id": str(run.task_instance_id),
         "mode": run.mode.value,
         "status": run.status.value,
         "version": run.version,
-        "revision": {
-            "id": str(run.revision_id),
-            "sequence": 0,
-            "source_digest": "",
-            "created_at": run.requested_at.isoformat(),
-        },
+        "revision": revision_view,
         "result": run.result,
         "evidence_event_id": run.evidence_event_id,
         "requested_at": run.requested_at.isoformat(),
@@ -221,8 +241,13 @@ def _reserve_transaction(
     command: CodeCommand,
     *,
     session_factory: sessionmaker[Session],
-) -> CodeRun:
-    """Transaction 1: create revision + QUEUED run + audit + Outbox, commit."""
+    snapshot: dict[str, Any],
+) -> ReservedRun:
+    """Transaction 1: create revision + QUEUED run + audit + Outbox, commit.
+
+    Returns a :class:`ReservedRun` carrying only the identity the caller needs;
+    the ORM object stays inside its committed transaction.
+    """
 
     now = _now()
     with SqlAlchemyUnitOfWork(session_factory) as uow:
@@ -241,14 +266,14 @@ def _reserve_transaction(
             revision=revision,
             idempotency=command.idempotency,
             mode=command.mode,
-            policy_snapshot=_policy_snapshot(command.task.snapshot),
+            policy_snapshot=_policy_snapshot(snapshot),
             trace_id=command.trace_id,
             now=now,
         )
         db.flush()
+        reserved = ReservedRun(id=run.id, run_id=run.run_id)
         uow.commit()
-        db.expunge_all()
-        return run
+        return reserved
 
 
 def _mark_running_transaction(
@@ -256,7 +281,7 @@ def _mark_running_transaction(
     *,
     session_factory: sessionmaker[Session],
     trace_id: str,
-) -> CodeRun:
+) -> None:
     """Transaction 2a: row-lock, move to RUNNING, commit before external call."""
 
     from sqlalchemy import select
@@ -280,8 +305,6 @@ def _mark_running_transaction(
         )
         db.flush()
         uow.commit()
-        db.expunge_all()
-        return run
 
 
 def execute_code_command(
@@ -297,8 +320,11 @@ def execute_code_command(
     results so mastery is never reduced by infrastructure.
     """
 
-    policy = parse_task_policy(command.task.snapshot)
-    run = _reserve_transaction(command, session_factory=session_factory)
+    # Capture the snapshot before any transaction so commit/expunge inside the
+    # orchestrator's own sessions never expires the API request's task object.
+    snapshot = dict(command.task.snapshot)
+    policy = parse_task_policy(snapshot)
+    run = _reserve_transaction(command, session_factory=session_factory, snapshot=snapshot)
     try:
         _mark_running_transaction(
             run.id, session_factory=session_factory, trace_id=command.trace_id
@@ -316,6 +342,7 @@ def execute_code_command(
         run.run_id,
         command=command,
         policy=policy,
+        snapshot=snapshot,
         phase=SandboxPhase.VISIBLE,
         phase_cases=list(policy.tests.visible),
         sandbox=sandbox,
@@ -326,6 +353,7 @@ def execute_code_command(
             run.run_id,
             command=command,
             policy=policy,
+            snapshot=snapshot,
             phase=SandboxPhase.HIDDEN,
             phase_cases=list(policy.tests.hidden),
             sandbox=sandbox,
@@ -345,6 +373,7 @@ def _run_phase(
     *,
     command: CodeCommand,
     policy: CompiledTaskPolicy,
+    snapshot: dict[str, Any],
     phase: SandboxPhase,
     phase_cases: list[Any],
     sandbox: _ExecutorLike,
@@ -354,6 +383,7 @@ def _run_phase(
     request = _execution_request(
         command,
         policy=policy,
+        snapshot=snapshot,
         phase_cases=phase_cases,
         phase=phase,
         run_id=run_id,

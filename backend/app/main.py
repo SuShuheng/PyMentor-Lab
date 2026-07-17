@@ -14,8 +14,10 @@ from fastapi import FastAPI
 
 from app.api.admin import router as admin_router
 from app.api.auth import router as auth_router
+from app.api.code import router as code_router
 from app.api.evidence import router as evidence_router
 from app.api.health import router as system_router
+from app.api.hints import router as hints_router
 from app.api.learning import router as learning_router
 from app.api.mastery import router as mastery_router
 from app.api.paths import router as paths_router
@@ -66,6 +68,8 @@ def create_app() -> FastAPI:
     app.include_router(tasks_router)
     app.include_router(mastery_router)
     app.include_router(reviews_router)
+    app.include_router(code_router)
+    app.include_router(hints_router)
 
     return app
 
