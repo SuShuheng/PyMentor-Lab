@@ -142,7 +142,12 @@ async def test_valid_event_commits_before_ack_and_duplicate_delivery_is_idempote
     assert consumed == 2
     assert redis.acked == ["1-0", "2-0"]
     db_session.expire_all()
-    assert db_session.scalar(select(func.count()).select_from(AgentRun)) == 1
+    assert (
+        db_session.scalar(
+            select(func.count()).select_from(AgentRun).where(AgentRun.event_id == event_id)
+        )
+        == 1
+    )
 
 
 @pytest.mark.asyncio
@@ -151,12 +156,13 @@ async def test_invalid_event_rolls_back_and_is_not_acknowledged(
     session_factory: Callable[[], Session],
 ) -> None:
     redis = FakeRedis(fresh=[("1-0", {"payload": '{"raw_prompt":"secret"}'})])
+    count_before = db_session.scalar(select(func.count()).select_from(AgentRun))
 
     consumed = await consume_agent_events_once(redis, session_factory, settings())
 
     assert consumed == 0
     assert redis.acked == []
-    assert db_session.scalar(select(func.count()).select_from(AgentRun)) == 0
+    assert db_session.scalar(select(func.count()).select_from(AgentRun)) == count_before
 
 
 @pytest.mark.asyncio
@@ -187,7 +193,12 @@ async def test_pending_message_is_claimed_and_ingested_before_fresh_reads(
     assert consumed == 1
     assert redis.acked == ["1-0"]
     db_session.expire_all()
-    assert db_session.scalar(select(func.count()).select_from(AgentRun)) == 1
+    assert (
+        db_session.scalar(
+            select(func.count()).select_from(AgentRun).where(AgentRun.event_id == event_id)
+        )
+        == 1
+    )
 
 
 @pytest.mark.asyncio

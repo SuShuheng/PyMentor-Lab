@@ -90,9 +90,7 @@ def _issue_token_pair(db: Session, user: User, roles: list[str]) -> AuthTokens:
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 async def register(body: RegisterRequest, db: Session = Depends(get_db)) -> RegisterResponse:
     """学生自助注册。注册即 PENDING，待管理员审核（设计 §17.3.1）。"""
-    tenant = get_or_create_tenant(
-        db, slug="default", name="Default Tenant"
-    )
+    tenant = get_or_create_tenant(db, slug="default", name="Default Tenant")
     # 先检查是否已存在（友好错误），唯一约束兜底并发。
     existing = get_user_by_email(db, tenant_id=tenant.id, email=body.email)
     if existing is not None:
@@ -208,9 +206,7 @@ async def refresh(body: TokenRefreshRequest, db: Session = Depends(get_db)) -> A
 # 当前用户
 # --------------------------------------------------------------------------- #
 @router.get("/me", response_model=UserProfile)
-async def me(
-    user: User = Depends(get_current_user), db: Session = Depends(get_db)
-) -> UserProfile:
+async def me(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> UserProfile:
     """返回当前用户信息（不含密码哈希）。"""
     roles = get_user_roles(db, user.id)
     return _user_to_profile(user, roles)

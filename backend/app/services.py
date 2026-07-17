@@ -57,9 +57,7 @@ def get_or_create_tenant(
 # --------------------------------------------------------------------------- #
 def get_user_by_email(db: Session, *, tenant_id: UUID, email: str) -> User | None:
     """按租户+邮箱查找用户（租户隔离）。"""
-    return db.scalar(
-        select(User).where(User.tenant_id == tenant_id, User.email == email)
-    )
+    return db.scalar(select(User).where(User.tenant_id == tenant_id, User.email == email))
 
 
 def get_user_by_id(db: Session, user_id: UUID) -> User | None:
@@ -69,11 +67,15 @@ def get_user_by_id(db: Session, user_id: UUID) -> User | None:
 
 def get_user_roles(db: Session, user_id: UUID) -> list[str]:
     """获取用户的角色名列表。"""
-    rows = db.execute(
-        select(Role.name)
-        .join(UserRole, UserRole.role_id == Role.id)
-        .where(UserRole.user_id == user_id)
-    ).scalars().all()
+    rows = (
+        db.execute(
+            select(Role.name)
+            .join(UserRole, UserRole.role_id == Role.id)
+            .where(UserRole.user_id == user_id)
+        )
+        .scalars()
+        .all()
+    )
     return list(rows)
 
 

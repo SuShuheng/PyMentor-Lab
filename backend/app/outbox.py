@@ -15,9 +15,7 @@ from sqlalchemy.orm import Session
 from app.models.consistency import OutboxEvent
 
 
-def claim_unpublished(
-    db: Session, *, batch_size: int = 50
-) -> list[OutboxEvent]:
+def claim_unpublished(db: Session, *, batch_size: int = 50) -> list[OutboxEvent]:
     """获取一批未发布的 Outbox 事件（行锁，并发安全）。
 
     使用 FOR UPDATE SKIP LOCKED：并发消费者不会获取同一行。

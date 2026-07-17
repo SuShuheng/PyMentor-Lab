@@ -11,20 +11,22 @@ import logging
 from typing import Any
 
 # 需要脱敏的字段名（大小写不敏感匹配）。
-SENSITIVE_KEYS = frozenset({
-    "password",
-    "password_hash",
-    "api_key",
-    "api_key_encrypted",
-    "secret",
-    "jwt_secret",
-    "token",
-    "access_token",
-    "refresh_token",
-    "authorization",
-    "raw_prompt",
-    "credential",
-})
+SENSITIVE_KEYS = frozenset(
+    {
+        "password",
+        "password_hash",
+        "api_key",
+        "api_key_encrypted",
+        "secret",
+        "jwt_secret",
+        "token",
+        "access_token",
+        "refresh_token",
+        "authorization",
+        "raw_prompt",
+        "credential",
+    }
+)
 
 
 def redact_value(value: Any, key: str = "") -> Any:

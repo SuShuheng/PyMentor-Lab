@@ -70,11 +70,11 @@ class TestUnitOfWork:
         updated_user = db_session.get(User, student.id)
         assert updated_user is not None
         assert updated_user.display_name == "Updated"
-        events = list(db_session.scalars(
-            select(OutboxEvent).where(
-                OutboxEvent.aggregate_id == str(student.id)
+        events = list(
+            db_session.scalars(
+                select(OutboxEvent).where(OutboxEvent.aggregate_id == str(student.id))
             )
-        ))
+        )
         assert len(events) == 1
         assert events[0].event_type == "USER_UPDATED"
         assert events[0].published is False
@@ -123,11 +123,9 @@ class TestUnitOfWork:
         fresh = db_session.get(Tenant, tenant.id)
         assert fresh is not None
         assert fresh.name == "Rollback"  # 未变
-        events = list(db_session.scalars(
-            select(OutboxEvent).where(
-                OutboxEvent.trace_id == "trc_rollback"
-            )
-        ))
+        events = list(
+            db_session.scalars(select(OutboxEvent).where(OutboxEvent.trace_id == "trc_rollback"))
+        )
         assert len(events) == 0
 
 
@@ -157,9 +155,7 @@ class TestEvidenceDedup:
         app.dependency_overrides[get_current_user] = lambda: student
         try:
             with TestClient(app, raise_server_exceptions=False) as client:
-                response = client.get(
-                    "/api/v1/evidence", params={"course_id": "not-a-uuid"}
-                )
+                response = client.get("/api/v1/evidence", params={"course_id": "not-a-uuid"})
         finally:
             app.dependency_overrides.clear()
 
@@ -196,9 +192,7 @@ class TestEvidenceDedup:
 
         # 去重冲突只能回滚第二次插入，不能抹掉调用方事务中的首条证据。
         db_session.commit()
-        evidence = list_evidence(
-            db_session, tenant_id=tenant.id, student_id=student.id
-        )
+        evidence = list_evidence(db_session, tenant_id=tenant.id, student_id=student.id)
         assert [item.event_id for item in evidence] == [event_id]
 
     def test_list_evidence_filters_by_student(
@@ -310,12 +304,8 @@ class TestIdempotency:
         )
         key = f"idem_scope_{uuid4().hex}"
 
-        get_or_create_idempotency(
-            db_session, key=key, tenant_id=tenant.id, endpoint="/api/v1/test"
-        )
-        save_response(
-            db_session, key=key, response_status=200, response_body={"private": True}
-        )
+        get_or_create_idempotency(db_session, key=key, tenant_id=tenant.id, endpoint="/api/v1/test")
+        save_response(db_session, key=key, response_status=200, response_body={"private": True})
         db_session.commit()
 
         with pytest.raises(ValueError, match="scope conflict"):
@@ -354,15 +344,9 @@ class TestIdempotency:
         """已完成键的缓存结果不可被后续重放覆盖。"""
         tenant, _ = tenant_and_student
         key = f"idem_final_{uuid4().hex}"
-        get_or_create_idempotency(
-            db_session, key=key, tenant_id=tenant.id, endpoint="/api/v1/test"
-        )
-        save_response(
-            db_session, key=key, response_status=200, response_body={"attempt": 1}
-        )
-        save_response(
-            db_session, key=key, response_status=201, response_body={"attempt": 2}
-        )
+        get_or_create_idempotency(db_session, key=key, tenant_id=tenant.id, endpoint="/api/v1/test")
+        save_response(db_session, key=key, response_status=200, response_body={"attempt": 1})
+        save_response(db_session, key=key, response_status=201, response_body={"attempt": 2})
         db_session.commit()
 
         cached = get_or_create_idempotency(

@@ -69,9 +69,7 @@ def seed_demo_tenant(db: Session) -> None:
     幂等：demo 租户与 guest 用户已存在时不重复创建。
     """
     ensure_roles_seeded(db)
-    demo = get_or_create_tenant(
-        db, slug="demo", name="Demo Tenant", tenant_type=TenantType.DEMO
-    )
+    demo = get_or_create_tenant(db, slug="demo", name="Demo Tenant", tenant_type=TenantType.DEMO)
     db.flush()
 
     # Demo Guest 用户（DEMO_GUEST 角色，ACTIVE 可直接登录体验）。

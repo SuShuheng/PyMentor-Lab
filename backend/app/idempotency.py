@@ -49,9 +49,7 @@ def get_or_create_idempotency(
             or existing.endpoint != endpoint
             or existing.user_id != user_id
         ):
-            raise IdempotencyScopeConflictError(
-                "idempotency key scope conflict"
-            )
+            raise IdempotencyScopeConflictError("idempotency key scope conflict")
         if existing.expires_at > now:
             return existing
         # 仅过期记录允许删除并重新处理；未完成记录继续占位。

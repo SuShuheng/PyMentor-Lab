@@ -17,7 +17,7 @@ from app.agent_audit import (
     ingest_agent_proposal,
 )
 from app.contracts.worker import AgentAuditEnvelope, AgentProposalEnvelope
-from app.models import AgentToolCall, Tenant, User, UserStatus
+from app.models import AgentRun, AgentToolCall, Tenant, User, UserStatus
 
 NOW = datetime(2026, 7, 17, 12, 0, tzinfo=UTC)
 
@@ -131,9 +131,19 @@ def test_duplicate_audit_is_idempotent_and_tool_rows_are_unique(
     db_session.flush()
 
     assert second.id == first.id
-    count = db_session.scalar(select(func.count()).select_from(AgentToolCall))
+    run_filter = AgentRun.event_id == agent_context.event_id
+    count = db_session.scalar(
+        select(func.count())
+        .select_from(AgentToolCall)
+        .join(AgentRun, AgentToolCall.agent_run_id == AgentRun.id)
+        .where(run_filter)
+    )
     assert count == 1
-    tool = db_session.scalar(select(AgentToolCall))
+    tool = db_session.scalar(
+        select(AgentToolCall)
+        .join(AgentRun, AgentToolCall.agent_run_id == AgentRun.id)
+        .where(run_filter)
+    )
     assert tool is not None
     assert tool.argument_digest == "a" * 64
     assert tool.result_digest == "b" * 64

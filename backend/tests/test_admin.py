@@ -14,7 +14,7 @@ from collections.abc import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -190,9 +190,7 @@ class TestRegistrationApproval:
 # demo 租户重置
 # --------------------------------------------------------------------------- #
 class TestDemoTenantReset:
-    def test_reset_only_affects_demo_tenant(
-        self, client: TestClient, db_session: Session
-    ) -> None:
+    def test_reset_only_affects_demo_tenant(self, client: TestClient, db_session: Session) -> None:
         """重置 demo 租户不影响其他租户（设计验收：demo reset leaves other tenants unchanged）。"""
         admin = _make_admin(db_session)
         admin_token = _login(client, "admin@uni.edu", "AdminPass1!")
@@ -219,6 +217,9 @@ class TestDemoTenantReset:
             tenant_id=standard.id,
             email="std-user@std.local",
             password_hash=hash_password("ValidPass1!"),
+        )
+        demo_users_before_reset = db_session.scalar(
+            select(func.count()).select_from(User).where(User.tenant_id == demo.id)
         )
 
         # 重置 demo 租户。
@@ -247,7 +248,7 @@ class TestDemoTenantReset:
         assert audit is not None
         assert audit.actor_user_id == admin.id
         assert audit.trace_id == "trc_demo_reset"
-        assert audit.detail["users_removed"] == 1
+        assert audit.detail["users_removed"] == demo_users_before_reset
 
         outbox = db_session.scalar(
             select(OutboxEvent).where(
@@ -271,9 +272,7 @@ class TestDemoTenantReset:
 
         from app.models.identity import UserRole
 
-        db_session.execute(
-            delete(UserRole).where(UserRole.user_id == course_admin.id)
-        )
+        db_session.execute(delete(UserRole).where(UserRole.user_id == course_admin.id))
         db_session.flush()
         assign_role(db_session, user_id=course_admin.id, role_name=RoleName.COURSE_ADMIN.value)
 

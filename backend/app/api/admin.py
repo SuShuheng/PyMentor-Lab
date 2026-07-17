@@ -179,9 +179,7 @@ async def reset_demo_tenant(
 
     # 删除该租户下的所有用户（级联删除 user_roles/user_sessions）。
     # 正式状态表（evidence/profiles 等）在 BE-003 加入后也按 tenant_id 过滤清除。
-    users_to_delete = list(
-        db.scalars(select(User).where(User.tenant_id == tenant_id))
-    )
+    users_to_delete = list(db.scalars(select(User).where(User.tenant_id == tenant_id)))
     trace_id = str(request.state.trace_id)
     with SqlAlchemyUnitOfWork(accept_session=db) as uow:
         for u in users_to_delete:

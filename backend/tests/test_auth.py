@@ -143,9 +143,7 @@ class TestLogin:
 # 刷新
 # --------------------------------------------------------------------------- #
 class TestRefresh:
-    def test_refresh_rotates_token(
-        self, client: TestClient, active_user: User
-    ) -> None:
+    def test_refresh_rotates_token(self, client: TestClient, active_user: User) -> None:
         """刷新返回新 token 对。"""
         login_resp = client.post(
             "/api/v1/auth/login",
@@ -162,9 +160,7 @@ class TestRefresh:
         assert new_tokens["access_token"]
         assert new_tokens["refresh_token"] != old_refresh
 
-    def test_refresh_reuse_detected(
-        self, client: TestClient, active_user: User
-    ) -> None:
+    def test_refresh_reuse_detected(self, client: TestClient, active_user: User) -> None:
         """已用过的 refresh token 再次提交 → 401（复用检测）。"""
         login_resp = client.post(
             "/api/v1/auth/login",

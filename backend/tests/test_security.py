@@ -59,9 +59,7 @@ class TestJwtTokens:
         assert payload["type"] == "ACCESS"
 
     def test_refresh_token_round_trip(self) -> None:
-        token, jti, _ = create_refresh_token(
-            user_id=USER_ID, tenant_id=TENANT_ID, roles=ROLES
-        )
+        token, jti, _ = create_refresh_token(user_id=USER_ID, tenant_id=TENANT_ID, roles=ROLES)
         payload = decode_token(token, TokenType.REFRESH)
         assert payload["type"] == "REFRESH"
         assert payload["jti"] == jti

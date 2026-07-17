@@ -95,9 +95,7 @@ class UserRole(Base):
     """用户-角色关联。一个用户可持有多个角色（如 Course Admin + Reviewer）。"""
 
     __tablename__ = "user_roles"
-    __table_args__ = (
-        UniqueConstraint("user_id", "role_id", name="uq_user_roles_user_role"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "role_id", name="uq_user_roles_user_role"),)
 
     id: Mapped[UUID] = _uuid_pk()
     user_id: Mapped[UUID] = mapped_column(

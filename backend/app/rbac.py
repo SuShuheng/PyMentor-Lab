@@ -85,9 +85,7 @@ def require_roles(
     return _dependency
 
 
-def require_admin(
-    user: User = Depends(get_current_user), db: Session = Depends(get_db)
-) -> User:
+def require_admin(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> User:
     """管理端守卫：要求任一管理端角色（设计测试矩阵「管理端独立路由守卫」）。"""
     user_roles = set(get_user_roles(db, user.id))
     if not user_roles.intersection(ADMIN_ROLES):

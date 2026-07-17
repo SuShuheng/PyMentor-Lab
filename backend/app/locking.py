@@ -45,8 +45,7 @@ def check_and_increment_version(
     rowcount: int = getattr(result, "rowcount", 0)
     if rowcount == 0:
         raise VersionConflictError(
-            f"version conflict: expected {expected_version} for "
-            f"{model_class.__name__} {row_id}"
+            f"version conflict: expected {expected_version} for {model_class.__name__} {row_id}"
         )
     db.flush()
     return new_version

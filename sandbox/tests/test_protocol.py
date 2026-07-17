@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Callable
 
 import pytest
 
@@ -215,7 +216,9 @@ def test_frame_round_trip_has_magic_and_exact_hex_length() -> None:
         lambda frame: frame + frame,
     ],
 )
-def test_frame_rejects_magic_length_mismatch_and_trailing_bytes(mutate) -> None:
+def test_frame_rejects_magic_length_mismatch_and_trailing_bytes(
+    mutate: Callable[[bytes], bytes],
+) -> None:
     with pytest.raises(ProtocolFrameError):
         decode_frame(mutate(encode_frame({"ok": True})))
 
