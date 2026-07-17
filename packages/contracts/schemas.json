@@ -1121,5 +1121,469 @@
       }
     },
     "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "ProfileSnapshot": {
+    "$ref": "#/definitions/ProfileSnapshot",
+    "definitions": {
+      "ProfileSnapshot": {
+        "type": "object",
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "source_event_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dimensions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "dimension": {
+                  "type": "string",
+                  "enum": [
+                    "CONCEPT_KNOWLEDGE",
+                    "EXECUTION_MODEL",
+                    "IMPLEMENTATION",
+                    "DECOMPOSITION",
+                    "DEBUGGING",
+                    "TESTING",
+                    "TRANSFER",
+                    "INDEPENDENCE_SUPPORT"
+                  ]
+                },
+                "scope_key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "score": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "confidence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "support_level": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 3
+                }
+              },
+              "required": [
+                "dimension",
+                "scope_key",
+                "score",
+                "confidence",
+                "support_level"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "student_id",
+          "version",
+          "source_event_id",
+          "dimensions"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "ProfileDisputeRequest": {
+    "$ref": "#/definitions/ProfileDisputeRequest",
+    "definitions": {
+      "ProfileDisputeRequest": {
+        "type": "object",
+        "properties": {
+          "profile_version_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "profile_version_id",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "PathSnapshot": {
+    "$ref": "#/definitions/PathSnapshot",
+    "definitions": {
+      "PathSnapshot": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "CURRENT",
+              "SUPERSEDED"
+            ]
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "position": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "node_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "REVIEW",
+                    "LEARN",
+                    "PRACTICE",
+                    "ASSESSMENT"
+                  ]
+                },
+                "estimated_minutes": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "scenario_key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "validation_status": {
+                  "type": "string",
+                  "enum": [
+                    "VALIDATED",
+                    "REPAIRED",
+                    "FALLBACK"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "position",
+                "node_id",
+                "kind",
+                "estimated_minutes",
+                "scenario_key",
+                "validation_status"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "course_id",
+          "version",
+          "status",
+          "steps"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "TodayItem": {
+    "$ref": "#/definitions/TodayItem",
+    "definitions": {
+      "TodayItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "node_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "REVIEW",
+              "LEARN",
+              "PRACTICE",
+              "ASSESSMENT"
+            ]
+          },
+          "estimated_minutes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "due_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "task_version_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "course_id",
+          "node_id",
+          "kind",
+          "estimated_minutes"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "TaskStartResponse": {
+    "$ref": "#/definitions/TaskStartResponse",
+    "definitions": {
+      "TaskStartResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "task_version_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "SUBMITTED",
+              "COMPLETED",
+              "CANCELLED"
+            ]
+          },
+          "snapshot": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "started_at": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "id",
+          "task_version_id",
+          "status",
+          "snapshot",
+          "started_at",
+          "version"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "AssessmentSubmission": {
+    "$ref": "#/definitions/AssessmentSubmission",
+    "definitions": {
+      "AssessmentSubmission": {
+        "type": "object",
+        "properties": {
+          "evidence_event_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "expected_task_version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "evidence_event_id",
+          "expected_task_version"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "MasteryView": {
+    "$ref": "#/definitions/MasteryView",
+    "definitions": {
+      "MasteryView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "node_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "UNSEEN",
+              "LEARNING",
+              "PASSED_WITH_HELP",
+              "INITIAL_MASTERY",
+              "STABLE_MASTERY",
+              "REVIEW_REQUIRED"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "review_due_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "course_id",
+          "node_id",
+          "status",
+          "version"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "ReviewView": {
+    "$ref": "#/definitions/ReviewView",
+    "definitions": {
+      "ReviewView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "course_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "node_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "scenario_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "due_at": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SCHEDULED",
+              "DUE",
+              "COMPLETED",
+              "CANCELLED"
+            ]
+          },
+          "reschedule_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "id",
+          "course_id",
+          "node_id",
+          "scenario_key",
+          "due_at",
+          "status",
+          "reschedule_count",
+          "version"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "ReviewRescheduleRequest": {
+    "$ref": "#/definitions/ReviewRescheduleRequest",
+    "definitions": {
+      "ReviewRescheduleRequest": {
+        "type": "object",
+        "properties": {
+          "due_at": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expected_version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "due_at",
+          "expected_version"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
   }
 }

@@ -26,6 +26,7 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from app.contracts import (
+    AssessmentSubmission,
     AuditEvent,
     AuthTokens,
     ChatCompletionChunk,
@@ -35,13 +36,21 @@ from app.contracts import (
     HealthResponse,
     IdempotencyRecord,
     LoginRequest,
+    MasteryView,
     OutboxEventModel,
+    PathSnapshot,
     PendingRegistration,
+    ProfileDisputeRequest,
+    ProfileSnapshot,
     RegisterRequest,
     RegisterResponse,
     RegistrationDecisionRequest,
+    ReviewRescheduleRequest,
+    ReviewView,
     SandboxResult,
     SystemPingResponse,
+    TaskStartResponse,
+    TodayItem,
     TokenRefreshRequest,
     UserProfile,
     WorkerJobEnvelope,
@@ -58,9 +67,7 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
             "message": "email is invalid",
             "trace_id": "trc_123",
             "retryable": False,
-            "field_errors": [
-                {"field": "email", "code": "format", "message": "invalid email"}
-            ],
+            "field_errors": [{"field": "email", "code": "format", "message": "invalid email"}],
         },
         {
             "code": "INTERNAL_ERROR",
@@ -83,9 +90,7 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
             "timestamp": "2026-07-17T00:00:00Z",
         },
     ],
-    "SystemPingResponse": [
-        {"ok": True, "service": "api", "timestamp": "2026-07-17T00:00:00Z"}
-    ],
+    "SystemPingResponse": [{"ok": True, "service": "api", "timestamp": "2026-07-17T00:00:00Z"}],
     "ChatCompletionChunk": [
         {
             "id": "chat_1",
@@ -97,9 +102,7 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
             "id": "chat_1",
             "chunk_index": 1,
             "delta_reasoning": "thinking",
-            "delta_tool_calls": [
-                {"index": 0, "id": "call_1", "name": "lookup", "arguments": "{}"}
-            ],
+            "delta_tool_calls": [{"index": 0, "id": "call_1", "name": "lookup", "arguments": "{}"}],
             "timestamp": "2026-07-17T00:00:00Z",
         },
     ],
@@ -162,9 +165,7 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
             "message": "Registration received. An administrator will review it.",
         }
     ],
-    "LoginRequest": [
-        {"email": "student@example.com", "password": "S3cret-Pass!"}
-    ],
+    "LoginRequest": [{"email": "student@example.com", "password": "S3cret-Pass!"}],
     "AuthTokens": [
         {
             "access_token": "eyJhbGciOiJIUzI1NiJ9.payload.sig",
@@ -173,9 +174,7 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
             "expires_in": 900,
         }
     ],
-    "TokenRefreshRequest": [
-        {"refresh_token": "eyJhbGciOiJIUzI1NiJ9.refresh.sig"}
-    ],
+    "TokenRefreshRequest": [{"refresh_token": "eyJhbGciOiJIUzI1NiJ9.refresh.sig"}],
     "UserProfile": [
         {
             "id": "00000000-0000-0000-0000-000000000001",
@@ -257,6 +256,97 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
             "response_body": None,
         }
     ],
+    "ProfileSnapshot": [
+        {
+            "student_id": "00000000-0000-0000-0000-000000000030",
+            "version": 2,
+            "source_event_id": "evt_profile_2",
+            "dimensions": [
+                {
+                    "dimension": "DEBUGGING",
+                    "scope_key": "loops",
+                    "score": 0.65,
+                    "confidence": 0.9,
+                    "support_level": 1,
+                }
+            ],
+        }
+    ],
+    "ProfileDisputeRequest": [
+        {
+            "profile_version_id": "00000000-0000-0000-0000-000000000031",
+            "reason": "The debugging score misses my latest attempt.",
+        }
+    ],
+    "PathSnapshot": [
+        {
+            "id": "00000000-0000-0000-0000-000000000032",
+            "course_id": "00000000-0000-0000-0000-000000000033",
+            "version": 3,
+            "status": "CURRENT",
+            "steps": [
+                {
+                    "id": "00000000-0000-0000-0000-000000000034",
+                    "position": 1,
+                    "node_id": "00000000-0000-0000-0000-000000000035",
+                    "kind": "LEARN",
+                    "estimated_minutes": 20,
+                    "scenario_key": "loops-v1",
+                    "validation_status": "VALIDATED",
+                }
+            ],
+        }
+    ],
+    "TodayItem": [
+        {
+            "id": "00000000-0000-0000-0000-000000000036",
+            "course_id": "00000000-0000-0000-0000-000000000033",
+            "node_id": "00000000-0000-0000-0000-000000000035",
+            "kind": "REVIEW",
+            "estimated_minutes": 15,
+            "due_at": "2026-07-24T00:00:00Z",
+            "task_version_id": None,
+        }
+    ],
+    "TaskStartResponse": [
+        {
+            "id": "00000000-0000-0000-0000-000000000037",
+            "task_version_id": "00000000-0000-0000-0000-000000000038",
+            "status": "ACTIVE",
+            "snapshot": {"prompt": "Fix the loop boundary"},
+            "started_at": "2026-07-17T00:00:00Z",
+            "version": 1,
+        }
+    ],
+    "AssessmentSubmission": [
+        {
+            "evidence_event_id": "evt_assessment_1",
+            "expected_task_version": 1,
+        }
+    ],
+    "MasteryView": [
+        {
+            "id": "00000000-0000-0000-0000-000000000039",
+            "course_id": "00000000-0000-0000-0000-000000000033",
+            "node_id": "00000000-0000-0000-0000-000000000035",
+            "status": "INITIAL_MASTERY",
+            "version": 2,
+            "review_due_at": "2026-07-24T00:00:00Z",
+        }
+    ],
+    "ReviewView": [
+        {
+            "id": "00000000-0000-0000-0000-000000000040",
+            "course_id": "00000000-0000-0000-0000-000000000033",
+            "node_id": "00000000-0000-0000-0000-000000000035",
+            "scenario_key": "loops-review-v2",
+            "due_at": "2026-07-24T00:00:00Z",
+            "status": "SCHEDULED",
+            "reschedule_count": 0,
+            "version": 1,
+        }
+    ],
+    "ReviewRescheduleRequest": [{"due_at": "2026-07-25T00:00:00Z", "expected_version": 1}],
 }
 
 MODEL_BY_NAME: dict[str, type[BaseModel]] = {
@@ -278,6 +368,15 @@ MODEL_BY_NAME: dict[str, type[BaseModel]] = {
     "EvidenceEvent": EvidenceEvent,
     "OutboxEvent": OutboxEventModel,
     "IdempotencyRecord": IdempotencyRecord,
+    "ProfileSnapshot": ProfileSnapshot,
+    "ProfileDisputeRequest": ProfileDisputeRequest,
+    "PathSnapshot": PathSnapshot,
+    "TodayItem": TodayItem,
+    "TaskStartResponse": TaskStartResponse,
+    "AssessmentSubmission": AssessmentSubmission,
+    "MasteryView": MasteryView,
+    "ReviewView": ReviewView,
+    "ReviewRescheduleRequest": ReviewRescheduleRequest,
 }
 
 

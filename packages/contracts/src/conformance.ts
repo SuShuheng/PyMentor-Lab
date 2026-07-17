@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 import {
+  AssessmentSubmission,
   AuthTokens,
   AuditEvent,
   ChatCompletionChunk,
@@ -19,14 +20,22 @@ import {
   HealthResponse,
   IdempotencyRecord,
   LoginRequest,
+  MasteryView,
   OutboxEvent,
+  PathSnapshot,
   PendingRegistration,
+  ProfileDisputeRequest,
+  ProfileSnapshot,
   RegisterRequest,
   RegisterResponse,
   RegistrationDecisionRequest,
+  ReviewRescheduleRequest,
+  ReviewView,
   SandboxResult,
   StreamEvent,
   SystemPingResponse,
+  TaskStartResponse,
+  TodayItem,
   TokenRefreshRequest,
   UserProfile,
   WorkerJobEnvelope,
@@ -284,6 +293,119 @@ const cases: Cases = {
         response_body: null,
       },
     ],
+  },
+  ProfileSnapshot: {
+    schema: ProfileSnapshot,
+    samples: [
+      {
+        student_id: "00000000-0000-0000-0000-000000000030",
+        version: 2,
+        source_event_id: "evt_profile_2",
+        dimensions: [
+          {
+            dimension: "DEBUGGING",
+            scope_key: "loops",
+            score: 0.65,
+            confidence: 0.9,
+            support_level: 1,
+          },
+        ],
+      },
+    ],
+  },
+  ProfileDisputeRequest: {
+    schema: ProfileDisputeRequest,
+    samples: [
+      {
+        profile_version_id: "00000000-0000-0000-0000-000000000031",
+        reason: "The debugging score misses my latest attempt.",
+      },
+    ],
+  },
+  PathSnapshot: {
+    schema: PathSnapshot,
+    samples: [
+      {
+        id: "00000000-0000-0000-0000-000000000032",
+        course_id: "00000000-0000-0000-0000-000000000033",
+        version: 3,
+        status: "CURRENT",
+        steps: [
+          {
+            id: "00000000-0000-0000-0000-000000000034",
+            position: 1,
+            node_id: "00000000-0000-0000-0000-000000000035",
+            kind: "LEARN",
+            estimated_minutes: 20,
+            scenario_key: "loops-v1",
+            validation_status: "VALIDATED",
+          },
+        ],
+      },
+    ],
+  },
+  TodayItem: {
+    schema: TodayItem,
+    samples: [
+      {
+        id: "00000000-0000-0000-0000-000000000036",
+        course_id: "00000000-0000-0000-0000-000000000033",
+        node_id: "00000000-0000-0000-0000-000000000035",
+        kind: "REVIEW",
+        estimated_minutes: 15,
+        due_at: "2026-07-24T00:00:00Z",
+        task_version_id: null,
+      },
+    ],
+  },
+  TaskStartResponse: {
+    schema: TaskStartResponse,
+    samples: [
+      {
+        id: "00000000-0000-0000-0000-000000000037",
+        task_version_id: "00000000-0000-0000-0000-000000000038",
+        status: "ACTIVE",
+        snapshot: { prompt: "Fix the loop boundary" },
+        started_at: "2026-07-17T00:00:00Z",
+        version: 1,
+      },
+    ],
+  },
+  AssessmentSubmission: {
+    schema: AssessmentSubmission,
+    samples: [{ evidence_event_id: "evt_assessment_1", expected_task_version: 1 }],
+  },
+  MasteryView: {
+    schema: MasteryView,
+    samples: [
+      {
+        id: "00000000-0000-0000-0000-000000000039",
+        course_id: "00000000-0000-0000-0000-000000000033",
+        node_id: "00000000-0000-0000-0000-000000000035",
+        status: "INITIAL_MASTERY",
+        version: 2,
+        review_due_at: "2026-07-24T00:00:00Z",
+      },
+    ],
+  },
+  ReviewView: {
+    schema: ReviewView,
+    samples: [
+      {
+        id: "00000000-0000-0000-0000-000000000040",
+        course_id: "00000000-0000-0000-0000-000000000033",
+        node_id: "00000000-0000-0000-0000-000000000035",
+        scenario_key: "loops-review-v2",
+        due_at: "2026-07-24T00:00:00Z",
+        status: "SCHEDULED",
+        reschedule_count: 0,
+        version: 1,
+      },
+    ],
+  },
+  ReviewRescheduleRequest: {
+    schema: ReviewRescheduleRequest,
+    samples: [{ due_at: "2026-07-25T00:00:00Z", expected_version: 1 }],
   },
 };
 

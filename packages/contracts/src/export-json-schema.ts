@@ -14,6 +14,7 @@ import { dirname, resolve } from "node:path";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 import {
+  AssessmentSubmission,
   AuthTokens,
   AuditEvent,
   ChatCompletionChunk,
@@ -22,14 +23,22 @@ import {
   HealthResponse,
   IdempotencyRecord,
   LoginRequest,
+  MasteryView,
   OutboxEvent,
+  PathSnapshot,
   PendingRegistration,
+  ProfileDisputeRequest,
+  ProfileSnapshot,
   RegisterRequest,
   RegisterResponse,
   RegistrationDecisionRequest,
+  ReviewRescheduleRequest,
+  ReviewView,
   SandboxResult,
   StreamEvent,
   SystemPingResponse,
+  TaskStartResponse,
+  TodayItem,
   TokenRefreshRequest,
   UserProfile,
   WorkerJobEnvelope,
@@ -61,6 +70,24 @@ const schemas = {
   AuditEvent: zodToJsonSchema(AuditEvent, "AuditEvent"),
   OutboxEvent: zodToJsonSchema(OutboxEvent, "OutboxEvent"),
   IdempotencyRecord: zodToJsonSchema(IdempotencyRecord, "IdempotencyRecord"),
+  ProfileSnapshot: zodToJsonSchema(ProfileSnapshot, "ProfileSnapshot"),
+  ProfileDisputeRequest: zodToJsonSchema(
+    ProfileDisputeRequest,
+    "ProfileDisputeRequest",
+  ),
+  PathSnapshot: zodToJsonSchema(PathSnapshot, "PathSnapshot"),
+  TodayItem: zodToJsonSchema(TodayItem, "TodayItem"),
+  TaskStartResponse: zodToJsonSchema(TaskStartResponse, "TaskStartResponse"),
+  AssessmentSubmission: zodToJsonSchema(
+    AssessmentSubmission,
+    "AssessmentSubmission",
+  ),
+  MasteryView: zodToJsonSchema(MasteryView, "MasteryView"),
+  ReviewView: zodToJsonSchema(ReviewView, "ReviewView"),
+  ReviewRescheduleRequest: zodToJsonSchema(
+    ReviewRescheduleRequest,
+    "ReviewRescheduleRequest",
+  ),
 } as const;
 
 writeFileSync(OUT, JSON.stringify(schemas, null, 2) + "\n", "utf8");
