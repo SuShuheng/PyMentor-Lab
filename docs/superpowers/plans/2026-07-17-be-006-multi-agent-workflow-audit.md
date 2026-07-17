@@ -495,20 +495,20 @@ git commit -m "feat(backend): persist replayable agent audit"
 - Produces: `consume_agent_events_once`, `run_agent_event_consumer`, and a
   lifespan-managed consumer enabled only by explicit configuration.
 
-- [ ] **Step 1: Write stream-consumer Red tests**
+- [x] **Step 1: Write stream-consumer Red tests**
 
 Use a fake async Redis stream port and real PostgreSQL session. Assert schema
 validation before DB writes, commit before XACK, no XACK after rollback,
 duplicate delivery idempotency, consumer-group recovery of pending messages,
 bounded shutdown, and disabled-by-default test startup.
 
-- [ ] **Step 2: Run focused tests and verify Red**
+- [x] **Step 2: Run focused tests and verify Red**
 
 Run: `uv run --no-cache pytest -p no:cacheprovider backend/tests/test_agent_event_consumer.py -q`
 
 Expected: FAIL because the consumer module is absent.
 
-- [ ] **Step 3: Add redis-py and explicit settings**
+- [x] **Step 3: Add redis-py and explicit settings**
 
 Run: `uv add 'redis==8.0.1'`
 
@@ -516,14 +516,14 @@ Add Redis URL, stream/group/consumer names, block timeout, batch size, and
 `PYMENTOR_AGENT_EVENT_CONSUMER_ENABLED`. Tests default it to false; Compose sets
 it true for the API service.
 
-- [ ] **Step 4: Implement validation, transaction, acknowledgement, and shutdown**
+- [x] **Step 4: Implement validation, transaction, acknowledgement, and shutdown**
 
 Create the consumer group idempotently, read with `XREADGROUP`, parse the event
 discriminant into its Pydantic envelope, open one DB transaction per message,
 call the Task 6 ingestion service, commit, then XACK. On cancellation, finish the
 current transaction and close Redis without swallowing `CancelledError`.
 
-- [ ] **Step 5: Verify Green and application lifecycle**
+- [x] **Step 5: Verify Green and application lifecycle**
 
 Run:
 
@@ -537,7 +537,7 @@ docker compose config --quiet
 Expected: all commands exit 0; no background consumer starts in tests unless
 explicitly enabled.
 
-- [ ] **Step 6: Commit Task 7**
+- [x] **Step 6: Commit Task 7**
 
 ```powershell
 git add backend/app/agent_event_consumer.py backend/tests/test_agent_event_consumer.py backend/app/config.py backend/app/main.py pyproject.toml uv.lock .env.example docker-compose.yml
@@ -562,27 +562,27 @@ git commit -m "feat(backend): consume agent audit events transactionally"
 - Produces: `buildWorkerApplication`, `startWorkerApplication`, readiness state,
   and idempotent `close()`.
 
-- [ ] **Step 1: Write runtime Red tests**
+- [x] **Step 1: Write runtime Red tests**
 
 Assert fail-fast invalid/missing production Redis URL, health remains live while
 readiness is false, readiness becomes true only after Redis/checkpointer/queue
 startup, shutdown stops intake before closing dependencies, a second shutdown is
 safe, and SIGTERM uses the bounded close path.
 
-- [ ] **Step 2: Run runtime tests and verify Red**
+- [x] **Step 2: Run runtime tests and verify Red**
 
 Run: `pnpm --filter @pymentor/agent-worker test -- src/runtime/application.test.ts src/health.test.ts`
 
 Expected: FAIL because the Worker application lifecycle does not exist.
 
-- [ ] **Step 3: Implement the composed application**
+- [x] **Step 3: Implement the composed application**
 
 Validate configuration, create one owned Redis/checkpointer/queue dependency
 graph, start the health server, expose `/health` and `/ready`, and register
 SIGINT/SIGTERM handlers. The close sequence pauses the BullMQ worker, waits the
 configured grace period, closes worker/queue/checkpointer/Redis, then stops HTTP.
 
-- [ ] **Step 4: Verify Green, typecheck, and image build**
+- [x] **Step 4: Verify Green, typecheck, and image build**
 
 Run:
 
@@ -594,7 +594,7 @@ docker build -f infra/worker.Dockerfile -t pymentor/agent-worker:be006 .
 
 Expected: tests and typecheck pass; image build exits 0.
 
-- [ ] **Step 5: Commit Task 8**
+- [x] **Step 5: Commit Task 8**
 
 ```powershell
 git add workers/agent-worker/src/runtime workers/agent-worker/src/health.ts workers/agent-worker/src/health.test.ts workers/agent-worker/src/server.ts infra/worker.Dockerfile

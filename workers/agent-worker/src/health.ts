@@ -18,13 +18,20 @@ export interface NowProvider {
   now(): string;
 }
 
+export interface ReadinessProvider {
+  isReady(): boolean;
+}
+
 const isoNow = (): string => new Date().toISOString();
 
 /**
  * Build the health sub-app. `now` is injectable so tests can assert the
  * contract deterministically without depending on wall-clock time.
  */
-export function buildHealthApp(now: NowProvider = { now: isoNow }): Hono {
+export function buildHealthApp(
+  now: NowProvider = { now: isoNow },
+  readiness: ReadinessProvider = { isReady: () => false },
+): Hono {
   const app = new Hono();
 
   app.get("/health", (c) => {
@@ -40,6 +47,13 @@ export function buildHealthApp(now: NowProvider = { now: isoNow }): Hono {
       return c.json({ status: "down", service: SERVICE_NAME }, 500);
     }
     return c.json(parsed.data, 200);
+  });
+
+  app.get("/ready", (c) => {
+    if (!readiness.isReady()) {
+      return c.json({ status: "not_ready", service: SERVICE_NAME }, 503);
+    }
+    return c.json({ status: "ready", service: SERVICE_NAME }, 200);
   });
 
   return app;

@@ -23,7 +23,10 @@ import {
   type RedisRunStore,
 } from "./processor.js";
 
-export const AGENT_QUEUE_NAME = "pymentor:agent-jobs:v1";
+// BullMQ forbids ':' in the queue name because it is its key delimiter.
+// Prefix + name preserves the frozen Redis namespace pymentor:agent-jobs:v1:*.
+export const AGENT_QUEUE_PREFIX = "pymentor:agent-jobs";
+export const AGENT_QUEUE_NAME = "v1";
 export const AGENT_QUEUE_DEFAULT_JOB_OPTIONS: JobsOptions = Object.freeze({
   attempts: 3,
   backoff: { type: "exponential", delay: 1_000 },
@@ -72,6 +75,7 @@ export function createAgentQueue(connection: ConnectionOptions): AgentQueueRunti
     AGENT_QUEUE_NAME,
     {
       connection,
+      prefix: AGENT_QUEUE_PREFIX,
       defaultJobOptions: AGENT_QUEUE_DEFAULT_JOB_OPTIONS,
     },
   );
@@ -111,6 +115,7 @@ export function createAgentWorker(options: CreateAgentWorkerOptions): AgentWorke
     },
     {
       connection: options.connection,
+      prefix: AGENT_QUEUE_PREFIX,
       concurrency: options.concurrency ?? 4,
     },
   );

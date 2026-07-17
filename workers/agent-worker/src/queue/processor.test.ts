@@ -21,7 +21,11 @@ import {
   type AgentProcessorDependencies,
   type RedisRunStore,
 } from "./processor.js";
-import { AGENT_QUEUE_DEFAULT_JOB_OPTIONS, AGENT_QUEUE_NAME } from "./runtime.js";
+import {
+  AGENT_QUEUE_DEFAULT_JOB_OPTIONS,
+  AGENT_QUEUE_NAME,
+  AGENT_QUEUE_PREFIX,
+} from "./runtime.js";
 
 const job: WorkerJobEnvelope = {
   schema_version: 1,
@@ -143,7 +147,8 @@ function dependencies(
 
 describe("agent queue processor", () => {
   it("pins bounded BullMQ retry and retention policy", () => {
-    expect(AGENT_QUEUE_NAME).toBe("pymentor:agent-jobs:v1");
+    expect(AGENT_QUEUE_NAME).not.toContain(":");
+    expect(`${AGENT_QUEUE_PREFIX}:${AGENT_QUEUE_NAME}`).toBe("pymentor:agent-jobs:v1");
     expect(AGENT_QUEUE_DEFAULT_JOB_OPTIONS).toMatchObject({
       attempts: 3,
       backoff: { type: "exponential", delay: 1_000 },

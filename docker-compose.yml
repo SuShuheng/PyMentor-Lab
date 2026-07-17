@@ -91,12 +91,26 @@ services:
     environment:
       PYMENTOR_WORKER_PORT: "8081"
       PYMENTOR_REDIS_URL: redis://redis:6379/0
+      PYMENTOR_WORKER_CONCURRENCY: "4"
+      PYMENTOR_WORKER_SHUTDOWN_GRACE_MS: "10000"
       REDIS_URL: redis://redis:6379/0
     ports:
       - "8081:8081"
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:8081/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   sandbox:
     # Sandbox SUPERVISOR (BE-005). Signed internal service only; no host port.
