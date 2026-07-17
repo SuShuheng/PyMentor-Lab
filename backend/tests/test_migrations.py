@@ -22,6 +22,24 @@ DB_URL = os.environ.get(
 
 EXPECTED_0002_TABLES = {"tenants", "users", "roles", "user_roles", "user_sessions"}
 EXPECTED_0003_TABLES = {"evidence_events", "audit_events", "outbox_events", "idempotency_keys"}
+EXPECTED_0004_TABLES = {
+    "assessment_results",
+    "learning_contexts",
+    "learning_paths",
+    "learning_path_steps",
+    "mastery_state_history",
+    "mastery_states",
+    "profile_change_proposals",
+    "profile_dimension_scores",
+    "profile_disputes",
+    "profile_versions",
+    "review_attempts",
+    "review_schedules",
+    "task_definitions",
+    "task_instances",
+    "task_status_history",
+    "task_versions",
+}
 
 
 def _skip_if_no_postgres() -> None:
@@ -124,7 +142,33 @@ def test_evidence_table_has_query_indexes_and_confidence_check() -> None:
         "ix_evidence_events_task_id",
     } <= index_names
 
-    check_names = {
-        item["name"] for item in inspector.get_check_constraints("evidence_events")
-    }
+    check_names = {item["name"] for item in inspector.get_check_constraints("evidence_events")}
     assert "ck_evidence_confidence_range" in check_names
+
+
+def test_migration_0004_creates_learning_loop_tables() -> None:
+    """0004 必须创建确定性学习闭环的全部规范化表。"""
+    _skip_if_no_postgres()
+    cfg = _make_config()
+    command.upgrade(cfg, "head")
+
+    from app.db import engine
+
+    actual_tables = set(inspect(engine).get_table_names())
+    missing = EXPECTED_0004_TABLES - actual_tables
+    assert not missing, f"learning-loop tables missing: {missing}"
+
+
+def test_learning_loop_unique_constraints() -> None:
+    """画像版本和学生节点掌握状态必须由数据库防止重复。"""
+    _skip_if_no_postgres()
+    cfg = _make_config()
+    command.upgrade(cfg, "head")
+
+    from app.db import engine
+
+    inspector = inspect(engine)
+    profile_uniques = {row["name"] for row in inspector.get_unique_constraints("profile_versions")}
+    mastery_uniques = {row["name"] for row in inspector.get_unique_constraints("mastery_states")}
+    assert "uq_profile_student_version" in profile_uniques
+    assert "uq_mastery_student_course_node" in mastery_uniques
