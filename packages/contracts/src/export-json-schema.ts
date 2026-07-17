@@ -14,12 +14,20 @@ import { dirname, resolve } from "node:path";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 import {
+  AuthTokens,
   ChatCompletionChunk,
   ErrorEnvelope,
   HealthResponse,
+  LoginRequest,
+  PendingRegistration,
+  RegisterRequest,
+  RegisterResponse,
+  RegistrationDecisionRequest,
   SandboxResult,
   StreamEvent,
   SystemPingResponse,
+  TokenRefreshRequest,
+  UserProfile,
   WorkerJobEnvelope,
 } from "./index.js";
 
@@ -34,6 +42,17 @@ const schemas = {
   StreamEvent: zodToJsonSchema(StreamEvent, "StreamEvent"),
   SandboxResult: zodToJsonSchema(SandboxResult, "SandboxResult"),
   WorkerJobEnvelope: zodToJsonSchema(WorkerJobEnvelope, "WorkerJobEnvelope"),
+  RegisterRequest: zodToJsonSchema(RegisterRequest, "RegisterRequest"),
+  RegisterResponse: zodToJsonSchema(RegisterResponse, "RegisterResponse"),
+  LoginRequest: zodToJsonSchema(LoginRequest, "LoginRequest"),
+  AuthTokens: zodToJsonSchema(AuthTokens, "AuthTokens"),
+  TokenRefreshRequest: zodToJsonSchema(TokenRefreshRequest, "TokenRefreshRequest"),
+  UserProfile: zodToJsonSchema(UserProfile, "UserProfile"),
+  PendingRegistration: zodToJsonSchema(PendingRegistration, "PendingRegistration"),
+  RegistrationDecisionRequest: zodToJsonSchema(
+    RegistrationDecisionRequest,
+    "RegistrationDecisionRequest",
+  ),
 } as const;
 
 writeFileSync(OUT, JSON.stringify(schemas, null, 2) + "\n", "utf8");

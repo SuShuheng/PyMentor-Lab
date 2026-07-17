@@ -1,6 +1,54 @@
 {
   "components": {
     "schemas": {
+      "AuthTokens": {
+        "additionalProperties": false,
+        "description": "\u4ee4\u724c\u5bf9\u3002access_token \u77ed\u671f\uff0crefresh_token \u957f\u671f\uff08\u8bbe\u8ba1 \u00a717.3.3\uff09\u3002",
+        "properties": {
+          "access_token": {
+            "minLength": 1,
+            "title": "Access Token",
+            "type": "string"
+          },
+          "expires_in": {
+            "description": "access token \u6709\u6548\u671f\uff08\u79d2\uff09",
+            "minimum": 1.0,
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "refresh_token": {
+            "minLength": 1,
+            "title": "Refresh Token",
+            "type": "string"
+          },
+          "token_type": {
+            "const": "Bearer",
+            "default": "Bearer",
+            "title": "Token Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token",
+          "refresh_token",
+          "expires_in"
+        ],
+        "title": "AuthTokens",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
       "HealthResponse": {
         "additionalProperties": false,
         "description": "Body of ``GET /health``.",
@@ -42,6 +90,162 @@
         "title": "HealthStatus",
         "type": "string"
       },
+      "LoginRequest": {
+        "additionalProperties": false,
+        "description": "\u767b\u5f55\u8bf7\u6c42\uff08\u5b66\u751f/\u7ba1\u7406\u5458\u901a\u7528\uff09\u3002",
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginRequest",
+        "type": "object"
+      },
+      "PendingRegistration": {
+        "additionalProperties": false,
+        "description": "\u5f85\u5ba1\u6838\u6ce8\u518c\u6761\u76ee\uff08\u7ba1\u7406\u7aef\u5217\u8868\u7528\uff09\u3002",
+        "properties": {
+          "created_at": {
+            "minLength": 1,
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "status": {
+            "minLength": 1,
+            "title": "Status",
+            "type": "string"
+          },
+          "student_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student No"
+          },
+          "user_id": {
+            "minLength": 1,
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "email",
+          "status",
+          "created_at"
+        ],
+        "title": "PendingRegistration",
+        "type": "object"
+      },
+      "RegisterRequest": {
+        "additionalProperties": false,
+        "description": "\u5b66\u751f\u81ea\u52a9\u6ce8\u518c\u8bf7\u6c42\uff08\u8bbe\u8ba1 \u00a717.3.1\uff09\u3002\u6ce8\u518c\u5373 PENDING\u3002",
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 72,
+            "minLength": 8,
+            "title": "Password",
+            "type": "string"
+          },
+          "student_no": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student No"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "RegisterRequest",
+        "type": "object"
+      },
+      "RegisterResponse": {
+        "additionalProperties": false,
+        "description": "\u6ce8\u518c\u6210\u529f\u54cd\u5e94\u3002status \u6052\u4e3a PENDING\uff0c\u5f85\u7ba1\u7406\u5458\u5ba1\u6838\u3002",
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "message": {
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "const": "PENDING",
+            "default": "PENDING",
+            "title": "Status",
+            "type": "string"
+          },
+          "user_id": {
+            "minLength": 1,
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "email",
+          "message"
+        ],
+        "title": "RegisterResponse",
+        "type": "object"
+      },
+      "RegistrationDecisionRequest": {
+        "additionalProperties": false,
+        "description": "\u7ba1\u7406\u5458\u5ba1\u6838\u51b3\u5b9a\uff08\u6279\u51c6/\u62d2\u7edd\uff09\u3002",
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "title": "RegistrationDecisionRequest",
+        "type": "object"
+      },
       "SystemPingResponse": {
         "additionalProperties": false,
         "description": "Body of the public ``GET /system/ping`` connectivity-test endpoint.",
@@ -69,6 +273,114 @@
         ],
         "title": "SystemPingResponse",
         "type": "object"
+      },
+      "TokenRefreshRequest": {
+        "additionalProperties": false,
+        "description": "\u5237\u65b0\u4ee4\u724c\u8bf7\u6c42\u3002",
+        "properties": {
+          "refresh_token": {
+            "minLength": 1,
+            "title": "Refresh Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "refresh_token"
+        ],
+        "title": "TokenRefreshRequest",
+        "type": "object"
+      },
+      "UserProfile": {
+        "additionalProperties": false,
+        "description": "\u5f53\u524d\u7528\u6237\u4fe1\u606f\uff08GET /auth/me\uff09\u3002\u4e0d\u542b\u5bc6\u7801\u54c8\u5e0c\u3002",
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
+          },
+          "status": {
+            "minLength": 1,
+            "title": "Status",
+            "type": "string"
+          },
+          "tenant_id": {
+            "minLength": 1,
+            "title": "Tenant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "tenant_id",
+          "status"
+        ],
+        "title": "UserProfile",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
       }
     }
   },
@@ -79,6 +391,376 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/admin/registrations/pending": {
+      "get": {
+        "description": "\u5217\u51fa\u5f85\u5ba1\u6838\u6ce8\u518c\uff08\u5206\u9875\uff09\u3002\u4ec5\u7ba1\u7406\u7aef\u53ef\u8bbf\u95ee\u3002",
+        "operationId": "list_pending_api_v1_admin_registrations_pending_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PendingRegistration"
+                  },
+                  "title": "Response List Pending Api V1 Admin Registrations Pending Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Pending",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/registrations/{user_id}/approve": {
+      "post": {
+        "description": "\u6279\u51c6\u6ce8\u518c\uff1aPENDING \u2192 ACTIVE\u3002\u4ec5\u7ba1\u7406\u7aef\u53ef\u8bbf\u95ee\u3002",
+        "operationId": "approve_registration_api_v1_admin_registrations__user_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Approve Registration Api V1 Admin Registrations  User Id  Approve Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve Registration",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/registrations/{user_id}/reject": {
+      "post": {
+        "description": "\u62d2\u7edd\u6ce8\u518c\uff1aPENDING \u2192 REJECTED\u3002REJECTED \u7528\u6237\u4e0d\u80fd\u767b\u5f55\u3002\u4ec5\u7ba1\u7406\u7aef\u53ef\u8bbf\u95ee\u3002",
+        "operationId": "reject_registration_api_v1_admin_registrations__user_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Reject Registration Api V1 Admin Registrations  User Id  Reject Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject Registration",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/admin/tenants/{tenant_id}/reset": {
+      "post": {
+        "description": "\u91cd\u7f6e demo \u79df\u6237\u6570\u636e\u3002\n\n\u4ec5 System Admin \u53ef\u6267\u884c\uff08\u8bbe\u8ba1 API \u5217\u8868\uff09\u3002\n\u5173\u952e\u7ea6\u675f\uff1a\u53ea\u6e05\u9664\u6307\u5b9a demo \u79df\u6237\u7684\u6570\u636e\uff0c\u4e0d\u5f71\u54cd\u5176\u4ed6\u79df\u6237\uff08\u8bbe\u8ba1\u9a8c\u6536\uff09\u3002",
+        "operationId": "reset_demo_tenant_api_v1_admin_tenants__tenant_id__reset_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Tenant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Reset Demo Tenant Api V1 Admin Tenants  Tenant Id  Reset Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset Demo Tenant",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "description": "\u5b66\u751f/\u7ba1\u7406\u5458\u767b\u5f55\u3002\n\nPENDING/REJECTED/SUSPENDED \u7528\u6237\u4e0d\u80fd\u767b\u5f55\uff08FORBIDDEN\uff09\u3002\n\u5bc6\u7801\u9519\u8bef\u7edf\u4e00\u8fd4\u56de 401\uff08\u4e0d\u6cc4\u6f0f\u8d26\u53f7\u662f\u5426\u5b58\u5728\uff09\u3002",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokens"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Login",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "description": "\u8fd4\u56de\u5f53\u524d\u7528\u6237\u4fe1\u606f\uff08\u4e0d\u542b\u5bc6\u7801\u54c8\u5e0c\uff09\u3002",
+        "operationId": "me_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfile"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Me",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "description": "\u7528 refresh token \u6362\u65b0\u7684 access + refresh token \u5bf9\u3002\n\n\u4e00\u6b21\u6027\u8f6e\u6362\uff1a\u65e7\u4f1a\u8bdd\u540a\u9500\uff0c\u7b7e\u53d1\u65b0\u4f1a\u8bdd\u3002\n\u590d\u7528\u68c0\u6d4b\uff1a\u5df2\u540a\u9500\u7684 refresh token \u518d\u6b21\u63d0\u4ea4 \u2192 401\uff08\u4ee4\u724c\u53ef\u80fd\u88ab\u76d7\u7528\uff09\u3002",
+        "operationId": "refresh_api_v1_auth_refresh_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRefreshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokens"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refresh",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "description": "\u5b66\u751f\u81ea\u52a9\u6ce8\u518c\u3002\u6ce8\u518c\u5373 PENDING\uff0c\u5f85\u7ba1\u7406\u5458\u5ba1\u6838\uff08\u8bbe\u8ba1 \u00a717.3.1\uff09\u3002",
+        "operationId": "register_api_v1_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "health_health_get",

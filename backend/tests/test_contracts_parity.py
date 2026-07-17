@@ -26,12 +26,20 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from app.contracts import (
+    AuthTokens,
     ChatCompletionChunk,
     ErrorCode,
     ErrorEnvelope,
     HealthResponse,
+    LoginRequest,
+    PendingRegistration,
+    RegisterRequest,
+    RegisterResponse,
+    RegistrationDecisionRequest,
     SandboxResult,
     SystemPingResponse,
+    TokenRefreshRequest,
+    UserProfile,
     WorkerJobEnvelope,
 )
 
@@ -138,6 +146,61 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
             "enqueued_at": "2026-07-17T00:00:00Z",
         }
     ],
+    "RegisterRequest": [
+        {"email": "student@example.com", "password": "S3cret-Pass!"},
+        {"email": "stu@uni.edu", "password": "another-ok-pw", "student_no": "2024001"},
+    ],
+    "RegisterResponse": [
+        {
+            "user_id": "00000000-0000-0000-0000-000000000001",
+            "email": "student@example.com",
+            "status": "PENDING",
+            "message": "Registration received. An administrator will review it.",
+        }
+    ],
+    "LoginRequest": [
+        {"email": "student@example.com", "password": "S3cret-Pass!"}
+    ],
+    "AuthTokens": [
+        {
+            "access_token": "eyJhbGciOiJIUzI1NiJ9.payload.sig",
+            "refresh_token": "eyJhbGciOiJIUzI1NiJ9.refresh.sig",
+            "token_type": "Bearer",
+            "expires_in": 900,
+        }
+    ],
+    "TokenRefreshRequest": [
+        {"refresh_token": "eyJhbGciOiJIUzI1NiJ9.refresh.sig"}
+    ],
+    "UserProfile": [
+        {
+            "id": "00000000-0000-0000-0000-000000000001",
+            "email": "student@example.com",
+            "tenant_id": "00000000-0000-0000-0000-000000000002",
+            "roles": ["STUDENT"],
+            "status": "ACTIVE",
+        },
+        {
+            "id": "00000000-0000-0000-0000-000000000003",
+            "email": "admin@uni.edu",
+            "tenant_id": "00000000-0000-0000-0000-000000000002",
+            "roles": ["SYSTEM_ADMIN"],
+            "status": "ACTIVE",
+            "display_name": "Admin",
+        },
+    ],
+    "PendingRegistration": [
+        {
+            "user_id": "00000000-0000-0000-0000-000000000001",
+            "email": "student@example.com",
+            "status": "PENDING",
+            "created_at": "2026-07-17T00:00:00Z",
+        }
+    ],
+    "RegistrationDecisionRequest": [
+        {},
+        {"reason": "Missing student ID"},
+    ],
 }
 
 MODEL_BY_NAME: dict[str, type[BaseModel]] = {
@@ -147,6 +210,14 @@ MODEL_BY_NAME: dict[str, type[BaseModel]] = {
     "ChatCompletionChunk": ChatCompletionChunk,
     "SandboxResult": SandboxResult,
     "WorkerJobEnvelope": WorkerJobEnvelope,
+    "RegisterRequest": RegisterRequest,
+    "RegisterResponse": RegisterResponse,
+    "LoginRequest": LoginRequest,
+    "AuthTokens": AuthTokens,
+    "TokenRefreshRequest": TokenRefreshRequest,
+    "UserProfile": UserProfile,
+    "PendingRegistration": PendingRegistration,
+    "RegistrationDecisionRequest": RegistrationDecisionRequest,
 }
 
 

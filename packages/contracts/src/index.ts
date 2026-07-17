@@ -7,6 +7,7 @@
  * conformance gate (`pnpm contracts:check`) enforces it via JSON Schema.
  */
 
+export * from "./auth.js";
 export * from "./errors.js";
 export * from "./health.js";
 export * from "./streaming.js";
