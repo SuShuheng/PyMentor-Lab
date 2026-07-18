@@ -1,6 +1,11 @@
 packages:
+  - "apps/web"
+  - "apps/admin"
   - "apps/desktop"
   - "workers/agent-worker"
+  - "packages/ui"
+  - "packages/charts"
+  - "packages/config"
   - "packages/contracts"
   - "packages/api-client"
 nodeLinker: hoisted
