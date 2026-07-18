@@ -27,6 +27,7 @@ from app.db import get_db
 from app.evidence import record_audit
 from app.idempotency import save_response
 from app.models import ProviderConfig, User
+from app.observability import record_provider_call
 from app.providers import (
     ProviderSecretError,
     decode_provider_master_key,
@@ -348,6 +349,21 @@ async def test_provider_connectivity(
     response_body = view.model_dump(mode="json")
     trace_id = str(request.state.trace_id)
     with SqlAlchemyUnitOfWork(accept_session=db) as uow:
+        record_provider_call(
+            db,
+            tenant_id=admin.tenant_id,
+            provider_config_id=config.id,
+            provider_type=config.provider_type,
+            vendor=config.vendor,
+            model=config.model,
+            operation="CONNECTIVITY_TEST",
+            outcome="SUCCEEDED" if result.ok else "FAILED",
+            latency_ms=result.latency_ms,
+            rate_limited=result.status_code == 429,
+            status_code=result.status_code,
+            error_code=None if result.ok else "CONNECTIVITY_FAILED",
+            trace_id=trace_id,
+        )
         record_audit(
             db,
             tenant_id=admin.tenant_id,

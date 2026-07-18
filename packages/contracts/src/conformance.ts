@@ -12,12 +12,14 @@ import { dirname, resolve } from "node:path";
 
 import {
   AdminAgentRunView,
+  AdminLogPage,
   AdminEvidencePage,
   AdminMasterySummary,
   AdminResourceReviewPage,
   AdminStudentPage,
   AdminStudentProfile,
   AdminStudentProgress,
+  AdminSystemHealthView,
   AgentAuditEnvelope,
   AgentProposalEnvelope,
   AgentReplayRequest,
@@ -59,6 +61,7 @@ import {
   ProviderConfigUpdate,
   ProviderConfigView,
   ProviderConnectivityView,
+  ProviderMetricsView,
   RegisterRequest,
   RegisterResponse,
   RegistrationDecisionRequest,
@@ -96,6 +99,66 @@ const agentContext = {
 };
 
 const cases: Cases = {
+  AdminSystemHealthView: {
+    schema: AdminSystemHealthView,
+    samples: [
+      {
+        status: "DEGRADED",
+        checked_at: "2026-07-18T12:00:00Z",
+        components: [
+          { component: "api", status: "HEALTHY", latency_ms: 0, detail: "ready" },
+          {
+            component: "worker",
+            status: "DEGRADED",
+            latency_ms: 25,
+            detail: "unavailable",
+          },
+        ],
+      },
+    ],
+  },
+  ProviderMetricsView: {
+    schema: ProviderMetricsView,
+    samples: [
+      {
+        since: "2026-07-18T11:00:00Z",
+        until: "2026-07-18T12:00:00Z",
+        items: [
+          {
+            provider_type: "LLM",
+            vendor: "xfyun",
+            model: "spark-v4",
+            calls: 3,
+            errors: 1,
+            rate_limited: 1,
+            average_latency_ms: 20,
+            p95_latency_ms: 30,
+            error_rate: 0.3333333333333333,
+          },
+        ],
+      },
+    ],
+  },
+  AdminLogPage: {
+    schema: AdminLogPage,
+    samples: [
+      {
+        items: [
+          {
+            id: "90000000-0000-4000-8000-000000000001",
+            source: "AUDIT",
+            level: "INFO",
+            message: "PROVIDER_CONFIG_UPDATED",
+            trace_id: "trace-admin",
+            context: { changed_fields: ["enabled"] },
+            created_at: "2026-07-18T12:00:00Z",
+          },
+        ],
+        page: { number: 1, size: 50, total_items: 1, total_pages: 1 },
+        truncated: false,
+      },
+    ],
+  },
   ProviderConfigCreate: {
     schema: ProviderConfigCreate,
     samples: [

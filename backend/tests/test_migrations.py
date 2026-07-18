@@ -65,6 +65,7 @@ EXPECTED_0008_TABLES = {
     "resource_reviews",
 }
 EXPECTED_0009_TABLES = {"provider_configs"}
+EXPECTED_0010_TABLES = {"operational_logs", "provider_call_records"}
 
 
 def _skip_if_no_postgres() -> None:
@@ -339,9 +340,7 @@ def test_resource_publication_uniques_checks_and_catalog_foreign_key() -> None:
     object_uniques = {row["name"] for row in inspector.get_unique_constraints("resource_objects")}
     review_uniques = {row["name"] for row in inspector.get_unique_constraints("resource_reviews")}
     job_checks = {row["name"] for row in inspector.get_check_constraints("resource_jobs")}
-    resource_checks = {
-        row["name"] for row in inspector.get_check_constraints("learning_resources")
-    }
+    resource_checks = {row["name"] for row in inspector.get_check_constraints("learning_resources")}
     job_foreign_keys = {row["name"] for row in inspector.get_foreign_keys("resource_jobs")}
 
     assert "uq_resource_jobs_tenant_idempotency" in job_uniques
@@ -378,11 +377,31 @@ def test_provider_config_uniques_and_version_check_are_database_enforced() -> No
     from app.db import engine
 
     inspector = inspect(engine)
-    unique_names = {
-        row["name"] for row in inspector.get_unique_constraints("provider_configs")
-    }
+    unique_names = {row["name"] for row in inspector.get_unique_constraints("provider_configs")}
     indexes = {row["name"]: row for row in inspector.get_indexes("provider_configs")}
     checks = {row["name"] for row in inspector.get_check_constraints("provider_configs")}
     assert "uq_provider_configs_identity" in unique_names
     assert indexes["uq_provider_configs_enabled_type"]["unique"] is True
     assert "ck_provider_configs_version_positive" in checks
+
+
+def test_migration_0010_creates_observability_tables_and_bounds() -> None:
+    """0010 persists redacted logs and bounded Provider call telemetry."""
+    _skip_if_no_postgres()
+    cfg = _make_config()
+    command.upgrade(cfg, "head")
+
+    from app.db import engine
+
+    inspector = inspect(engine)
+    assert set(inspector.get_table_names()) >= EXPECTED_0010_TABLES
+    checks = {row["name"] for row in inspector.get_check_constraints("provider_call_records")}
+    assert {
+        "ck_provider_calls_latency_nonnegative",
+        "ck_provider_calls_input_nonnegative",
+        "ck_provider_calls_output_nonnegative",
+    } <= checks
+    log_columns = {row["name"] for row in inspector.get_columns("operational_logs")}
+    assert "context_data" in log_columns
+    assert "headers" not in log_columns
+    assert "body" not in log_columns

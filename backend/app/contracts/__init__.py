@@ -56,6 +56,11 @@ from app.contracts.learning import (
     TaskSubmissionResponse,
     TodayItem,
 )
+from app.contracts.observability import (
+    AdminLogPage,
+    AdminSystemHealthView,
+    ProviderMetricsView,
+)
 from app.contracts.providers import (
     ProviderConfigCreate,
     ProviderConfigPage,
@@ -144,11 +149,13 @@ from app.contracts.worker import (
 __all__ = [
     "AdminAgentRunView",
     "AdminEvidencePage",
+    "AdminLogPage",
     "AdminMasterySummary",
     "AdminResourceReviewPage",
     "AdminStudentPage",
     "AdminStudentProfile",
     "AdminStudentProgress",
+    "AdminSystemHealthView",
     "AgentAuditDetail",
     "AgentAuditEnvelope",
     "AgentAuditEventType",
@@ -212,6 +219,7 @@ __all__ = [
     "ProviderConfigUpdate",
     "ProviderConfigView",
     "ProviderConnectivityView",
+    "ProviderMetricsView",
     "ReasoningDeltaEvent",
     "RegisterRequest",
     "RegisterResponse",

@@ -8,8 +8,10 @@ REQ-P0-021: "Requests/jobs carry trace IDs").
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from collections.abc import MutableMapping
+from time import perf_counter
 from typing import Any
 
 from starlette.datastructures import MutableHeaders
@@ -34,10 +36,60 @@ class TraceIdMiddleware:
         trace_id = trace_id_raw or f"trc_{uuid.uuid4().hex}"
         state: MutableMapping[str, Any] = scope.setdefault("state", {})
         state["trace_id"] = trace_id
+        started = perf_counter()
+        response_status = 500
 
         async def send_wrapper(message: Message) -> None:
+            nonlocal response_status
             if message["type"] == "http.response.start":
+                response_status = int(message["status"])
                 MutableHeaders(scope=message)[_HEADER] = trace_id
             await send(message)
 
-        await self.app(scope, receive, send_wrapper)
+        try:
+            await self.app(scope, receive, send_wrapper)
+        finally:
+            from app.config import get_settings
+
+            if get_settings().operational_log_persistence_enabled:
+                await asyncio.to_thread(
+                    _persist_request_log,
+                    state,
+                    method=str(scope.get("method", "")),
+                    path=str(scope.get("path", "")),
+                    status_code=response_status,
+                    duration_ms=max(0, int((perf_counter() - started) * 1000)),
+                )
+
+
+def _persist_request_log(
+    state: MutableMapping[str, Any],
+    *,
+    method: str,
+    path: str,
+    status_code: int,
+    duration_ms: int,
+) -> None:
+    """Best-effort request logging; telemetry failure never changes the response."""
+    from contextlib import suppress
+
+    from app.db import SessionLocal
+    from app.observability import record_operational_log
+
+    with suppress(Exception), SessionLocal() as db:
+        record_operational_log(
+            db,
+            tenant_id=state.get("tenant_id"),
+            source="ERROR" if status_code >= 500 else "REQUEST",
+            level="ERROR" if status_code >= 500 else "INFO",
+            message="request failed" if status_code >= 500 else "request completed",
+            trace_id=str(state.get("trace_id", "unknown")),
+            context={
+                "method": method[:16],
+                "path": path[:255],
+                "status_code": status_code,
+                "duration_ms": duration_ms,
+                "user_id": None if state.get("user_id") is None else str(state["user_id"]),
+            },
+        )
+        db.commit()

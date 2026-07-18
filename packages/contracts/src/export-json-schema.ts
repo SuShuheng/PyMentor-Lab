@@ -15,12 +15,14 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 import {
   AdminAgentRunView,
+  AdminLogPage,
   AdminEvidencePage,
   AdminMasterySummary,
   AdminResourceReviewPage,
   AdminStudentPage,
   AdminStudentProfile,
   AdminStudentProgress,
+  AdminSystemHealthView,
   AgentAuditEnvelope,
   AgentProposalEnvelope,
   AgentReplayRequest,
@@ -62,6 +64,7 @@ import {
   ProviderConfigUpdate,
   ProviderConfigView,
   ProviderConnectivityView,
+  ProviderMetricsView,
   RegisterRequest,
   RegisterResponse,
   RegistrationDecisionRequest,
@@ -91,6 +94,7 @@ const OUT = resolve(__dirname, "..", "schemas.json");
 
 const schemas = {
   AdminAgentRunView: zodToJsonSchema(AdminAgentRunView, "AdminAgentRunView"),
+  AdminLogPage: zodToJsonSchema(AdminLogPage, "AdminLogPage"),
   AdminEvidencePage: zodToJsonSchema(AdminEvidencePage, "AdminEvidencePage"),
   AdminMasterySummary: zodToJsonSchema(AdminMasterySummary, "AdminMasterySummary"),
   AdminResourceReviewPage: zodToJsonSchema(
@@ -100,6 +104,10 @@ const schemas = {
   AdminStudentPage: zodToJsonSchema(AdminStudentPage, "AdminStudentPage"),
   AdminStudentProfile: zodToJsonSchema(AdminStudentProfile, "AdminStudentProfile"),
   AdminStudentProgress: zodToJsonSchema(AdminStudentProgress, "AdminStudentProgress"),
+  AdminSystemHealthView: zodToJsonSchema(
+    AdminSystemHealthView,
+    "AdminSystemHealthView",
+  ),
   AgentAuditEnvelope: zodToJsonSchema(AgentAuditEnvelope, "AgentAuditEnvelope"),
   AgentProposalEnvelope: zodToJsonSchema(AgentProposalEnvelope, "AgentProposalEnvelope"),
   AgentReplayRequest: zodToJsonSchema(AgentReplayRequest, "AgentReplayRequest"),
@@ -158,6 +166,7 @@ const schemas = {
     ProviderConnectivityView,
     "ProviderConnectivityView",
   ),
+  ProviderMetricsView: zodToJsonSchema(ProviderMetricsView, "ProviderMetricsView"),
   PathSnapshot: zodToJsonSchema(PathSnapshot, "PathSnapshot"),
   TodayItem: zodToJsonSchema(TodayItem, "TodayItem"),
   TaskStartResponse: zodToJsonSchema(TaskStartResponse, "TaskStartResponse"),

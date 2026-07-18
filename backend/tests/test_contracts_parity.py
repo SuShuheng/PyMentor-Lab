@@ -28,11 +28,13 @@ from pydantic import BaseModel, ValidationError
 from app.contracts import (
     AdminAgentRunView,
     AdminEvidencePage,
+    AdminLogPage,
     AdminMasterySummary,
     AdminResourceReviewPage,
     AdminStudentPage,
     AdminStudentProfile,
     AdminStudentProgress,
+    AdminSystemHealthView,
     AgentAuditEnvelope,
     AgentProposalEnvelope,
     AgentReplayRequest,
@@ -75,6 +77,7 @@ from app.contracts import (
     ProviderConfigUpdate,
     ProviderConfigView,
     ProviderConnectivityView,
+    ProviderMetricsView,
     RegisterRequest,
     RegisterResponse,
     RegistrationDecisionRequest,
@@ -104,6 +107,57 @@ SCHEMAS_PATH = REPO_ROOT / "packages" / "contracts" / "schemas.json"
 
 # --- Shared fixtures (kept in lock-step with packages/contracts/src/conformance.ts) ---
 FIXTURES: dict[str, list[dict[str, Any]]] = {
+    "AdminSystemHealthView": [
+        {
+            "status": "DEGRADED",
+            "checked_at": "2026-07-18T12:00:00Z",
+            "components": [
+                {"component": "api", "status": "HEALTHY", "latency_ms": 0, "detail": "ready"},
+                {
+                    "component": "worker",
+                    "status": "DEGRADED",
+                    "latency_ms": 25,
+                    "detail": "unavailable",
+                },
+            ],
+        }
+    ],
+    "ProviderMetricsView": [
+        {
+            "since": "2026-07-18T11:00:00Z",
+            "until": "2026-07-18T12:00:00Z",
+            "items": [
+                {
+                    "provider_type": "LLM",
+                    "vendor": "xfyun",
+                    "model": "spark-v4",
+                    "calls": 3,
+                    "errors": 1,
+                    "rate_limited": 1,
+                    "average_latency_ms": 20,
+                    "p95_latency_ms": 30,
+                    "error_rate": 0.3333333333333333,
+                }
+            ],
+        }
+    ],
+    "AdminLogPage": [
+        {
+            "items": [
+                {
+                    "id": "90000000-0000-4000-8000-000000000001",
+                    "source": "AUDIT",
+                    "level": "INFO",
+                    "message": "PROVIDER_CONFIG_UPDATED",
+                    "trace_id": "trace-admin",
+                    "context": {"changed_fields": ["enabled"]},
+                    "created_at": "2026-07-18T12:00:00Z",
+                }
+            ],
+            "page": {"number": 1, "size": 50, "total_items": 1, "total_pages": 1},
+            "truncated": False,
+        }
+    ],
     "ProviderConfigCreate": [
         {
             "provider_type": "LLM",
@@ -969,6 +1023,9 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
 }
 
 MODEL_BY_NAME: dict[str, type[BaseModel]] = {
+    "AdminLogPage": AdminLogPage,
+    "AdminSystemHealthView": AdminSystemHealthView,
+    "ProviderMetricsView": ProviderMetricsView,
     "ProviderConfigCreate": ProviderConfigCreate,
     "ProviderConfigPage": ProviderConfigPage,
     "ProviderConfigUpdate": ProviderConfigUpdate,

@@ -70,6 +70,8 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="user not found",
         )
+    request.state.user_id = user.id
+    request.state.tenant_id = user.tenant_id
     return user
 
 

@@ -46,6 +46,10 @@ class Settings:
     agent_event_dlq_maxlen: int = int(_env("PYMENTOR_AGENT_EVENT_DLQ_MAXLEN", "1000"))
     agent_event_retry_base_ms: int = int(_env("PYMENTOR_AGENT_EVENT_RETRY_BASE_MS", "100"))
     agent_event_retry_max_ms: int = int(_env("PYMENTOR_AGENT_EVENT_RETRY_MAX_MS", "5000"))
+    worker_health_url: str = _env("PYMENTOR_WORKER_HEALTH_URL", "http://127.0.0.1:8081/ready")
+    operational_log_persistence_enabled: bool = (
+        _env("PYMENTOR_OPERATIONAL_LOG_PERSISTENCE_ENABLED", "false").lower() == "true"
+    )
 
     # JWT — the secret MUST be provided in any non-test environment.
     # Dev default is long enough to satisfy HS256's 32-byte recommendation.

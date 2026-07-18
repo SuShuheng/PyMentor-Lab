@@ -61,6 +61,7 @@ from app.models.learning import (
     TaskStatusHistory,
     TaskVersion,
 )
+from app.models.observability import OperationalLog, ProviderCallRecord
 from app.models.provider import ProviderConfig
 from app.models.resource import (
     LearningResourceRecord,
@@ -99,6 +100,7 @@ __all__ = [
     "MasteryStateHistory",
     "MasteryStatus",
     "OutboxEvent",
+    "OperationalLog",
     "PathStepKind",
     "PathValidationStatus",
     "ProfileChangeProposal",
@@ -108,6 +110,7 @@ __all__ = [
     "ProfileProposalStatus",
     "ProfileVersion",
     "ProviderConfig",
+    "ProviderCallRecord",
     "ResourceJobRecord",
     "ResourceObjectRecord",
     "ResourceReviewRecord",
