@@ -1,0 +1,78 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "question_id": {
+      "format": "uuid",
+      "title": "Question Id",
+      "type": "string"
+    },
+    "node_id": {
+      "format": "uuid",
+      "title": "Node Id",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "MULTIPLE_CHOICE",
+        "CODE_COMPLETION",
+        "CODE_REPAIR",
+        "CODE_WRITING"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "prompt_template": {
+      "minLength": 1,
+      "title": "Prompt Template",
+      "type": "string"
+    },
+    "parameter_schema": {
+      "additionalProperties": true,
+      "title": "Parameter Schema",
+      "type": "object"
+    },
+    "answer_schema": {
+      "additionalProperties": true,
+      "title": "Answer Schema",
+      "type": "object"
+    },
+    "test_case_ids": {
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Test Case Ids",
+      "type": "array"
+    },
+    "source_ids": {
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Source Ids",
+      "type": "array"
+    },
+    "version": {
+      "pattern": "^[1-9]\\d*\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "question_id",
+    "node_id",
+    "kind",
+    "prompt_template",
+    "parameter_schema",
+    "answer_schema",
+    "test_case_ids",
+    "source_ids",
+    "version"
+  ],
+  "title": "QuestionTemplateAsset",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pymentor-lab.local/schemas/v1/question-template.schema.json"
+}

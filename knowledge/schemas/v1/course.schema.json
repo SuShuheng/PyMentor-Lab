@@ -1,0 +1,84 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "course_id": {
+      "format": "uuid",
+      "title": "Course Id",
+      "type": "string"
+    },
+    "slug": {
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "title": "Slug",
+      "type": "string"
+    },
+    "title": {
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "audience": {
+      "minLength": 1,
+      "title": "Audience",
+      "type": "string"
+    },
+    "language": {
+      "const": "zh-CN",
+      "title": "Language",
+      "type": "string"
+    },
+    "chapter_ids": {
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Chapter Ids",
+      "type": "array"
+    },
+    "required_chapter_count": {
+      "minimum": 1,
+      "title": "Required Chapter Count",
+      "type": "integer"
+    },
+    "minimum_node_count": {
+      "minimum": 1,
+      "title": "Minimum Node Count",
+      "type": "integer"
+    },
+    "required_deep_unit_count": {
+      "minimum": 1,
+      "title": "Required Deep Unit Count",
+      "type": "integer"
+    },
+    "deep_unit_node_ids": {
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Deep Unit Node Ids",
+      "type": "array"
+    },
+    "version": {
+      "pattern": "^[1-9]\\d*\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "course_id",
+    "slug",
+    "title",
+    "audience",
+    "language",
+    "chapter_ids",
+    "required_chapter_count",
+    "minimum_node_count",
+    "required_deep_unit_count",
+    "deep_unit_node_ids",
+    "version"
+  ],
+  "title": "CourseAsset",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pymentor-lab.local/schemas/v1/course.schema.json"
+}

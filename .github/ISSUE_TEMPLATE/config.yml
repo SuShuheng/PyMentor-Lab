@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: PyMentor Lab discussions
+    url: https://github.com/SuShuHeng/PyMentor-Lab
+    about: Please use pull requests linked to a BE/FE/INT task ID for code changes.

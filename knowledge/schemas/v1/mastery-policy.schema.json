@@ -1,0 +1,66 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "policy_id": {
+      "format": "uuid",
+      "title": "Policy Id",
+      "type": "string"
+    },
+    "name": {
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "pass_threshold": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Pass Threshold",
+      "type": "number"
+    },
+    "stable_attempts": {
+      "minimum": 1,
+      "title": "Stable Attempts",
+      "type": "integer"
+    },
+    "max_support_level": {
+      "maximum": 3,
+      "minimum": 0,
+      "title": "Max Support Level",
+      "type": "integer"
+    },
+    "min_transfer_score": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Min Transfer Score",
+      "type": "number"
+    },
+    "review_intervals_days": {
+      "items": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "minItems": 1,
+      "title": "Review Intervals Days",
+      "type": "array"
+    },
+    "version": {
+      "pattern": "^[1-9]\\d*\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "policy_id",
+    "name",
+    "pass_threshold",
+    "stable_attempts",
+    "max_support_level",
+    "min_transfer_score",
+    "review_intervals_days",
+    "version"
+  ],
+  "title": "MasteryPolicyAsset",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pymentor-lab.local/schemas/v1/mastery-policy.schema.json"
+}

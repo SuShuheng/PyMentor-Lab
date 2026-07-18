@@ -1,0 +1,161 @@
+# PyMentor Lab local development stack.
+#
+# Pinned versions (frozen design §5.2): PostgreSQL 16, Redis 7, MinIO RELEASE
+# image, Python 3.13, Node 20. `docker compose config` validates without a
+# running daemon; full `up --build` requires Docker.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pymentor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pymentor_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-pymentor}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pymentor}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis/redis-stack-server:7.4.0-v8
+    environment:
+      REDIS_ARGS: "--appendonly yes"
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:RELEASE.2024-10-13T13-34-11Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-pymentor}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-pymentor_dev}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/api.Dockerfile
+    environment:
+      PYMENTOR_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-pymentor}:${POSTGRES_PASSWORD:-pymentor_dev}@postgres:5432/${POSTGRES_DB:-pymentor}
+      PYMENTOR_SERVICE_NAME: api
+      PYMENTOR_REDIS_URL: redis://redis:6379/0
+      PYMENTOR_AGENT_EVENT_CONSUMER_ENABLED: "true"
+      PYMENTOR_AGENT_EVENT_STREAM: pymentor:agent-events:v1
+      PYMENTOR_AGENT_EVENT_GROUP: pymentor-api-v1
+      PYMENTOR_AGENT_EVENT_CONSUMER: api-1
+      PYMENTOR_WORKER_HEALTH_URL: http://worker:8081/ready
+      PYMENTOR_OPERATIONAL_LOG_PERSISTENCE_ENABLED: "true"
+      PYMENTOR_OBJECT_STORE_ENDPOINT: minio:9000
+      PYMENTOR_OBJECT_STORE_ACCESS_KEY: ${MINIO_ROOT_USER:-pymentor}
+      PYMENTOR_OBJECT_STORE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-pymentor_dev}
+      PYMENTOR_OBJECT_STORE_BUCKET: pymentor-resources
+      PYMENTOR_OBJECT_STORE_SECURE: "false"
+      PYMENTOR_PROVIDER_MASTER_KEY: ${PYMENTOR_PROVIDER_MASTER_KEY:-}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request, sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/ready').status==200 else 1)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  worker:
+    build:
+      context: .
+      dockerfile: infra/worker.Dockerfile
+    environment:
+      PYMENTOR_WORKER_PORT: "8081"
+      PYMENTOR_REDIS_URL: redis://redis:6379/0
+      PYMENTOR_WORKER_CONCURRENCY: "4"
+      PYMENTOR_WORKER_SHUTDOWN_GRACE_MS: "10000"
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "127.0.0.1:8081:8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:8081/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  sandbox:
+    # Sandbox SUPERVISOR (BE-005). Signed internal service only; no host port.
+    # Bound to the internal Compose network with the API. The Docker Engine
+    # socket is mounted read-only so the executor can create/remove job
+    # containers; production uses a dedicated sandbox host or rootless engine,
+    # never a shared rootful daemon socket.
+    build:
+      context: .
+      dockerfile: infra/sandbox.Dockerfile
+    environment:
+      PYMENTOR_SANDBOX_SECRET: ${PYMENTOR_SANDBOX_SECRET:-dev-only-insecure-sandbox-secret-change-me-min-32-bytes}
+      PYMENTOR_SANDBOX_RUNTIME_IMAGE: ${PYMENTOR_SANDBOX_RUNTIME_IMAGE:-pymentor/sandbox-runtime:1.0}
+      PYMENTOR_SANDBOX_REQUEST_TIMEOUT_SECONDS: "30"
+    expose:
+      - "8090"
+    volumes:
+      # Read-only engine socket; the supervisor creates/removes labeled job
+      # containers only and exposes no generic Docker operation.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen(''http://localhost:8090/healthz'',timeout=2).status==200 else 1)" || exit 0',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:

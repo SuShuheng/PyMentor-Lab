@@ -1,0 +1,33 @@
+{
+  "name": "@pymentor/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Generated OpenAPI TypeScript SDK for the PyMentor Lab API (student + admin renderers).",
+  "main": "./src/generated/index.ts",
+  "types": "./src/generated/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/generated/index.ts",
+      "import": "./src/generated/index.ts"
+    }
+  },
+  "scripts": {
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "gen:openapi": "uv run python ../../scripts/export_openapi.py",
+    "gen:client": "openapi-ts",
+    "gen": "pnpm gen:openapi && pnpm gen:client",
+    "freshness": "pnpm gen && git diff --exit-code src/generated openapi.json"
+  },
+  "dependencies": {
+    "@hey-api/client-fetch": "^0.7.0"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "^0.66.0",
+    "@types/node": "^20.16.11",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

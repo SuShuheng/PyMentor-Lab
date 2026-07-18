@@ -1,0 +1,97 @@
+[project]
+name = "pymentor-lab"
+version = "0.0.0"
+description = "PyMentor Lab — higher-education Python learning system (competition release V1.0)."
+readme = "README.md"
+requires-python = ">=3.13"
+license = { text = "CC-BY-NC-4.0" }
+authors = [{ name = "PyMentor Lab Team" }]
+
+# Runtime dependencies. SQLAlchemy/psycopg moved to runtime in BE-002 (identity
+# persistence); JWT/password/HTTP form libs are core to the auth service.
+dependencies = [
+    "fastapi>=0.115",
+    "pydantic>=2.9",
+    "uvicorn[standard]>=0.32",
+    "sqlalchemy>=2.0",
+    "psycopg[binary]>=3.2",
+    "pyjwt>=2.9",
+    "bcrypt>=4.2",
+    "python-multipart>=0.0.12",
+    "email-validator>=2.2",
+    "redis==8.0.1",
+    "httpx>=0.27",
+    "minio>=7.2,<8",
+    "pycryptodome==3.23.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.7",
+    "mypy>=1.13",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "httpx2>=2.7",
+    "alembic>=1.13",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# This root project is a tooling/dependency anchor only; the backend app
+# package is shipped so editable installs resolve. Each service grows its own
+# packaging as its task lands.
+packages = ["backend"]
+
+# --------------------------------------------------------------------------- #
+# Ruff — format & lint
+# --------------------------------------------------------------------------- #
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = ["migrations/versions", "backend/migrations/versions", "packages/api-client/src/generated"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF"]
+# 本项目文档字符串与注释用中文，全角标点歧义检查（RUF001/002/003）不适用。
+# B008 与 FastAPI 依赖注入（Depends 在参数默认值中）冲突，是 FastAPI 标准用法。
+ignore = ["RUF001", "RUF002", "RUF003", "B008"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "sandbox"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+# --------------------------------------------------------------------------- #
+# Mypy — static type checking
+# --------------------------------------------------------------------------- #
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_reexport = true
+plugins = ["pydantic.mypy"]
+mypy_path = "backend:sandbox"
+exclude = "migrations/versions/|packages/api-client/src/generated"
+
+[[tool.mypy.overrides]]
+module = "alembic.*"
+ignore_errors = true
+
+# --------------------------------------------------------------------------- #
+# Pytest
+# --------------------------------------------------------------------------- #
+[tool.pytest.ini_options]
+minversion = "8.3"
+testpaths = ["backend/tests", "sandbox/tests"]
+pythonpath = ["backend", "sandbox", "."]
+asyncio_mode = "auto"
+addopts = "-ra --strict-markers --strict-config"
+filterwarnings = ["error"]
+markers = [
+    "docker: requires a real Linux Docker Engine and the pinned runtime image",
+]
