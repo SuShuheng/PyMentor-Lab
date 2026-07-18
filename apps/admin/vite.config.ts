@@ -1,16 +1,17 @@
 import react from "@vitejs/plugin-react";
-import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+import { dirname } from "node:path";
 import { defineConfig } from "vite";
 
-const localReact = fileURLToPath(
-  new URL("./node_modules/react", import.meta.url),
-);
-const localReactDom = fileURLToPath(
-  new URL("./node_modules/react-dom", import.meta.url),
-);
-const localPhosphor = fileURLToPath(
-  new URL("./node_modules/@phosphor-icons/react", import.meta.url),
-);
+const require = createRequire(import.meta.url);
+
+function packageRoot(name: string): string {
+  return dirname(require.resolve(`${name}/package.json`));
+}
+
+const localReact = packageRoot("react");
+const localReactDom = packageRoot("react-dom");
+const localPhosphor = packageRoot("@phosphor-icons/react");
 
 export default defineConfig({
   plugins: [react()],
