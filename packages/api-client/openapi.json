@@ -1,6 +1,936 @@
 {
   "components": {
     "schemas": {
+      "AdminAgentRunView": {
+        "additionalProperties": false,
+        "properties": {
+          "checkpoint_thread_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checkpoint Thread Id"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "event_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Event Id",
+            "type": "string"
+          },
+          "external_run_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "External Run Id",
+            "type": "string"
+          },
+          "fallback_used": {
+            "title": "Fallback Used",
+            "type": "boolean"
+          },
+          "input_snapshot": {
+            "additionalProperties": true,
+            "title": "Input Snapshot",
+            "type": "object"
+          },
+          "latest_checkpoint_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Checkpoint Id"
+          },
+          "latest_sequence": {
+            "minimum": 0.0,
+            "title": "Latest Sequence",
+            "type": "integer"
+          },
+          "output_snapshot": {
+            "additionalProperties": true,
+            "title": "Output Snapshot",
+            "type": "object"
+          },
+          "route": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Route"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Status",
+            "type": "string"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          },
+          "tool_calls": {
+            "items": {
+              "$ref": "#/components/schemas/AdminAgentToolCall"
+            },
+            "title": "Tool Calls",
+            "type": "array"
+          },
+          "trace_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "external_run_id",
+          "event_id",
+          "trace_id",
+          "student_id",
+          "status",
+          "route",
+          "latest_sequence",
+          "checkpoint_thread_id",
+          "latest_checkpoint_id",
+          "fallback_used",
+          "error_code",
+          "input_snapshot",
+          "output_snapshot",
+          "started_at",
+          "completed_at",
+          "created_at",
+          "tool_calls"
+        ],
+        "title": "AdminAgentRunView",
+        "type": "object"
+      },
+      "AdminAgentToolCall": {
+        "additionalProperties": false,
+        "properties": {
+          "argument_digest": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Argument Digest"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "event_type": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Event Type",
+            "type": "string"
+          },
+          "latency_ms": {
+            "minimum": 0.0,
+            "title": "Latency Ms",
+            "type": "integer"
+          },
+          "node": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "result_digest": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Digest"
+          },
+          "retry_count": {
+            "minimum": 0.0,
+            "title": "Retry Count",
+            "type": "integer"
+          },
+          "sequence": {
+            "minimum": 1.0,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "tool_name": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Tool Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sequence",
+          "node",
+          "tool_name",
+          "event_type",
+          "status",
+          "argument_digest",
+          "result_digest",
+          "latency_ms",
+          "retry_count",
+          "error_code",
+          "occurred_at"
+        ],
+        "title": "AdminAgentToolCall",
+        "type": "object"
+      },
+      "AdminEvidenceItem": {
+        "additionalProperties": false,
+        "properties": {
+          "course_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "event_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Event Type",
+            "type": "string"
+          },
+          "evidence_confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Evidence Confidence",
+            "type": "number"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "trace_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "event_id",
+          "event_type",
+          "course_id",
+          "node_id",
+          "task_id",
+          "trace_id",
+          "evidence_confidence",
+          "created_at"
+        ],
+        "title": "AdminEvidenceItem",
+        "type": "object"
+      },
+      "AdminEvidencePage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminEvidenceItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "title": "AdminEvidencePage",
+        "type": "object"
+      },
+      "AdminLogItem": {
+        "additionalProperties": false,
+        "properties": {
+          "context": {
+            "additionalProperties": true,
+            "title": "Context",
+            "type": "object"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "level": {
+            "maxLength": 16,
+            "minLength": 1,
+            "title": "Level",
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/OperationalLogSource"
+          },
+          "trace_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Trace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "level",
+          "message",
+          "trace_id",
+          "context",
+          "created_at"
+        ],
+        "title": "AdminLogItem",
+        "type": "object"
+      },
+      "AdminLogPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminLogItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "truncated"
+        ],
+        "title": "AdminLogPage",
+        "type": "object"
+      },
+      "AdminMasterySummary": {
+        "additionalProperties": false,
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "course_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Course Id"
+          },
+          "due_reviews": {
+            "minimum": 0.0,
+            "title": "Due Reviews",
+            "type": "integer"
+          },
+          "stable_ratio": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Stable Ratio",
+            "type": "number"
+          },
+          "total_states": {
+            "minimum": 0.0,
+            "title": "Total States",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "course_id",
+          "total_states",
+          "counts",
+          "due_reviews",
+          "stable_ratio"
+        ],
+        "title": "AdminMasterySummary",
+        "type": "object"
+      },
+      "AdminProfileDimension": {
+        "additionalProperties": false,
+        "properties": {
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "dimension": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Dimension",
+            "type": "string"
+          },
+          "scope_key": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Scope Key",
+            "type": "string"
+          },
+          "score": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "number"
+          },
+          "support_level": {
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Support Level",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dimension",
+          "scope_key",
+          "score",
+          "confidence",
+          "support_level"
+        ],
+        "title": "AdminProfileDimension",
+        "type": "object"
+      },
+      "AdminResourceGateReview": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "findings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "gate": {
+            "maxLength": 16,
+            "minLength": 1,
+            "title": "Gate",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "reviewer": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Reviewer",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "gate",
+          "version",
+          "passed",
+          "findings",
+          "reviewer",
+          "created_at"
+        ],
+        "title": "AdminResourceGateReview",
+        "type": "object"
+      },
+      "AdminResourceReviewItem": {
+        "additionalProperties": false,
+        "properties": {
+          "content_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Content Digest",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "gates": {
+            "items": {
+              "$ref": "#/components/schemas/AdminResourceGateReview"
+            },
+            "title": "Gates",
+            "type": "array"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "resource_id": {
+            "format": "uuid",
+            "title": "Resource Id",
+            "type": "string"
+          },
+          "resource_type": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Resource Type",
+            "type": "string"
+          },
+          "status": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Status",
+            "type": "string"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "resource_id",
+          "job_id",
+          "student_id",
+          "resource_type",
+          "version",
+          "status",
+          "content_digest",
+          "created_at",
+          "gates"
+        ],
+        "title": "AdminResourceReviewItem",
+        "type": "object"
+      },
+      "AdminResourceReviewPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminResourceReviewItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "title": "AdminResourceReviewPage",
+        "type": "object"
+      },
+      "AdminStudentPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminStudentSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageMetadata"
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "title": "AdminStudentPage",
+        "type": "object"
+      },
+      "AdminStudentProfile": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "dimensions": {
+            "items": {
+              "$ref": "#/components/schemas/AdminProfileDimension"
+            },
+            "title": "Dimensions",
+            "type": "array"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 0.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "student_id",
+          "version",
+          "dimensions",
+          "created_at"
+        ],
+        "title": "AdminStudentProfile",
+        "type": "object"
+      },
+      "AdminStudentProgress": {
+        "additionalProperties": false,
+        "properties": {
+          "completed_tasks": {
+            "minimum": 0.0,
+            "title": "Completed Tasks",
+            "type": "integer"
+          },
+          "current_node_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Node Id"
+          },
+          "current_path_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Path Id"
+          },
+          "due_reviews": {
+            "minimum": 0.0,
+            "title": "Due Reviews",
+            "type": "integer"
+          },
+          "last_active_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Active At"
+          },
+          "mastery_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Mastery Counts",
+            "type": "object"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "student_id",
+          "current_path_id",
+          "current_node_id",
+          "completed_tasks",
+          "due_reviews",
+          "mastery_counts",
+          "last_active_at"
+        ],
+        "title": "AdminStudentProgress",
+        "type": "object"
+      },
+      "AdminStudentSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "completed_tasks": {
+            "minimum": 0.0,
+            "title": "Completed Tasks",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "due_reviews": {
+            "minimum": 0.0,
+            "title": "Due Reviews",
+            "type": "integer"
+          },
+          "email": {
+            "maxLength": 255,
+            "minLength": 3,
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "profile_version": {
+            "minimum": 0.0,
+            "title": "Profile Version",
+            "type": "integer"
+          },
+          "status": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Status",
+            "type": "string"
+          },
+          "student_no": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student No"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "student_no",
+          "display_name",
+          "status",
+          "created_at",
+          "profile_version",
+          "completed_tasks",
+          "due_reviews"
+        ],
+        "title": "AdminStudentSummary",
+        "type": "object"
+      },
+      "AdminSystemHealthView": {
+        "additionalProperties": false,
+        "properties": {
+          "checked_at": {
+            "format": "date-time",
+            "title": "Checked At",
+            "type": "string"
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/ComponentHealthView"
+            },
+            "title": "Components",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SystemHealthStatus"
+          }
+        },
+        "required": [
+          "status",
+          "checked_at",
+          "components"
+        ],
+        "title": "AdminSystemHealthView",
+        "type": "object"
+      },
       "AssessmentSubmission": {
         "additionalProperties": false,
         "properties": {
@@ -56,6 +986,70 @@
           "expires_in"
         ],
         "title": "AuthTokens",
+        "type": "object"
+      },
+      "ChatCompletionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "course_id": {
+            "format": "uuid",
+            "title": "Course Id",
+            "type": "string"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            },
+            "maxItems": 64,
+            "minItems": 1,
+            "title": "Messages",
+            "type": "array"
+          },
+          "node_id": {
+            "format": "uuid",
+            "title": "Node Id",
+            "type": "string"
+          },
+          "stream": {
+            "const": true,
+            "default": true,
+            "title": "Stream",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "course_id",
+          "node_id",
+          "messages"
+        ],
+        "title": "ChatCompletionRequest",
+        "type": "object"
+      },
+      "ChatMessage": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "system",
+              "user",
+              "assistant",
+              "tool"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "ChatMessage",
         "type": "object"
       },
       "CodeRevisionView": {
@@ -272,6 +1266,234 @@
           "expected_task_version"
         ],
         "title": "CodeSubmissionRequest",
+        "type": "object"
+      },
+      "ComponentHealthView": {
+        "additionalProperties": false,
+        "properties": {
+          "component": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Component",
+            "type": "string"
+          },
+          "detail": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Detail",
+            "type": "string"
+          },
+          "latency_ms": {
+            "minimum": 0.0,
+            "title": "Latency Ms",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ComponentStatus"
+          }
+        },
+        "required": [
+          "component",
+          "status",
+          "latency_ms",
+          "detail"
+        ],
+        "title": "ComponentHealthView",
+        "type": "object"
+      },
+      "ComponentStatus": {
+        "enum": [
+          "HEALTHY",
+          "DEGRADED"
+        ],
+        "title": "ComponentStatus",
+        "type": "string"
+      },
+      "DatabaseBackupView": {
+        "additionalProperties": false,
+        "properties": {
+          "content_digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Content Digest",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "size_bytes": {
+            "minimum": 0.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "status": {
+            "maxLength": 16,
+            "minLength": 1,
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "content_digest",
+          "size_bytes",
+          "created_at"
+        ],
+        "title": "DatabaseBackupView",
+        "type": "object"
+      },
+      "DatabaseRestoreRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "backup_id": {
+            "format": "uuid",
+            "title": "Backup Id",
+            "type": "string"
+          },
+          "confirmation": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Confirmation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "confirmation",
+          "backup_id"
+        ],
+        "title": "DatabaseRestoreRequest",
+        "type": "object"
+      },
+      "DatabaseStatusView": {
+        "additionalProperties": false,
+        "properties": {
+          "active_connections": {
+            "minimum": 0.0,
+            "title": "Active Connections",
+            "type": "integer"
+          },
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "database_size_bytes": {
+            "minimum": 0.0,
+            "title": "Database Size Bytes",
+            "type": "integer"
+          },
+          "engine": {
+            "pattern": "^PostgreSQL$",
+            "title": "Engine",
+            "type": "string"
+          },
+          "last_backup": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DatabaseBackupView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_revision": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Schema Revision",
+            "type": "string"
+          },
+          "slow_query_count": {
+            "minimum": 0.0,
+            "title": "Slow Query Count",
+            "type": "integer"
+          },
+          "table_count": {
+            "minimum": 0.0,
+            "title": "Table Count",
+            "type": "integer"
+          },
+          "tables": {
+            "items": {
+              "$ref": "#/components/schemas/DatabaseTableUsage"
+            },
+            "title": "Tables",
+            "type": "array"
+          }
+        },
+        "required": [
+          "connected",
+          "engine",
+          "schema_revision",
+          "database_size_bytes",
+          "active_connections",
+          "slow_query_count",
+          "table_count",
+          "tables",
+          "last_backup"
+        ],
+        "title": "DatabaseStatusView",
+        "type": "object"
+      },
+      "DatabaseTableUsage": {
+        "additionalProperties": false,
+        "properties": {
+          "estimated_rows": {
+            "minimum": 0.0,
+            "title": "Estimated Rows",
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "size_bytes": {
+            "minimum": 0.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "size_bytes",
+          "estimated_rows"
+        ],
+        "title": "DatabaseTableUsage",
+        "type": "object"
+      },
+      "DemoResetView": {
+        "additionalProperties": false,
+        "properties": {
+          "reset": {
+            "pattern": "^completed$",
+            "title": "Reset",
+            "type": "string"
+          },
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "users_removed": {
+            "minimum": 0.0,
+            "title": "Users Removed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "reset",
+          "users_removed"
+        ],
+        "title": "DemoResetView",
         "type": "object"
       },
       "EvidenceEvent": {
@@ -561,6 +1783,96 @@
         "title": "LoginRequest",
         "type": "object"
       },
+      "MaintenanceConfirmationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmation": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Confirmation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "confirmation"
+        ],
+        "title": "MaintenanceConfirmationRequest",
+        "type": "object"
+      },
+      "MaintenanceOperationView": {
+        "additionalProperties": false,
+        "properties": {
+          "backup_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backup Id"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "operation": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Operation",
+            "type": "string"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "status": {
+            "maxLength": 16,
+            "minLength": 1,
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "operation",
+          "status",
+          "backup_id",
+          "error_code",
+          "requested_at",
+          "completed_at"
+        ],
+        "title": "MaintenanceOperationView",
+        "type": "object"
+      },
       "MasteryStatusContract": {
         "enum": [
           "UNSEEN",
@@ -619,6 +1931,50 @@
           "version"
         ],
         "title": "MasteryView",
+        "type": "object"
+      },
+      "OperationalLogSource": {
+        "enum": [
+          "REQUEST",
+          "AGENT",
+          "AUDIT",
+          "ERROR"
+        ],
+        "title": "OperationalLogSource",
+        "type": "string"
+      },
+      "PageMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "number": {
+            "minimum": 1.0,
+            "title": "Number",
+            "type": "integer"
+          },
+          "size": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Size",
+            "type": "integer"
+          },
+          "total_items": {
+            "minimum": 0.0,
+            "title": "Total Items",
+            "type": "integer"
+          },
+          "total_pages": {
+            "minimum": 0.0,
+            "title": "Total Pages",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "number",
+          "size",
+          "total_items",
+          "total_pages"
+        ],
+        "title": "PageMetadata",
         "type": "object"
       },
       "PathSnapshot": {
@@ -912,6 +2268,390 @@
         "title": "ProfileSnapshot",
         "type": "object"
       },
+      "ProviderConfigCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "api_key": {
+            "format": "password",
+            "maxLength": 4096,
+            "minLength": 8,
+            "title": "Api Key",
+            "type": "string",
+            "writeOnly": true
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint"
+          },
+          "model": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._:/-]+$",
+            "title": "Model",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": true,
+            "title": "Params",
+            "type": "object"
+          },
+          "provider_type": {
+            "$ref": "#/components/schemas/ProviderType"
+          },
+          "vendor": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._-]+$",
+            "title": "Vendor",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_type",
+          "vendor",
+          "model",
+          "api_key",
+          "endpoint",
+          "params",
+          "enabled"
+        ],
+        "title": "ProviderConfigCreate",
+        "type": "object"
+      },
+      "ProviderConfigPage": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderConfigView"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ProviderConfigPage",
+        "type": "object"
+      },
+      "ProviderConfigUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "format": "password",
+                "maxLength": 4096,
+                "minLength": 8,
+                "type": "string",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "format": "uri",
+                "maxLength": 2083,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9._:/-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "params": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Params"
+          },
+          "vendor": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9._-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor"
+          }
+        },
+        "title": "ProviderConfigUpdate",
+        "type": "object"
+      },
+      "ProviderConfigView": {
+        "additionalProperties": false,
+        "properties": {
+          "api_key_masked": {
+            "title": "Api Key Masked",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": true,
+            "title": "Params",
+            "type": "object"
+          },
+          "provider_type": {
+            "$ref": "#/components/schemas/ProviderType"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "vendor": {
+            "title": "Vendor",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "provider_type",
+          "vendor",
+          "model",
+          "api_key_masked",
+          "endpoint",
+          "params",
+          "enabled",
+          "version",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ProviderConfigView",
+        "type": "object"
+      },
+      "ProviderConnectivityView": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Detail",
+            "type": "string"
+          },
+          "latency_ms": {
+            "minimum": 0.0,
+            "title": "Latency Ms",
+            "type": "integer"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "status_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Code"
+          }
+        },
+        "required": [
+          "ok",
+          "latency_ms",
+          "status_code",
+          "detail"
+        ],
+        "title": "ProviderConnectivityView",
+        "type": "object"
+      },
+      "ProviderMetricItem": {
+        "additionalProperties": false,
+        "properties": {
+          "average_latency_ms": {
+            "minimum": 0.0,
+            "title": "Average Latency Ms",
+            "type": "number"
+          },
+          "calls": {
+            "minimum": 0.0,
+            "title": "Calls",
+            "type": "integer"
+          },
+          "error_rate": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Error Rate",
+            "type": "number"
+          },
+          "errors": {
+            "minimum": 0.0,
+            "title": "Errors",
+            "type": "integer"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "p95_latency_ms": {
+            "minimum": 0.0,
+            "title": "P95 Latency Ms",
+            "type": "integer"
+          },
+          "provider_type": {
+            "$ref": "#/components/schemas/ProviderType"
+          },
+          "rate_limited": {
+            "minimum": 0.0,
+            "title": "Rate Limited",
+            "type": "integer"
+          },
+          "vendor": {
+            "title": "Vendor",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider_type",
+          "vendor",
+          "model",
+          "calls",
+          "errors",
+          "rate_limited",
+          "average_latency_ms",
+          "p95_latency_ms",
+          "error_rate"
+        ],
+        "title": "ProviderMetricItem",
+        "type": "object"
+      },
+      "ProviderMetricsView": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderMetricItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "since": {
+            "format": "date-time",
+            "title": "Since",
+            "type": "string"
+          },
+          "until": {
+            "format": "date-time",
+            "title": "Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "since",
+          "until",
+          "items"
+        ],
+        "title": "ProviderMetricsView",
+        "type": "object"
+      },
+      "ProviderType": {
+        "enum": [
+          "LLM",
+          "TTS",
+          "ASR",
+          "IMAGE",
+          "OCR",
+          "MODERATION",
+          "EMBEDDING"
+        ],
+        "title": "ProviderType",
+        "type": "string"
+      },
       "RegisterRequest": {
         "additionalProperties": false,
         "description": "\u5b66\u751f\u81ea\u52a9\u6ce8\u518c\u8bf7\u6c42\uff08\u8bbe\u8ba1 \u00a717.3.1\uff09\u3002\u6ce8\u518c\u5373 PENDING\u3002",
@@ -1000,6 +2740,259 @@
         },
         "title": "RegistrationDecisionRequest",
         "type": "object"
+      },
+      "ResourceArtifactStatusContract": {
+        "enum": [
+          "STAGED",
+          "REVIEWING",
+          "PUBLISHED",
+          "REJECTED"
+        ],
+        "title": "ResourceArtifactStatusContract",
+        "type": "string"
+      },
+      "ResourceArtifactView": {
+        "additionalProperties": false,
+        "properties": {
+          "content_digest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Content Digest",
+            "type": "string"
+          },
+          "context_digest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Context Digest",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "object": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResourceObjectView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "resource_type": {
+            "$ref": "#/components/schemas/ResourceTypeContract"
+          },
+          "source_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Source Ids",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResourceArtifactStatusContract"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "resource_type",
+          "version",
+          "status",
+          "source_ids",
+          "context_digest",
+          "content_digest",
+          "object",
+          "published_at"
+        ],
+        "title": "ResourceArtifactView",
+        "type": "object"
+      },
+      "ResourceJobCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "course_id": {
+            "format": "uuid",
+            "title": "Course Id",
+            "type": "string"
+          },
+          "node_id": {
+            "format": "uuid",
+            "title": "Node Id",
+            "type": "string"
+          },
+          "resource_types": {
+            "items": {
+              "$ref": "#/components/schemas/ResourceTypeContract"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Resource Types",
+            "type": "array"
+          }
+        },
+        "required": [
+          "course_id",
+          "node_id",
+          "resource_types"
+        ],
+        "title": "ResourceJobCreate",
+        "type": "object"
+      },
+      "ResourceJobStatusContract": {
+        "enum": [
+          "QUEUED",
+          "VALIDATING",
+          "GENERATING",
+          "PARTIAL_READY",
+          "REVIEWING",
+          "READY",
+          "FAILED_RETRYABLE",
+          "FAILED_FINAL",
+          "CANCELLED"
+        ],
+        "title": "ResourceJobStatusContract",
+        "type": "string"
+      },
+      "ResourceJobView": {
+        "additionalProperties": false,
+        "properties": {
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/ResourceArtifactView"
+            },
+            "title": "Artifacts",
+            "type": "array"
+          },
+          "course_id": {
+            "format": "uuid",
+            "title": "Course Id",
+            "type": "string"
+          },
+          "created_at": {
+            "minLength": 1,
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "node_id": {
+            "format": "uuid",
+            "title": "Node Id",
+            "type": "string"
+          },
+          "progress_percent": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Progress Percent",
+            "type": "integer"
+          },
+          "requested_types": {
+            "items": {
+              "$ref": "#/components/schemas/ResourceTypeContract"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Requested Types",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ResourceJobStatusContract"
+          },
+          "updated_at": {
+            "minLength": 1,
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "course_id",
+          "node_id",
+          "status",
+          "progress_percent",
+          "requested_types",
+          "artifacts",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ResourceJobView",
+        "type": "object"
+      },
+      "ResourceObjectView": {
+        "additionalProperties": false,
+        "properties": {
+          "digest": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Digest",
+            "type": "string"
+          },
+          "mime_type": {
+            "minLength": 1,
+            "title": "Mime Type",
+            "type": "string"
+          },
+          "object_key": {
+            "minLength": 1,
+            "title": "Object Key",
+            "type": "string"
+          },
+          "published": {
+            "title": "Published",
+            "type": "boolean"
+          },
+          "size_bytes": {
+            "minimum": 0.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "object_key",
+          "digest",
+          "mime_type",
+          "size_bytes",
+          "version",
+          "published"
+        ],
+        "title": "ResourceObjectView",
+        "type": "object"
+      },
+      "ResourceTypeContract": {
+        "enum": [
+          "MICRO_LECTURE",
+          "STRUCTURE_CARD",
+          "TRACE_ANIMATION",
+          "LAYERED_EXERCISE",
+          "NOTEBOOK_TASK"
+        ],
+        "title": "ResourceTypeContract",
+        "type": "string"
       },
       "ReviewRescheduleRequest": {
         "additionalProperties": false,
@@ -1330,6 +3323,34 @@
         ],
         "title": "SandboxTestCaseResult",
         "type": "object"
+      },
+      "StudentDeleteView": {
+        "additionalProperties": false,
+        "properties": {
+          "deleted": {
+            "title": "Deleted",
+            "type": "boolean"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "student_id",
+          "deleted"
+        ],
+        "title": "StudentDeleteView",
+        "type": "object"
+      },
+      "SystemHealthStatus": {
+        "enum": [
+          "HEALTHY",
+          "DEGRADED"
+        ],
+        "title": "SystemHealthStatus",
+        "type": "string"
       },
       "SystemPingResponse": {
         "additionalProperties": false,
@@ -1664,6 +3685,17 @@
         "title": "UserProfile",
         "type": "object"
       },
+      "UserStatus": {
+        "description": "\u7528\u6237\u751f\u547d\u5468\u671f\u72b6\u6001\uff08\u8bbe\u8ba1 \u00a717.3.1 \u6ce8\u518c\u5ba1\u6838\u6d41\u8f6c\uff09\u3002\n\nPENDING  \u2014 \u5df2\u6ce8\u518c\u5f85\u7ba1\u7406\u5458\u5ba1\u6838\uff0c\u4e0d\u53ef\u767b\u5f55\u3002\nACTIVE   \u2014 \u5ba1\u6838\u901a\u8fc7\uff0c\u53ef\u767b\u5f55\u3002\nREJECTED \u2014 \u5ba1\u6838\u62d2\u7edd\uff0c\u4e0d\u53ef\u767b\u5f55\u3002\nSUSPENDED \u2014 \u505c\u7528\uff0c\u4e0d\u53ef\u767b\u5f55\u3002",
+        "enum": [
+          "PENDING",
+          "ACTIVE",
+          "REJECTED",
+          "SUSPENDED"
+        ],
+        "title": "UserStatus",
+        "type": "string"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -1713,6 +3745,254 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/admin/agent-runs/{external_run_id}": {
+      "get": {
+        "operationId": "admin_agent_run_api_v1_admin_agent_runs__external_run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "external_run_id",
+            "required": true,
+            "schema": {
+              "title": "External Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAgentRunView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Agent Run",
+        "tags": [
+          "admin-operations"
+        ]
+      }
+    },
+    "/api/v1/admin/mastery/summary": {
+      "get": {
+        "operationId": "admin_mastery_summary_api_v1_admin_mastery_summary_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "course_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Course Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminMasterySummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Mastery Summary",
+        "tags": [
+          "admin-operations"
+        ]
+      }
+    },
+    "/api/v1/admin/providers": {
+      "get": {
+        "operationId": "list_providers_api_v1_admin_providers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderConfigPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Providers",
+        "tags": [
+          "admin-providers"
+        ]
+      },
+      "post": {
+        "operationId": "create_provider_api_v1_admin_providers_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderConfigCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderConfigView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Provider",
+        "tags": [
+          "admin-providers"
+        ]
+      }
+    },
+    "/api/v1/admin/providers/{provider_id}": {
+      "patch": {
+        "operationId": "update_provider_api_v1_admin_providers__provider_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderConfigUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderConfigView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Provider",
+        "tags": [
+          "admin-providers"
+        ]
+      }
+    },
+    "/api/v1/admin/providers/{provider_id}/test": {
+      "post": {
+        "operationId": "test_provider_connectivity_api_v1_admin_providers__provider_id__test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderConnectivityView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Provider Connectivity",
+        "tags": [
+          "admin-providers"
+        ]
+      }
+    },
     "/api/v1/admin/registrations/pending": {
       "get": {
         "description": "\u5217\u51fa\u5f85\u5ba1\u6838\u6ce8\u518c\uff08\u5206\u9875\uff09\u3002\u4ec5\u7ba1\u7406\u7aef\u53ef\u8bbf\u95ee\u3002",
@@ -1724,6 +4004,8 @@
             "required": false,
             "schema": {
               "default": 50,
+              "maximum": 100,
+              "minimum": 1,
               "title": "Limit",
               "type": "integer"
             }
@@ -1734,6 +4016,7 @@
             "required": false,
             "schema": {
               "default": 0,
+              "minimum": 0,
               "title": "Offset",
               "type": "integer"
             }
@@ -1801,13 +4084,7 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response Approve Registration Api V1 Admin Registrations  User Id  Approve Post",
-                  "type": "object"
-                }
+                "schema": {}
               }
             },
             "description": "Successful Response"
@@ -1859,13 +4136,7 @@
           "200": {
             "content": {
               "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response Reject Registration Api V1 Admin Registrations  User Id  Reject Post",
-                  "type": "object"
-                }
+                "schema": {}
               }
             },
             "description": "Successful Response"
@@ -1887,9 +4158,726 @@
         ]
       }
     },
+    "/api/v1/admin/resources/reviews": {
+      "get": {
+        "operationId": "admin_resource_reviews_api_v1_admin_resources_reviews_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminResourceReviewPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Resource Reviews",
+        "tags": [
+          "admin-operations"
+        ]
+      }
+    },
+    "/api/v1/admin/students": {
+      "get": {
+        "operationId": "admin_students_api_v1_admin_students_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/UserStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminStudentPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Students",
+        "tags": [
+          "admin-operations"
+        ]
+      }
+    },
+    "/api/v1/admin/students/{student_id}": {
+      "delete": {
+        "operationId": "delete_student_data_api_v1_admin_students__student_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "student_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Student Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaintenanceConfirmationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentDeleteView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Student Data",
+        "tags": [
+          "admin-maintenance"
+        ]
+      }
+    },
+    "/api/v1/admin/students/{student_id}/evidence": {
+      "get": {
+        "operationId": "admin_student_evidence_api_v1_admin_students__student_id__evidence_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "student_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Student Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "event_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Event Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminEvidencePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Student Evidence",
+        "tags": [
+          "admin-operations"
+        ]
+      }
+    },
+    "/api/v1/admin/students/{student_id}/profile": {
+      "get": {
+        "operationId": "admin_student_profile_api_v1_admin_students__student_id__profile_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "student_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Student Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminStudentProfile"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Student Profile",
+        "tags": [
+          "admin-operations"
+        ]
+      }
+    },
+    "/api/v1/admin/students/{student_id}/progress": {
+      "get": {
+        "operationId": "admin_student_progress_api_v1_admin_students__student_id__progress_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "student_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Student Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminStudentProgress"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Student Progress",
+        "tags": [
+          "admin-operations"
+        ]
+      }
+    },
+    "/api/v1/admin/system/db": {
+      "get": {
+        "operationId": "database_status_api_v1_admin_system_db_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabaseStatusView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Database Status",
+        "tags": [
+          "admin-maintenance"
+        ]
+      }
+    },
+    "/api/v1/admin/system/db/backup": {
+      "post": {
+        "operationId": "create_database_backup_api_v1_admin_system_db_backup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaintenanceConfirmationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabaseBackupView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Database Backup",
+        "tags": [
+          "admin-maintenance"
+        ]
+      }
+    },
+    "/api/v1/admin/system/db/restore": {
+      "post": {
+        "operationId": "restore_database_backup_api_v1_admin_system_db_restore_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatabaseRestoreRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaintenanceOperationView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Database Backup",
+        "tags": [
+          "admin-maintenance"
+        ]
+      }
+    },
+    "/api/v1/admin/system/health": {
+      "get": {
+        "operationId": "admin_system_health_api_v1_admin_system_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSystemHealthView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Admin System Health",
+        "tags": [
+          "admin-observability"
+        ]
+      }
+    },
+    "/api/v1/admin/system/logs": {
+      "get": {
+        "operationId": "admin_system_logs_api_v1_admin_system_logs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/OperationalLogSource"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source"
+            }
+          },
+          {
+            "in": "query",
+            "name": "level",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 16,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Level"
+            }
+          },
+          {
+            "in": "query",
+            "name": "trace_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Trace Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Until"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminLogPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin System Logs",
+        "tags": [
+          "admin-observability"
+        ]
+      }
+    },
+    "/api/v1/admin/system/metrics": {
+      "get": {
+        "operationId": "admin_provider_metrics_api_v1_admin_system_metrics_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Until"
+            }
+          },
+          {
+            "in": "query",
+            "name": "provider_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ProviderType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderMetricsView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Admin Provider Metrics",
+        "tags": [
+          "admin-observability"
+        ]
+      }
+    },
     "/api/v1/admin/tenants/{tenant_id}/reset": {
       "post": {
-        "description": "\u91cd\u7f6e demo \u79df\u6237\u6570\u636e\u3002\n\n\u4ec5 System Admin \u53ef\u6267\u884c\uff08\u8bbe\u8ba1 API \u5217\u8868\uff09\u3002\n\u5173\u952e\u7ea6\u675f\uff1a\u53ea\u6e05\u9664\u6307\u5b9a demo \u79df\u6237\u7684\u6570\u636e\uff0c\u4e0d\u5f71\u54cd\u5176\u4ed6\u79df\u6237\uff08\u8bbe\u8ba1\u9a8c\u6536\uff09\u3002",
         "operationId": "reset_demo_tenant_api_v1_admin_tenants__tenant_id__reset_post",
         "parameters": [
           {
@@ -1903,16 +4891,22 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaintenanceConfirmationRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response Reset Demo Tenant Api V1 Admin Tenants  Tenant Id  Reset Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/DemoResetView"
                 }
               }
             },
@@ -1931,7 +4925,7 @@
         },
         "summary": "Reset Demo Tenant",
         "tags": [
-          "admin"
+          "admin-maintenance"
         ]
       }
     },
@@ -2080,6 +5074,45 @@
         "summary": "Register",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/chat/completions": {
+      "post": {
+        "operationId": "chat_completions_api_v1_chat_completions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatCompletionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Chat Completions",
+        "tags": [
+          "tutoring-stream"
         ]
       }
     },
@@ -2551,6 +5584,90 @@
         ]
       }
     },
+    "/api/v1/resource-jobs": {
+      "post": {
+        "operationId": "start_resource_job_api_v1_resource_jobs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResourceJobCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceJobView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Resource Job",
+        "tags": [
+          "learning-resources"
+        ]
+      }
+    },
+    "/api/v1/resource-jobs/{job_id}": {
+      "get": {
+        "operationId": "get_resource_job_api_v1_resource_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResourceJobView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Resource Job",
+        "tags": [
+          "learning-resources"
+        ]
+      }
+    },
     "/api/v1/reviews/due": {
       "get": {
         "operationId": "get_due_reviews_api_v1_reviews_due_get",
@@ -2793,6 +5910,27 @@
           }
         },
         "summary": "Health",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/ready": {
+      "get": {
+        "operationId": "ready_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ready",
         "tags": [
           "system"
         ]
