@@ -5,6 +5,9 @@ from __future__ import annotations
 from fastapi import APIRouter, FastAPI
 from fastapi.testclient import TestClient
 
+import app.api.health as health_module
+from app.agent_event_consumer import AgentEventConsumerHealth
+from app.config import Settings
 from app.errors import install_error_handlers
 from app.main import create_app
 from app.middleware import TraceIdMiddleware
@@ -32,6 +35,20 @@ def test_system_ping_returns_ok() -> None:
     assert body["ok"] is True
     assert body["service"]
     assert body["timestamp"]
+
+
+def test_readiness_degrades_when_enabled_agent_consumer_is_not_ready(monkeypatch) -> None:
+    monkeypatch.setattr(
+        health_module,
+        "get_settings",
+        lambda: Settings(agent_event_consumer_enabled=True),
+    )
+    app = create_app()
+    app.state.agent_event_consumer_health = AgentEventConsumerHealth(alive=True, ready=False)
+    response = TestClient(app).get("/ready")
+
+    assert response.status_code == 503
+    assert response.json()["status"] == "degraded"
 
 
 def test_trace_id_is_echoed_when_absent() -> None:

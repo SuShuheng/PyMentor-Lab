@@ -386,6 +386,19 @@ describe("contracts", () => {
       completed_at: "2026-07-17T00:00:00Z",
     };
     expect(AgentProposalEnvelope.parse(proposal)).toEqual(proposal);
+    expect(() =>
+      AgentProposalEnvelope.parse({ ...proposal, node: "profile" }),
+    ).toThrow(/proposal kind/);
+    expect(() =>
+      AgentProposalEnvelope.parse({ ...proposal, error_code: "UNEXPECTED_ERROR" }),
+    ).toThrow(/cannot include an error code/);
+    expect(() =>
+      AgentProposalEnvelope.parse({
+        ...proposal,
+        status: "FAILED_FINAL",
+        error_code: "UNEXPECTED_ERROR",
+      }),
+    ).toThrow(/cannot include a proposal/);
 
     const audit = {
       schema_version: 1,
@@ -441,6 +454,7 @@ describe("contracts", () => {
     expect(() => WorkerJobEnvelope.parse({ ...base, event_id: "x".repeat(129) })).toThrow();
     expect(() => WorkerJobEnvelope.parse({ ...base, event_id: "unsafe*event" })).toThrow();
     expect(() => WorkerJobEnvelope.parse({ ...base, enqueued_at: "soon" })).toThrow();
+    expect(() => WorkerJobEnvelope.parse({ ...base, enqueued_at: "2026-07-18T01:02:03" })).toThrow();
     expect(() => WorkerJobEnvelope.parse({ ...base, unexpected: true })).toThrow();
   });
 });

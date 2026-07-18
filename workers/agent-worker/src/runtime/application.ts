@@ -4,9 +4,11 @@ import { Hono } from "hono";
 import Redis from "ioredis";
 
 import type { AgentProviderPort } from "../agents/types.js";
+import { ToolRegistry } from "../agents/tool-registry.js";
 import { buildHealthApp } from "../health.js";
 import {
   createAgentQueue,
+  createRedisCompletionStore,
   createAgentWorker,
   createRedisRunStore,
   createRedisStreamPort,
@@ -80,6 +82,7 @@ const fallbackProvider: AgentProviderPort = {
 
 export function defaultWorkerApplicationAdapters(
   provider: AgentProviderPort = fallbackProvider,
+  tools: ToolRegistry = new ToolRegistry({}),
 ): WorkerApplicationAdapters {
   return {
     provider,
@@ -124,8 +127,14 @@ export function defaultWorkerApplicationAdapters(
         dependencies: {
           store: createRedisRunStore(redis.client),
           stream: createRedisStreamPort(redis.client),
+          completion: createRedisCompletionStore(redis.client),
           graphFactory: (audit) =>
-            buildAgentGraph({ provider, audit, checkpointer: checkpoint.saver }),
+            buildAgentGraph({
+              provider,
+              audit,
+              tools,
+              checkpointer: checkpoint.saver,
+            }),
         },
       });
       await runtime.worker.waitUntilReady();
@@ -150,14 +159,26 @@ export function buildWorkerApplication(
 
   const closeResources = async (): Promise<void> => {
     ready = false;
+    const errors: unknown[] = [];
+    const close = async (operation: (() => Promise<void>) | undefined): Promise<void> => {
+      if (operation === undefined) return;
+      try {
+        await operation();
+      } catch (error) {
+        errors.push(error);
+      }
+    };
     if (worker !== undefined) {
-      await worker.pause();
-      await worker.close(config.shutdownGraceMs);
+      await close(() => worker!.pause());
+      await close(() => worker!.close(config.shutdownGraceMs));
     }
-    if (queue !== undefined) await queue.close(config.shutdownGraceMs);
-    if (checkpoint !== undefined) await checkpoint.close();
-    if (redis !== undefined) await redis.close();
-    if (http !== undefined) await http.close();
+    await close(queue === undefined ? undefined : () => queue!.close(config.shutdownGraceMs));
+    await close(checkpoint === undefined ? undefined : () => checkpoint!.close());
+    await close(redis === undefined ? undefined : () => redis!.close());
+    await close(http === undefined ? undefined : () => http!.close());
+    if (errors.length > 0) {
+      throw new AggregateError(errors, "One or more Worker resources failed to close.");
+    }
   };
 
   const application: WorkerApplication = {

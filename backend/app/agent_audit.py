@@ -27,6 +27,23 @@ _SAFE_DETAIL_KEYS = frozenset(
 _TERMINAL_STATUSES = frozenset({"SUCCEEDED", "FAILED_FINAL", "CANCELLED"})
 _INPUT_EVENTS = frozenset({"RUN_STARTED", "NODE_STARTED", "TOOL_STARTED", "REPLAY_STARTED"})
 _TOOL_EVENTS = frozenset({"TOOL_STARTED", "TOOL_COMPLETED", "TOOL_FAILED"})
+_RUN_TERMINAL_EVENTS = frozenset({"RUN_COMPLETED", "RUN_FAILED", "RUN_CANCELLED"})
+_RUN_STATUS_EVENTS = _RUN_TERMINAL_EVENTS | frozenset({"RUN_STARTED", "REPLAY_STARTED"})
+_AGENT_TOOL_ALLOWLISTS: dict[str, list[str]] = {
+    "orchestrator": ["llm.complete"],
+    "profile": ["evidence.read", "llm.complete"],
+    "path": ["profile.read", "course.read", "llm.complete"],
+    "resource": ["knowledge.search", "llm.complete", "image.generate"],
+    "coach": ["sandbox.evidence.read", "llm.complete"],
+    "assessment": ["evidence.read", "llm.complete"],
+}
+_FORBIDDEN_AGENT_PERMISSIONS = [
+    "formal_state.write",
+    "filesystem.access",
+    "shell.execute",
+    "provider.secret.read",
+]
+_DEFAULT_AGENT_TIMEOUT_MS = 30_000
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,6 +94,13 @@ def _ensure_identity(
 def _definition(db: Session, node: str | None) -> AgentDefinition | None:
     if node is None:
         return None
+    allowed_tools = _AGENT_TOOL_ALLOWLISTS[node]
+    policy_snapshot = {
+        "node": node,
+        "policy_version": 1,
+        "timeout_ms": _DEFAULT_AGENT_TIMEOUT_MS,
+        "forbidden_permissions": _FORBIDDEN_AGENT_PERMISSIONS,
+    }
     definition = db.scalar(
         select(AgentDefinition).where(
             AgentDefinition.name == node,
@@ -87,10 +111,15 @@ def _definition(db: Session, node: str | None) -> AgentDefinition | None:
         definition = AgentDefinition(
             name=node,
             version=1,
-            allowed_tools=[],
-            policy_snapshot={"node": node, "policy_version": 1},
+            allowed_tools=allowed_tools,
+            policy_snapshot=policy_snapshot,
         )
         db.add(definition)
+        db.flush()
+    elif definition.allowed_tools != allowed_tools or definition.policy_snapshot != policy_snapshot:
+        # Repair pre-release BE-006 rows created by the incomplete policy snapshot.
+        definition.allowed_tools = allowed_tools
+        definition.policy_snapshot = policy_snapshot
         db.flush()
     return definition
 
@@ -131,6 +160,15 @@ def ingest_agent_audit(db: Session, event: AgentAuditEnvelope) -> AgentRun:
             student_id=event.student_id,
         )
 
+    requested_status = detail.get("status") if event_type in _RUN_STATUS_EVENTS else None
+    if (
+        event.sequence > run.latest_sequence
+        and isinstance(requested_status, str)
+        and not _may_transition(run.status, requested_status)
+    ):
+        db.flush()
+        return run
+
     definition = _definition(db, node)
     if definition is not None and run.definition_id is None:
         run.definition_id = definition.id
@@ -162,8 +200,7 @@ def ingest_agent_audit(db: Session, event: AgentAuditEnvelope) -> AgentRun:
             )
 
     if event.sequence > run.latest_sequence:
-        requested_status = detail.get("status")
-        if isinstance(requested_status, str) and _may_transition(run.status, requested_status):
+        if isinstance(requested_status, str):
             run.status = requested_status
         run.latest_sequence = event.sequence
         if node is not None and node != "orchestrator":
@@ -178,11 +215,11 @@ def ingest_agent_audit(db: Session, event: AgentAuditEnvelope) -> AgentRun:
             run.error_code = error_code
         if event_type == "RUN_STARTED":
             run.started_at = event.occurred_at
-        if event_type in {"RUN_COMPLETED", "RUN_FAILED", "RUN_CANCELLED"}:
+        if event_type in _RUN_TERMINAL_EVENTS:
             run.completed_at = event.occurred_at
         if event_type in _INPUT_EVENTS:
             run.safe_input_snapshot = detail
-        elif event_type not in _TOOL_EVENTS:
+        elif event_type not in _TOOL_EVENTS | _RUN_TERMINAL_EVENTS:
             run.safe_output_snapshot = detail
 
     db.flush()
@@ -218,9 +255,9 @@ def ingest_agent_proposal(db: Session, envelope: AgentProposalEnvelope) -> Agent
 
     node = envelope.node.value
     definition = _definition(db, node)
-    run.definition_id = definition.id if definition is not None else None
-    run.route = node
     if _may_transition(run.status, envelope.status):
+        run.definition_id = definition.id if definition is not None else None
+        run.route = node
         run.status = envelope.status
         run.fallback_used = envelope.fallback_used
         run.error_code = envelope.error_code

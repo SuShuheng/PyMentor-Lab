@@ -9,6 +9,7 @@ import {
   type CheckpointSaverRuntime,
 } from "./checkpoints.js";
 import { replayFromCheckpoint } from "./replay.js";
+import { ToolRegistry } from "../agents/tool-registry.js";
 
 const redisUrl = process.env.PYMENTOR_REDIS_URL;
 const describeRedis = redisUrl === undefined ? describe.skip : describe;
@@ -72,16 +73,29 @@ describeRedis("RedisSaver checkpoint replay", () => {
         },
       },
       audit: { record: () => undefined },
+      tools: new ToolRegistry({}),
       now: () => new Date("2026-07-17T12:01:00.000Z"),
     });
     const originalThread = threadIdForJob(job.tenant_id, job.event_id);
     const replayThread = threadIdForJob(job.tenant_id, replayEventId);
     cleanupThreads.push(originalThread, replayThread);
 
+    expect(
+      await runtime.hasCheckpoint({
+        threadId: originalThread,
+        agentRunId: originalThread,
+      }),
+    ).toBe(false);
     await runtime.invoke(job, {
       threadId: originalThread,
       agentRunId: originalThread,
     });
+    expect(
+      await runtime.hasCheckpoint({
+        threadId: originalThread,
+        agentRunId: originalThread,
+      }),
+    ).toBe(true);
     expect(executed).toEqual(["orchestrator", "coach"]);
 
     const originalHistory = await getCheckpointHistory(saverRuntime.saver, originalThread);

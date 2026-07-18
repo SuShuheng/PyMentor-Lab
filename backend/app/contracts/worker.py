@@ -6,11 +6,10 @@ progress, and redacted audit only; FastAPI owns formal learning state.
 
 from __future__ import annotations
 
-from datetime import datetime
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 SafeId = Annotated[
     str,
@@ -27,7 +26,10 @@ SafeCode = Annotated[
 Sha256Digest = Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
 Summary = Annotated[str, Field(min_length=1, max_length=8_000)]
 ShortText = Annotated[str, Field(min_length=1, max_length=1_000)]
-UnitScore = Annotated[float, Field(ge=0, le=1)]
+StrictInteger = Annotated[int, Field(strict=True)]
+StrictNumber = Annotated[float, Field(strict=True)]
+StrictBoolean = Annotated[bool, Field(strict=True)]
+UnitScore = Annotated[StrictNumber, Field(ge=0, le=1)]
 
 
 class StrictModel(BaseModel):
@@ -90,13 +92,13 @@ class OrchestratorAgentOutput(StrictModel):
 
 class ProfileAgentInput(StrictModel):
     evidence_summary: Summary
-    current_profile_version: int = Field(gt=0)
+    current_profile_version: StrictInteger = Field(gt=0)
     context: AgentContext
 
 
 class ProfileChange(StrictModel):
     dimension: SafeCode
-    delta: float = Field(ge=-1, le=1)
+    delta: StrictNumber = Field(ge=-1, le=1)
     reason: ShortText
 
 
@@ -107,7 +109,7 @@ class ProfileAgentOutput(StrictModel):
 
 class PathAgentInput(StrictModel):
     profile_summary: Summary
-    available_minutes: int = Field(ge=1, le=1_440)
+    available_minutes: StrictInteger = Field(ge=1, le=1_440)
     candidate_node_ids: list[SafeId] = Field(min_length=1, max_length=64)
     context: AgentContext
 
@@ -152,7 +154,7 @@ class ResourceAgentOutput(StrictModel):
 class CoachAgentInput(StrictModel):
     error_summary: Summary
     test_summary: Summary
-    hint_level: int = Field(ge=1, le=3)
+    hint_level: StrictInteger = Field(ge=1, le=3)
     context: AgentContext
 
 
@@ -196,7 +198,7 @@ class WorkerJobEnvelope(StrictModel):
     student_id: SafeId
     kind: WorkerJobKind
     payload: dict[Annotated[str, Field(max_length=64)], object] = Field(default_factory=dict)
-    enqueued_at: datetime
+    enqueued_at: AwareDatetime
 
 
 class AgentProposalEnvelope(StrictModel):
@@ -210,15 +212,30 @@ class AgentProposalEnvelope(StrictModel):
     status: Literal["SUCCEEDED", "FAILED_RETRYABLE", "FAILED_FINAL"]
     proposal: AgentProposal | None
     error_code: SafeCode | None = None
-    fallback_used: bool
-    completed_at: datetime
+    fallback_used: StrictBoolean
+    completed_at: AwareDatetime
 
     @model_validator(mode="after")
     def validate_terminal_shape(self) -> AgentProposalEnvelope:
         if self.status == "SUCCEEDED" and self.proposal is None:
             raise ValueError("successful Agent run requires a proposal")
-        if self.status != "SUCCEEDED" and self.error_code is None:
-            raise ValueError("failed Agent run requires an error code")
+        if self.status == "SUCCEEDED":
+            if self.error_code is not None:
+                raise ValueError("successful Agent run cannot include an error code")
+            expected_kind = {
+                SpecialistAgentNodeName.PROFILE: "profile_change",
+                SpecialistAgentNodeName.PATH: "path_plan",
+                SpecialistAgentNodeName.RESOURCE: "resource_request",
+                SpecialistAgentNodeName.COACH: "coaching_feedback",
+                SpecialistAgentNodeName.ASSESSMENT: "assessment_feedback",
+            }[self.node]
+            if self.proposal is not None and self.proposal.kind != expected_kind:
+                raise ValueError("proposal kind does not match producing Agent node")
+        else:
+            if self.proposal is not None:
+                raise ValueError("failed Agent run cannot include a proposal")
+            if self.error_code is None:
+                raise ValueError("failed Agent run requires an error code")
         return self
 
 
@@ -240,13 +257,13 @@ class AgentAuditEventType(StrEnum):
 class AgentAuditDetail(StrictModel):
     status: WorkerJobStatus | None = None
     code: SafeCode | None = None
-    latency_ms: int | None = Field(default=None, ge=0, le=3_600_000)
-    input_bytes: int | None = Field(default=None, ge=0, le=1_048_576)
-    output_bytes: int | None = Field(default=None, ge=0, le=1_048_576)
+    latency_ms: StrictInteger | None = Field(default=None, ge=0, le=3_600_000)
+    input_bytes: StrictInteger | None = Field(default=None, ge=0, le=1_048_576)
+    output_bytes: StrictInteger | None = Field(default=None, ge=0, le=1_048_576)
     argument_digest: Sha256Digest | None = None
     result_digest: Sha256Digest | None = None
-    retry_count: int | None = Field(default=None, ge=0, le=10)
-    fallback: bool | None = None
+    retry_count: StrictInteger | None = Field(default=None, ge=0, le=10)
+    fallback: StrictBoolean | None = None
 
 
 class AgentAuditEnvelope(StrictModel):
@@ -256,13 +273,13 @@ class AgentAuditEnvelope(StrictModel):
     trace_id: SafeId
     tenant_id: SafeId
     student_id: SafeId
-    sequence: int = Field(gt=0, le=1_000_000)
+    sequence: StrictInteger = Field(gt=0, le=1_000_000)
     event_type: AgentAuditEventType
     node: AgentNodeName | None = None
     tool_name: SafeId | None = None
     checkpoint_id: SafeId | None = None
     detail: AgentAuditDetail
-    occurred_at: datetime
+    occurred_at: AwareDatetime
 
 
 class AgentReplayRequest(StrictModel):
@@ -271,7 +288,7 @@ class AgentReplayRequest(StrictModel):
     original_event_id: SafeId
     replay_event_id: SafeId
     checkpoint_id: SafeId
-    requested_at: datetime
+    requested_at: AwareDatetime
 
     @model_validator(mode="after")
     def distinct_replay_identity(self) -> AgentReplayRequest:

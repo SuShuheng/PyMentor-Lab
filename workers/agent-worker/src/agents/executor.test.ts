@@ -27,6 +27,9 @@ const coachOutput = {
   next_test: "Run the boundary test at lengths zero and one.",
 } satisfies CoachAgentOutput;
 
+const emptyTools = new ToolRegistry({});
+const toolContext = { tools: emptyTools, nextToolSequence: () => 1 } as const;
+
 describe("agent node policies", () => {
   it("defines immutable, least-privilege policies for all six agents", () => {
     expect(Object.keys(agentNodes)).toEqual([
@@ -38,12 +41,20 @@ describe("agent node policies", () => {
       "assessment",
     ]);
 
-    expect(agentNodes.orchestrator.allowedTools).toEqual([]);
-    expect(agentNodes.profile.allowedTools).toEqual([]);
-    expect(agentNodes.path.allowedTools).toEqual(["knowledge.search"]);
-    expect(agentNodes.resource.allowedTools).toEqual(["knowledge.search", "resource.generate"]);
-    expect(agentNodes.coach.allowedTools).toEqual(["knowledge.search"]);
-    expect(agentNodes.assessment.allowedTools).toEqual([]);
+    expect(agentNodes.orchestrator.allowedTools).toEqual(["llm.complete"]);
+    expect(agentNodes.profile.allowedTools).toEqual(["evidence.read", "llm.complete"]);
+    expect(agentNodes.path.allowedTools).toEqual([
+      "profile.read",
+      "course.read",
+      "llm.complete",
+    ]);
+    expect(agentNodes.resource.allowedTools).toEqual([
+      "knowledge.search",
+      "llm.complete",
+      "image.generate",
+    ]);
+    expect(agentNodes.coach.allowedTools).toEqual(["sandbox.evidence.read", "llm.complete"]);
+    expect(agentNodes.assessment.allowedTools).toEqual(["evidence.read", "llm.complete"]);
 
     for (const definition of Object.values(agentNodes)) {
       expect(definition.forbiddenPermissions).toEqual([
@@ -90,6 +101,7 @@ describe("agent node policies", () => {
           provider: { complete },
           audit: { record: vi.fn() },
           eventId: "event-1",
+          ...toolContext,
         },
       ),
     ).rejects.toMatchObject({ code: "INVALID_INPUT" });
@@ -128,7 +140,7 @@ describe("agent node policies", () => {
     const records: AgentAuditRecord[] = [];
     const invoke = vi.fn().mockResolvedValue({ node_ids: ["node-1"] });
     const registry = new ToolRegistry({
-      "knowledge.search": {
+      "course.read": {
         inputSchema: z.object({ query: z.string().min(1) }).strict(),
         outputSchema: z.object({ node_ids: z.array(z.string()) }).strict(),
         invoke,
@@ -139,7 +151,7 @@ describe("agent node policies", () => {
     await expect(
       registry.invoke(
         agentNodes.path,
-        "knowledge.search",
+        "course.read",
         { query: "private learning query" },
         {
           audit: {
@@ -157,10 +169,10 @@ describe("agent node policies", () => {
     expect(invoke).toHaveBeenCalledWith(
       { query: "private learning query" },
       signal,
-      createHash("sha256").update("event-1|path|knowledge.search|3").digest("hex"),
+      createHash("sha256").update("event-1|path|course.read|3").digest("hex"),
     );
     expect(records.map(({ eventType }) => eventType)).toEqual(["TOOL_STARTED", "TOOL_COMPLETED"]);
-    expect(records.every(({ toolName }) => toolName === "knowledge.search")).toBe(true);
+    expect(records.every(({ toolName }) => toolName === "course.read")).toBe(true);
     expect(JSON.stringify(records)).not.toContain("private learning query");
     expect(records[0]?.detail.argument_digest).toMatch(/^[a-f0-9]{64}$/);
     expect(records[1]?.detail.result_digest).toMatch(/^[a-f0-9]{64}$/);
@@ -170,7 +182,7 @@ describe("agent node policies", () => {
     const records: AgentAuditRecord[] = [];
     const invoke = vi.fn();
     const registry = new ToolRegistry({
-      "knowledge.search": {
+      "course.read": {
         inputSchema: z.object({ query: z.string().min(1) }).strict(),
         outputSchema: z.object({ node_ids: z.array(z.string()) }).strict(),
         invoke,
@@ -180,7 +192,7 @@ describe("agent node policies", () => {
     await expect(
       registry.invoke(
         agentNodes.path,
-        "knowledge.search",
+        "course.read",
         { raw: "secret" },
         {
           audit: {
@@ -199,7 +211,7 @@ describe("agent node policies", () => {
     expect(records).toHaveLength(1);
     expect(records[0]).toMatchObject({
       eventType: "TOOL_FAILED",
-      toolName: "knowledge.search",
+      toolName: "course.read",
       detail: { status: "FAILED_FINAL", code: "INVALID_TOOL_INPUT" },
     });
     expect(JSON.stringify(records)).not.toContain("secret");
@@ -208,7 +220,7 @@ describe("agent node policies", () => {
   it("rejects invalid tool output and audits no raw result", async () => {
     const records: AgentAuditRecord[] = [];
     const registry = new ToolRegistry({
-      "knowledge.search": {
+      "course.read": {
         inputSchema: z.object({ query: z.string().min(1) }).strict(),
         outputSchema: z.object({ node_ids: z.array(z.string()) }).strict(),
         invoke: vi.fn().mockResolvedValue({ secret: "raw-provider-result" }),
@@ -218,7 +230,7 @@ describe("agent node policies", () => {
     await expect(
       registry.invoke(
         agentNodes.path,
-        "knowledge.search",
+        "course.read",
         { query: "safe" },
         {
           audit: {
@@ -248,6 +260,7 @@ describe("agent node policies", () => {
         provider: { complete },
         audit: { record: vi.fn() },
         eventId: "event-1",
+        ...toolContext,
       }),
     ).resolves.toEqual(coachOutput);
 
@@ -263,6 +276,7 @@ describe("agent node policies", () => {
         provider: { complete },
         audit: { record: vi.fn() },
         eventId: "event-1",
+        ...toolContext,
       }),
     ).resolves.toEqual({
       kind: "coaching_feedback",
@@ -285,6 +299,7 @@ describe("agent node policies", () => {
         provider: { complete: vi.fn().mockResolvedValue({ invalid: true }) },
         audit: { record: vi.fn() },
         eventId: "event-1",
+        ...toolContext,
       },
     );
 
@@ -305,6 +320,7 @@ describe("agent node policies", () => {
         provider: { complete },
         audit: { record: vi.fn() },
         eventId: "event-1",
+        ...toolContext,
       });
       await vi.advanceTimersByTimeAsync(11);
 
@@ -338,11 +354,12 @@ describe("agent node policies", () => {
         provider: { complete },
         audit: { record: vi.fn() },
         eventId: "event-1",
+        ...toolContext,
       },
     );
 
     expect(complete.mock.calls[0]?.[0].input.request).toBe(request);
-    expect(agentNodes.orchestrator.allowedTools).toEqual([]);
+    expect(agentNodes.orchestrator.allowedTools).toEqual(["llm.complete"]);
   });
 
   it("audits only sizes, digests, status, latency, and stable codes", async () => {
@@ -360,6 +377,7 @@ describe("agent node policies", () => {
         },
       },
       eventId: "event-1",
+      ...toolContext,
     });
 
     expect(records.map(({ eventType }) => eventType)).toEqual(["NODE_STARTED", "NODE_COMPLETED"]);
@@ -383,5 +401,89 @@ describe("agent node policies", () => {
       retry_count: 0,
       fallback: false,
     });
+  });
+
+  it("reserves distinct idempotency sequences for parallel tool calls", async () => {
+    const idempotencyKeys: string[] = [];
+    const tools = new ToolRegistry({
+      "sandbox.evidence.read": {
+        inputSchema: z.object({ evidence_id: z.string() }).strict(),
+        outputSchema: z.object({ ok: z.boolean() }).strict(),
+        invoke: async (_input, _signal, idempotencyKey) => {
+          idempotencyKeys.push(idempotencyKey);
+          return { ok: true };
+        },
+      },
+    });
+    let sequence = 0;
+
+    await executeNode(agentNodes.coach, coachInput, {
+      provider: {
+        async complete(request) {
+          await Promise.all([
+            request.tools.invoke("sandbox.evidence.read", { evidence_id: "evidence-1" }),
+            request.tools.invoke("sandbox.evidence.read", { evidence_id: "evidence-2" }),
+          ]);
+          return coachOutput;
+        },
+      },
+      audit: { record: vi.fn() },
+      eventId: "event-parallel-tools",
+      tools,
+      nextToolSequence: () => {
+        sequence += 1;
+        return sequence;
+      },
+    });
+
+    expect(idempotencyKeys).toHaveLength(2);
+    expect(new Set(idempotencyKeys).size).toBe(2);
+  });
+
+  it("revokes a captured tool capability after the node finishes", async () => {
+    const invoke = vi.fn().mockResolvedValue({ ok: true });
+    const tools = new ToolRegistry({
+      "sandbox.evidence.read": {
+        inputSchema: z.object({}).strict(),
+        outputSchema: z.object({ ok: z.boolean() }).strict(),
+        invoke,
+      },
+    });
+    let lateInvoke: ((toolName: string, input: unknown) => Promise<unknown>) | undefined;
+
+    await executeNode(agentNodes.coach, coachInput, {
+      provider: {
+        async complete(request) {
+          lateInvoke = request.tools.invoke;
+          return coachOutput;
+        },
+      },
+      audit: { record: vi.fn() },
+      eventId: "event-expired-tools",
+      tools,
+      nextToolSequence: () => 1,
+    });
+
+    expect(lateInvoke).toBeDefined();
+    await expect(lateInvoke!("sandbox.evidence.read", {})).rejects.toMatchObject({
+      code: "TOOL_TIMEOUT",
+    });
+    expect(invoke).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when a deterministic fallback drifts from its schema", async () => {
+    const invalidFallback = {
+      ...agentNodes.coach,
+      fallback: () => ({ invalid: true }) as unknown as CoachAgentOutput,
+    };
+
+    await expect(
+      executeNode(invalidFallback, coachInput, {
+        provider: { complete: vi.fn().mockRejectedValue(new Error("provider unavailable")) },
+        audit: { record: vi.fn() },
+        eventId: "event-invalid-fallback",
+        ...toolContext,
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_FALLBACK" });
   });
 });

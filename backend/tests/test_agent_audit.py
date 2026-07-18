@@ -17,7 +17,7 @@ from app.agent_audit import (
     ingest_agent_proposal,
 )
 from app.contracts.worker import AgentAuditEnvelope, AgentProposalEnvelope
-from app.models import AgentRun, AgentToolCall, Tenant, User, UserStatus
+from app.models import AgentDefinition, AgentRun, AgentToolCall, Tenant, User, UserStatus
 
 NOW = datetime(2026, 7, 17, 12, 0, tzinfo=UTC)
 
@@ -148,6 +148,23 @@ def test_duplicate_audit_is_idempotent_and_tool_rows_are_unique(
     assert tool.argument_digest == "a" * 64
     assert tool.result_digest == "b" * 64
 
+    definition = db_session.scalar(
+        select(AgentDefinition).where(AgentDefinition.id == first.definition_id)
+    )
+    assert definition is not None
+    assert definition.allowed_tools == ["sandbox.evidence.read", "llm.complete"]
+    assert definition.policy_snapshot == {
+        "node": "coach",
+        "policy_version": 1,
+        "timeout_ms": 30_000,
+        "forbidden_permissions": [
+            "formal_state.write",
+            "filesystem.access",
+            "shell.execute",
+            "provider.secret.read",
+        ],
+    }
+
 
 def test_terminal_proposal_updates_the_existing_run_without_replacing_it(
     db_session: Session,
@@ -168,6 +185,22 @@ def test_terminal_proposal_updates_the_existing_run_without_replacing_it(
     assert updated.id == original_id
     assert updated.status == "SUCCEEDED"
     assert updated.route == "coach"
+    assert updated.safe_output_snapshot == {
+        "kind": "coaching_feedback",
+        "diagnosis": "The loop bound excludes the final index.",
+        "hints": ["Compare the final index with the condition."],
+        "next_test": "Test lengths zero and one.",
+    }
+
+    completed = audit(
+        agent_context,
+        sequence=5,
+        event_type="RUN_COMPLETED",
+        detail={"status": "SUCCEEDED", "fallback": False},
+    )
+    ingest_agent_audit(db_session, completed)
+    db_session.flush()
+
     assert updated.safe_output_snapshot == {
         "kind": "coaching_feedback",
         "diagnosis": "The loop bound excludes the final index.",
@@ -199,6 +232,79 @@ def test_out_of_order_audit_cannot_regress_a_terminal_status(
 
     assert run.status == "SUCCEEDED"
     assert run.latest_sequence == 5
+
+
+def test_higher_sequence_conflicting_terminal_event_cannot_mutate_run(
+    db_session: Session,
+    agent_context: AgentContext,
+) -> None:
+    completed = audit(
+        agent_context,
+        sequence=5,
+        event_type="RUN_COMPLETED",
+        detail={"status": "SUCCEEDED", "fallback": False},
+    )
+    contradictory = audit(
+        agent_context,
+        sequence=6,
+        event_type="RUN_FAILED",
+        detail={"status": "FAILED_FINAL", "code": "UNEXPECTED_ERROR"},
+    )
+
+    run = ingest_agent_audit(db_session, completed)
+    original_completed_at = run.completed_at
+    run = ingest_agent_audit(db_session, contradictory)
+    db_session.flush()
+
+    assert run.status == "SUCCEEDED"
+    assert run.latest_sequence == 5
+    assert run.error_code is None
+    assert run.completed_at == original_completed_at
+
+
+def test_node_success_cannot_mask_a_later_run_failure(
+    db_session: Session,
+    agent_context: AgentContext,
+) -> None:
+    events = [
+        audit(
+            agent_context,
+            sequence=1,
+            event_type="RUN_STARTED",
+            detail={"status": "RUNNING"},
+        ),
+        audit(
+            agent_context,
+            sequence=2,
+            event_type="NODE_COMPLETED",
+            detail={"status": "SUCCEEDED", "fallback": False},
+            node="orchestrator",
+        ),
+        audit(
+            agent_context,
+            sequence=3,
+            event_type="TOOL_FAILED",
+            detail={"status": "FAILED_FINAL", "code": "FORBIDDEN_TOOL"},
+            node="profile",
+            tool_name="formal_state.write",
+        ),
+        audit(
+            agent_context,
+            sequence=4,
+            event_type="RUN_FAILED",
+            detail={"status": "FAILED_FINAL", "code": "FORBIDDEN_TOOL"},
+        ),
+    ]
+
+    run = None
+    for event in events:
+        run = ingest_agent_audit(db_session, event)
+    db_session.flush()
+
+    assert run is not None
+    assert run.status == "FAILED_FINAL"
+    assert run.latest_sequence == 4
+    assert run.error_code == "FORBIDDEN_TOOL"
 
 
 def test_checkpoint_metadata_is_available_for_replay(

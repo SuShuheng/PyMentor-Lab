@@ -45,11 +45,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     consumer_task: asyncio.Task[None] | None = None
     if settings.agent_event_consumer_enabled:
-        from app.agent_event_consumer import create_agent_event_redis, run_agent_event_consumer
+        from app.agent_event_consumer import (
+            AgentEventConsumerHealth,
+            create_agent_event_redis,
+            run_agent_event_consumer,
+        )
         from app.db import SessionLocal
 
+        consumer_health = AgentEventConsumerHealth()
+        app.state.agent_event_consumer_health = consumer_health
         consumer_task = asyncio.create_task(
-            run_agent_event_consumer(create_agent_event_redis(settings), SessionLocal, settings),
+            run_agent_event_consumer(
+                create_agent_event_redis(settings), SessionLocal, settings, consumer_health
+            ),
             name="agent-event-consumer",
         )
         app.state.agent_event_consumer_task = consumer_task

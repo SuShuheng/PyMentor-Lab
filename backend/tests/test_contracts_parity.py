@@ -818,6 +818,24 @@ def test_invalid_payload_is_rejected() -> None:
             }
         )
 
+    audit = FIXTURES["AgentAuditEnvelope"][0]
+    with pytest.raises(ValidationError):
+        AgentAuditEnvelope.model_validate({**audit, "sequence": "1"})
+    with pytest.raises(ValidationError):
+        AgentAuditEnvelope.model_validate(
+            {**audit, "detail": {**audit["detail"], "fallback": "false"}}
+        )
+    with pytest.raises(ValidationError):
+        AgentAuditEnvelope.model_validate({**audit, "occurred_at": "2026-07-18T01:02:03"})
+
+    proposal = FIXTURES["AgentProposalEnvelope"][0]
+    with pytest.raises(ValidationError):
+        AgentProposalEnvelope.model_validate({**proposal, "node": "profile"})
+    with pytest.raises(ValidationError):
+        AgentProposalEnvelope.model_validate(
+            {**proposal, "status": "FAILED_FINAL", "error_code": "UNEXPECTED_ERROR"}
+        )
+
 
 def _load_canonical_schemas() -> dict[str, Any]:
     if not SCHEMAS_PATH.exists():

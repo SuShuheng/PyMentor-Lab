@@ -6,6 +6,8 @@ import asyncio
 import json
 import logging
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Protocol, cast
 
 from pydantic import ValidationError
@@ -31,12 +33,34 @@ class AgentEventRedisPort(Protocol):
 
     async def xack(self, stream: str, group: str, message_id: str) -> object: ...
 
+    async def xadd(
+        self,
+        stream: str,
+        fields: Mapping[str, str],
+        *,
+        maxlen: int,
+        approximate: bool,
+    ) -> object: ...
+
     async def aclose(self) -> None: ...
 
 
 SessionFactory = Callable[[], Session]
 StreamFields = Mapping[str | bytes, str | bytes]
 StreamMessage = tuple[str, StreamFields]
+
+
+@dataclass(slots=True)
+class AgentEventConsumerState:
+    claim_cursor: str = "0-0"
+
+
+@dataclass(slots=True)
+class AgentEventConsumerHealth:
+    alive: bool = False
+    ready: bool = False
+    failure_count: int = 0
+    last_error: str | None = None
 
 
 def create_agent_event_redis(settings: Settings) -> AgentEventRedisPort:
@@ -68,10 +92,10 @@ def _messages(value: object) -> list[StreamMessage]:
     return messages
 
 
-def _claimed_messages(value: object) -> list[StreamMessage]:
+def _claimed_batch(value: object) -> tuple[str, list[StreamMessage]]:
     if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or len(value) < 2:
-        return []
-    return _messages(value[1])
+        return "0-0", []
+    return _text(value[0]), _messages(value[1])
 
 
 def _fresh_messages(value: object) -> list[StreamMessage]:
@@ -130,7 +154,35 @@ async def _process_messages(
             with session_factory() as db, db.begin():
                 _ingest(db, raw_payload)
         except (json.JSONDecodeError, ValidationError, ValueError, TypeError):
-            logger.warning("Agent event %s failed validation; leaving pending", message_id)
+            logger.warning("Agent event %s failed validation; isolating to DLQ", message_id)
+            try:
+                await redis.xadd(
+                    settings.agent_event_dlq,
+                    {
+                        "payload": json.dumps(
+                            {
+                                "schema_version": 1,
+                                "source_stream": settings.agent_event_stream,
+                                "message_id": message_id,
+                                "code": "VALIDATION_ERROR",
+                                "occurred_at": datetime.now(UTC).isoformat(),
+                            },
+                            separators=(",", ":"),
+                        )
+                    },
+                    maxlen=settings.agent_event_dlq_maxlen,
+                    approximate=True,
+                )
+                await redis.xack(
+                    settings.agent_event_stream,
+                    settings.agent_event_group,
+                    message_id,
+                )
+                acknowledged += 1
+            except Exception:
+                logger.exception(
+                    "Agent event %s could not be isolated; leaving pending", message_id
+                )
             continue
         except Exception:
             logger.exception("Agent event %s failed persistence; leaving pending", message_id)
@@ -148,29 +200,29 @@ async def consume_agent_events_once(
     redis: AgentEventRedisPort,
     session_factory: SessionFactory,
     settings: Settings,
+    state: AgentEventConsumerState | None = None,
 ) -> int:
     """Recover pending events, read a bounded fresh batch, and ACK commits only."""
 
     await _ensure_group(redis, settings)
+    consumer_state = state or AgentEventConsumerState()
     claimed = await redis.xautoclaim(
         settings.agent_event_stream,
         settings.agent_event_group,
         settings.agent_event_consumer,
         settings.agent_event_claim_idle_ms,
-        "0-0",
+        consumer_state.claim_cursor,
         count=settings.agent_event_batch_size,
     )
-    pending_messages = _claimed_messages(claimed)
+    next_cursor, pending_messages = _claimed_batch(claimed)
+    consumer_state.claim_cursor = next_cursor
     acknowledged = await _process_messages(redis, session_factory, settings, pending_messages)
-    remaining = settings.agent_event_batch_size - len(pending_messages)
-    if remaining <= 0:
-        return acknowledged
 
     fresh = await redis.xreadgroup(
         settings.agent_event_group,
         settings.agent_event_consumer,
         {settings.agent_event_stream: ">"},
-        count=remaining,
+        count=settings.agent_event_batch_size,
         block=settings.agent_event_block_ms,
     )
     return acknowledged + await _process_messages(
@@ -185,12 +237,33 @@ async def run_agent_event_consumer(
     redis: AgentEventRedisPort,
     session_factory: SessionFactory,
     settings: Settings,
+    health: AgentEventConsumerHealth | None = None,
 ) -> None:
-    """Run until cancelled and always close the owned Redis client."""
+    """Run until cancelled, retry transient failures, and expose readiness."""
 
+    consumer_health = health or AgentEventConsumerHealth()
+    state = AgentEventConsumerState()
+    retry_delay_ms = settings.agent_event_retry_base_ms
+    consumer_health.alive = True
     try:
         while True:
-            await consume_agent_events_once(redis, session_factory, settings)
-            await asyncio.sleep(0)
+            try:
+                await consume_agent_events_once(redis, session_factory, settings, state)
+                consumer_health.ready = True
+                consumer_health.failure_count = 0
+                consumer_health.last_error = None
+                retry_delay_ms = settings.agent_event_retry_base_ms
+                await asyncio.sleep(0)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                consumer_health.ready = False
+                consumer_health.failure_count += 1
+                consumer_health.last_error = type(exc).__name__
+                logger.exception("Agent event consumer failed; retrying with backoff")
+                await asyncio.sleep(retry_delay_ms / 1000)
+                retry_delay_ms = min(settings.agent_event_retry_max_ms, retry_delay_ms * 2)
     finally:
+        consumer_health.ready = False
+        consumer_health.alive = False
         await redis.aclose()

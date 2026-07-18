@@ -12,7 +12,12 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.agent_event_consumer import consume_agent_events_once, run_agent_event_consumer
+from app.agent_event_consumer import (
+    AgentEventConsumerHealth,
+    AgentEventConsumerState,
+    consume_agent_events_once,
+    run_agent_event_consumer,
+)
 from app.config import Settings
 from app.models import AgentRun, Tenant, User, UserStatus
 
@@ -25,12 +30,17 @@ class FakeRedis:
         *,
         fresh: list[tuple[str, dict[str, str]]] | None = None,
         pending: list[tuple[str, dict[str, str]]] | None = None,
+        fail_claims: int = 0,
     ) -> None:
         self.fresh = fresh or []
         self.pending = pending or []
         self.acked: list[str] = []
         self.groups: list[tuple[str, str]] = []
         self.closed = False
+        self.dlq: list[dict[str, object]] = []
+        self.claim_cursors: list[str] = []
+        self.next_claim_cursor = "0-0"
+        self.fail_claims = fail_claims
 
     async def xgroup_create(self, stream: str, group: str, *, id: str, mkstream: bool) -> bool:
         del id, mkstream
@@ -38,9 +48,13 @@ class FakeRedis:
         return True
 
     async def xautoclaim(self, *args: object, **kwargs: object) -> list[object]:
-        del args, kwargs
+        del kwargs
+        self.claim_cursors.append(str(args[4]))
+        if self.fail_claims > 0:
+            self.fail_claims -= 1
+            raise ConnectionError("temporary Redis failure")
         claimed, self.pending = self.pending, []
-        return ["0-0", claimed, []]
+        return [self.next_claim_cursor, claimed, []]
 
     async def xreadgroup(self, *args: object, **kwargs: object) -> list[object]:
         del args, kwargs
@@ -52,21 +66,40 @@ class FakeRedis:
         self.acked.append(message_id)
         return 1
 
+    async def xadd(
+        self,
+        stream: str,
+        fields: dict[str, str],
+        *,
+        maxlen: int,
+        approximate: bool,
+    ) -> str:
+        self.dlq.append(
+            {
+                "stream": stream,
+                "payload": json.loads(fields["payload"]),
+                "maxlen": maxlen,
+                "approximate": approximate,
+            }
+        )
+        return "1-0"
+
     async def aclose(self) -> None:
         self.closed = True
 
 
 def settings(**overrides: object) -> Settings:
-    return Settings(
-        agent_event_consumer_enabled=True,
-        agent_event_stream="pymentor:agent-events:v1",
-        agent_event_group="pymentor-api-v1",
-        agent_event_consumer="test-api",
-        agent_event_block_ms=1,
-        agent_event_batch_size=10,
-        agent_event_claim_idle_ms=1,
-        **overrides,
-    )
+    values: dict[str, object] = {
+        "agent_event_consumer_enabled": True,
+        "agent_event_stream": "pymentor:agent-events:v1",
+        "agent_event_group": "pymentor-api-v1",
+        "agent_event_consumer": "test-api",
+        "agent_event_block_ms": 1,
+        "agent_event_batch_size": 10,
+        "agent_event_claim_idle_ms": 1,
+    }
+    values.update(overrides)
+    return Settings(**values)  # type: ignore[arg-type]
 
 
 def payload(*, tenant_id: str, student_id: str, event_id: str, run_id: str) -> str:
@@ -151,7 +184,7 @@ async def test_valid_event_commits_before_ack_and_duplicate_delivery_is_idempote
 
 
 @pytest.mark.asyncio
-async def test_invalid_event_rolls_back_and_is_not_acknowledged(
+async def test_invalid_event_rolls_back_is_redacted_to_dlq_and_is_acknowledged(
     db_session: Session,
     session_factory: Callable[[], Session],
 ) -> None:
@@ -160,8 +193,19 @@ async def test_invalid_event_rolls_back_and_is_not_acknowledged(
 
     consumed = await consume_agent_events_once(redis, session_factory, settings())
 
-    assert consumed == 0
-    assert redis.acked == []
+    assert consumed == 1
+    assert redis.acked == ["1-0"]
+    assert redis.dlq[0]["stream"] == "pymentor:agent-events:dlq:v1"
+    assert redis.dlq[0]["maxlen"] == 1000
+    assert redis.dlq[0]["approximate"] is True
+    assert redis.dlq[0]["payload"] == {
+        "schema_version": 1,
+        "source_stream": "pymentor:agent-events:v1",
+        "message_id": "1-0",
+        "code": "VALIDATION_ERROR",
+        "occurred_at": redis.dlq[0]["payload"]["occurred_at"],
+    }
+    assert "raw_prompt" not in json.dumps(redis.dlq)
     assert db_session.scalar(select(func.count()).select_from(AgentRun)) == count_before
 
 
@@ -202,6 +246,45 @@ async def test_pending_message_is_claimed_and_ingested_before_fresh_reads(
 
 
 @pytest.mark.asyncio
+async def test_poison_pending_batch_does_not_starve_fresh_events_and_advances_cursor(
+    db_session: Session,
+    session_factory: Callable[[], Session],
+    agent_identity: tuple[Tenant, User, str, str],
+) -> None:
+    tenant, student, event_id, run_id = agent_identity
+    redis = FakeRedis(
+        pending=[("1-0", {"payload": '{"raw_prompt":"secret"}'})],
+        fresh=[
+            (
+                "2-0",
+                {
+                    "payload": payload(
+                        tenant_id=str(tenant.id),
+                        student_id=str(student.id),
+                        event_id=event_id,
+                        run_id=run_id,
+                    )
+                },
+            )
+        ],
+    )
+    redis.next_claim_cursor = "42-0"
+    state = AgentEventConsumerState()
+
+    consumed = await consume_agent_events_once(
+        redis,
+        session_factory,
+        settings(agent_event_batch_size=1),
+        state,
+    )
+
+    assert consumed == 2
+    assert redis.acked == ["1-0", "2-0"]
+    assert state.claim_cursor == "42-0"
+    assert redis.claim_cursors == ["0-0"]
+
+
+@pytest.mark.asyncio
 async def test_run_loop_closes_redis_and_preserves_cancellation(
     session_factory: Callable[[], Session],
 ) -> None:
@@ -213,6 +296,35 @@ async def test_run_loop_closes_redis_and_preserves_cancellation(
     with pytest.raises(asyncio.CancelledError):
         await task
     assert redis.closed is True
+
+
+@pytest.mark.asyncio
+async def test_run_loop_retries_transient_failure_and_reports_health(
+    session_factory: Callable[[], Session],
+) -> None:
+    redis = FakeRedis(fail_claims=1)
+    health = AgentEventConsumerHealth()
+    task = asyncio.create_task(
+        run_agent_event_consumer(
+            redis,
+            session_factory,
+            settings(agent_event_retry_base_ms=1, agent_event_retry_max_ms=2),
+            health,
+        )
+    )
+    for _ in range(100):
+        if health.ready:
+            break
+        await asyncio.sleep(0.001)
+
+    assert health.alive is True
+    assert health.ready is True
+    assert redis.claim_cursors[:2] == ["0-0", "0-0"]
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert health.alive is False
+    assert health.ready is False
 
 
 def test_consumer_is_disabled_by_default() -> None:

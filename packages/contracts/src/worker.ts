@@ -257,12 +257,43 @@ export const AgentProposalEnvelope = z
         message: "successful Agent run requires a proposal",
       });
     }
-    if (value.status !== "SUCCEEDED" && value.error_code === undefined) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["error_code"],
-        message: "failed Agent run requires an error code",
-      });
+    if (value.status === "SUCCEEDED") {
+      if (value.error_code !== undefined) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["error_code"],
+          message: "successful Agent run cannot include an error code",
+        });
+      }
+      const expectedKind = {
+        profile: "profile_change",
+        path: "path_plan",
+        resource: "resource_request",
+        coach: "coaching_feedback",
+        assessment: "assessment_feedback",
+      } as const;
+      if (value.proposal !== null && value.proposal.kind !== expectedKind[value.node]) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["proposal", "kind"],
+          message: "proposal kind does not match producing Agent node",
+        });
+      }
+    } else {
+      if (value.proposal !== null) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["proposal"],
+          message: "failed Agent run cannot include a proposal",
+        });
+      }
+      if (value.error_code === undefined) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["error_code"],
+          message: "failed Agent run requires an error code",
+        });
+      }
     }
   });
 export type AgentProposalEnvelope = z.infer<typeof AgentProposalEnvelope>;

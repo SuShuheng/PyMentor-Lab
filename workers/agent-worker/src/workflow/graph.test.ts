@@ -7,8 +7,10 @@ import {
 } from "@pymentor/contracts";
 import { MemorySaver } from "@langchain/langgraph";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 
 import { buildAgentGraph, WorkflowPolicyError } from "./graph.js";
+import { ToolRegistry } from "../agents/tool-registry.js";
 
 const expectedRoute: Record<WorkerJobKind, SpecialistAgentNodeName> = {
   profile_diagnose: "profile",
@@ -131,6 +133,7 @@ function runtimeWithRouteOverride(override?: SpecialistAgentNodeName, checkpoint
       },
     },
     audit: { record: () => undefined },
+    tools: new ToolRegistry({}),
     checkpointer,
     now: () => new Date("2026-07-17T12:01:00.000Z"),
   });
@@ -189,6 +192,95 @@ describe("agent workflow graph", () => {
     expect(snapshot.next).toEqual([]);
   });
 
+  it("resumes after the orchestrator checkpoint without rerunning the orchestrator", async () => {
+    const checkpointer = new MemorySaver();
+    const providerCalls: AgentNodeName[] = [];
+    let failCoachAudit = true;
+    const runtime = buildAgentGraph({
+      provider: {
+        async complete(request) {
+          providerCalls.push(request.node);
+          if (request.node === "orchestrator") {
+            return {
+              route: "coach",
+              intent_code: "ROUTE_REQUEST",
+              summary: "Route coding help to the coach.",
+            };
+          }
+          return providerOutputs.coach;
+        },
+      },
+      audit: {
+        record(event) {
+          if (event.node === "coach" && event.eventType === "NODE_STARTED" && failCoachAudit) {
+            failCoachAudit = false;
+            throw new Error("simulated transient audit outage");
+          }
+        },
+      },
+      tools: new ToolRegistry({}),
+      checkpointer,
+      now: () => new Date("2026-07-17T12:01:00.000Z"),
+    });
+
+    await expect(
+      runtime.invoke(jobFor("coding_coach"), {
+        threadId: "run-resume-after-orchestrator",
+        agentRunId: "run-resume-after-orchestrator",
+      }),
+    ).rejects.toThrow(/transient audit outage/);
+
+    const result = await runtime.resume({
+      threadId: "run-resume-after-orchestrator",
+      agentRunId: "run-resume-after-orchestrator",
+    });
+
+    expect(providerCalls).toEqual(["orchestrator", "coach"]);
+    expect(result.executedNodes).toEqual(["orchestrator", "coach"]);
+  });
+
+  it("reserves distinct tool identities through the production graph context", async () => {
+    const idempotencyKeys: string[] = [];
+    const runtime = buildAgentGraph({
+      provider: {
+        async complete(request) {
+          if (request.node === "orchestrator") {
+            return {
+              route: "coach",
+              intent_code: "ROUTE_REQUEST",
+              summary: "Route coding help to the coach.",
+            };
+          }
+          await Promise.all([
+            request.tools.invoke("sandbox.evidence.read", { evidence_id: "evidence-1" }),
+            request.tools.invoke("sandbox.evidence.read", { evidence_id: "evidence-2" }),
+          ]);
+          return providerOutputs.coach;
+        },
+      },
+      audit: { record: () => undefined },
+      tools: new ToolRegistry({
+        "sandbox.evidence.read": {
+          inputSchema: z.object({ evidence_id: z.string() }).strict(),
+          outputSchema: z.object({ ok: z.boolean() }).strict(),
+          async invoke(_input, _signal, idempotencyKey) {
+            idempotencyKeys.push(idempotencyKey);
+            return { ok: true };
+          },
+        },
+      }),
+      now: () => new Date("2026-07-17T12:01:00.000Z"),
+    });
+
+    await runtime.invoke(jobFor("coding_coach"), {
+      threadId: "run-parallel-tools",
+      agentRunId: "run-parallel-tools",
+    });
+
+    expect(idempotencyKeys).toHaveLength(2);
+    expect(new Set(idempotencyKeys).size).toBe(2);
+  });
+
   it("propagates a specialist fallback into the proposal envelope", async () => {
     const runtime = buildAgentGraph({
       provider: {
@@ -206,6 +298,7 @@ describe("agent workflow graph", () => {
         },
       },
       audit: { record: () => undefined },
+      tools: new ToolRegistry({}),
       now: () => new Date("2026-07-17T12:01:00.000Z"),
     });
 

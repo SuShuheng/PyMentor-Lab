@@ -42,6 +42,10 @@ class Settings:
     agent_event_block_ms: int = int(_env("PYMENTOR_AGENT_EVENT_BLOCK_MS", "1000"))
     agent_event_batch_size: int = int(_env("PYMENTOR_AGENT_EVENT_BATCH_SIZE", "25"))
     agent_event_claim_idle_ms: int = int(_env("PYMENTOR_AGENT_EVENT_CLAIM_IDLE_MS", "30000"))
+    agent_event_dlq: str = _env("PYMENTOR_AGENT_EVENT_DLQ", "pymentor:agent-events:dlq:v1")
+    agent_event_dlq_maxlen: int = int(_env("PYMENTOR_AGENT_EVENT_DLQ_MAXLEN", "1000"))
+    agent_event_retry_base_ms: int = int(_env("PYMENTOR_AGENT_EVENT_RETRY_BASE_MS", "100"))
+    agent_event_retry_max_ms: int = int(_env("PYMENTOR_AGENT_EVENT_RETRY_MAX_MS", "5000"))
 
     # JWT — the secret MUST be provided in any non-test environment.
     # Dev default is long enough to satisfy HS256's 32-byte recommendation.

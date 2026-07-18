@@ -14,12 +14,16 @@ export interface RedisStreamPort {
 
 export type AgentEventEnvelope = AgentAuditEnvelopeValue | AgentProposalEnvelopeValue;
 
-function validateAgentEvent(event: unknown): AgentEventEnvelope {
+export function validateAgentEvent(event: unknown): AgentEventEnvelope {
   const audit = AgentAuditEnvelope.safeParse(event);
   if (audit.success) {
     return audit.data;
   }
   return AgentProposalEnvelope.parse(event);
+}
+
+export function serializeAgentEvent(event: unknown): string {
+  return JSON.stringify(validateAgentEvent(event));
 }
 
 export async function publishAgentEvent(redis: RedisStreamPort, event: unknown): Promise<string> {

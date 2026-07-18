@@ -11,6 +11,7 @@ import { z } from "zod";
 import { executeNode } from "../agents/executor.js";
 import { agentNodes } from "../agents/nodes.js";
 import { EXPECTED_ROUTE_BY_KIND } from "../agents/policies.js";
+import type { ToolRegistry } from "../agents/tool-registry.js";
 import type {
   AgentAuditRecord,
   AgentAuditSink,
@@ -42,6 +43,7 @@ export class WorkflowPolicyError extends Error {
 export interface AgentGraphDependencies {
   readonly provider: AgentProviderPort;
   readonly audit: AgentAuditSink;
+  readonly tools: ToolRegistry;
   readonly checkpointer?: BaseCheckpointSaver | false;
   readonly now?: () => Date;
 }
@@ -68,11 +70,17 @@ function createNodeContext(
   fallback: () => boolean;
 } {
   let sequence = state.auditSequence;
+  let toolSequence = state.auditSequence;
   let fallback = false;
   return {
     context: {
       provider: dependencies.provider,
+      tools: dependencies.tools,
       eventId: state.job.event_id,
+      nextToolSequence: () => {
+        toolSequence += 1;
+        return toolSequence;
+      },
       audit: {
         record: async (event: AgentAuditRecord) => {
           sequence += 1;
@@ -179,6 +187,7 @@ export interface AgentGraphRuntime {
   readonly compiled: CompiledAgentGraph;
   invoke(job: unknown, options: AgentGraphInvokeOptions): Promise<AgentGraphResult>;
   resume(options: AgentGraphInvokeOptions): Promise<AgentGraphResult>;
+  hasCheckpoint(options: AgentGraphInvokeOptions): Promise<boolean>;
 }
 
 export function buildAgentGraph(dependencies: AgentGraphDependencies): AgentGraphRuntime {
@@ -187,6 +196,13 @@ export function buildAgentGraph(dependencies: AgentGraphDependencies): AgentGrap
     compiled,
     invoke: (job, options) => invokeAgentGraph(compiled, dependencies, job, options),
     resume: (options) => resumeAgentGraph(compiled, dependencies, options),
+    async hasCheckpoint(options) {
+      if (dependencies.checkpointer === undefined || dependencies.checkpointer === false) {
+        return false;
+      }
+      const snapshot = await compiled.getState(graphConfig(options));
+      return typeof snapshot.config.configurable?.checkpoint_id === "string";
+    },
   };
 }
 

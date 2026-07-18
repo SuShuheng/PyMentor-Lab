@@ -17,11 +17,21 @@ import { jobIdForEvent } from "./identities.js";
 
 const RUN_KEY_PREFIX = "pymentor:agent-run:v1:";
 const COMPLETION_KEY_PREFIX = "pymentor:agent-completed:v1:";
+const SEQUENCE_KEY_PREFIX = "pymentor:agent-sequence:v1:";
 const RUN_CLAIM_TTL_MS = 15 * 60 * 1_000;
 
 export interface RedisRunStore {
   get(key: string): Promise<string | null>;
   set(key: string, value: string, options?: { nx?: boolean; ttlMs?: number }): Promise<boolean>;
+  nextSequence(key: string): Promise<number>;
+}
+
+export interface AgentCompletionStore {
+  commit(
+    completionKey: string,
+    completionValue: string,
+    events: readonly (AgentAuditEnvelopeValue | AgentProposalEnvelopeValue)[],
+  ): Promise<void>;
 }
 
 export interface ProcessorGraphResult extends AgentGraphResult {
@@ -33,12 +43,15 @@ export interface ProcessorGraphRuntime {
     job: WorkerJobEnvelopeValue,
     options: AgentGraphInvokeOptions,
   ): Promise<ProcessorGraphResult>;
+  resume(options: AgentGraphInvokeOptions): Promise<ProcessorGraphResult>;
+  hasCheckpoint(options: AgentGraphInvokeOptions): Promise<boolean>;
 }
 
 export interface AgentProcessorDependencies {
   readonly store: RedisRunStore;
   readonly stream: RedisStreamPort;
   readonly graphFactory: (audit: AgentAuditSink) => ProcessorGraphRuntime;
+  readonly completion: AgentCompletionStore;
   readonly now?: () => Date;
 }
 
@@ -59,14 +72,41 @@ export class AgentJobProcessingError extends Error {
 }
 
 class SequentialAudit implements AgentAuditSink {
-  private sequence = 0;
-
   constructor(
     private readonly job: WorkerJobEnvelopeValue,
     private readonly agentRunId: string,
     private readonly stream: RedisStreamPort,
+    private readonly store: RedisRunStore,
+    private readonly sequenceKey: string,
     private readonly now: () => Date,
   ) {}
+
+  async envelope(
+    eventType: AgentAuditEventType,
+    detail: AgentAuditDetail,
+    extra: {
+      node?: AgentAuditEnvelopeValue["node"];
+      toolName?: string;
+      checkpointId?: string;
+    } = {},
+  ): Promise<AgentAuditEnvelopeValue> {
+    const sequence = await this.store.nextSequence(this.sequenceKey);
+    return AgentAuditEnvelope.parse({
+      schema_version: 1,
+      agent_run_id: this.agentRunId,
+      event_id: this.job.event_id,
+      trace_id: this.job.trace_id,
+      tenant_id: this.job.tenant_id,
+      student_id: this.job.student_id,
+      sequence,
+      event_type: eventType,
+      ...(extra.node === undefined ? {} : { node: extra.node }),
+      ...(extra.toolName === undefined ? {} : { tool_name: extra.toolName }),
+      ...(extra.checkpointId === undefined ? {} : { checkpoint_id: extra.checkpointId }),
+      detail,
+      occurred_at: this.now().toISOString(),
+    });
+  }
 
   async publish(
     eventType: AgentAuditEventType,
@@ -77,23 +117,7 @@ class SequentialAudit implements AgentAuditSink {
       checkpointId?: string;
     } = {},
   ): Promise<void> {
-    this.sequence += 1;
-    const envelope = AgentAuditEnvelope.parse({
-      schema_version: 1,
-      agent_run_id: this.agentRunId,
-      event_id: this.job.event_id,
-      trace_id: this.job.trace_id,
-      tenant_id: this.job.tenant_id,
-      student_id: this.job.student_id,
-      sequence: this.sequence,
-      event_type: eventType,
-      ...(extra.node === undefined ? {} : { node: extra.node }),
-      ...(extra.toolName === undefined ? {} : { tool_name: extra.toolName }),
-      ...(extra.checkpointId === undefined ? {} : { checkpoint_id: extra.checkpointId }),
-      detail,
-      occurred_at: this.now().toISOString(),
-    });
-    await publishAgentEvent(this.stream, envelope);
+    await publishAgentEvent(this.stream, await this.envelope(eventType, detail, extra));
   }
 
   async record(record: AgentAuditRecord): Promise<void> {
@@ -182,6 +206,7 @@ export async function processAgentJob(
   const runId = jobIdForEvent(job);
   const completionKey = `${COMPLETION_KEY_PREFIX}${runId}`;
   const runKey = `${RUN_KEY_PREFIX}${runId}`;
+  const sequenceKey = `${SEQUENCE_KEY_PREFIX}${runId}`;
   const cached = await dependencies.store.get(completionKey);
   if (cached !== null) {
     return AgentProposalEnvelope.parse(JSON.parse(cached));
@@ -201,7 +226,14 @@ export async function processAgentJob(
   }
 
   const now = dependencies.now ?? (() => new Date());
-  const audit = new SequentialAudit(job, runId, dependencies.stream, now);
+  const audit = new SequentialAudit(
+    job,
+    runId,
+    dependencies.stream,
+    dependencies.store,
+    sequenceKey,
+    now,
+  );
   await audit.publish("RUN_STARTED", {
     status: "RUNNING",
     retry_count: Math.min(10, Math.max(0, attempt.attempt)),
@@ -209,10 +241,18 @@ export async function processAgentJob(
 
   try {
     const graph = dependencies.graphFactory(audit);
-    const result = await graph.invoke(job, {
-      threadId: runId,
-      agentRunId: runId,
-    });
+    const graphOptions = { threadId: runId, agentRunId: runId };
+    const hasCheckpoint =
+      attempt.attempt > 0 ? await graph.hasCheckpoint(graphOptions) : false;
+    const result = hasCheckpoint
+      ? await (async () => {
+            await audit.publish("REPLAY_STARTED", {
+              status: "RUNNING",
+              retry_count: Math.min(10, Math.max(0, attempt.attempt)),
+            });
+            return graph.resume(graphOptions);
+          })()
+      : await graph.invoke(job, graphOptions);
     const envelope = AgentProposalEnvelope.parse(result.envelope);
     assertProposalIdentity(envelope, job, runId);
     if (result.checkpointId !== undefined) {
@@ -222,12 +262,14 @@ export async function processAgentJob(
         { checkpointId: result.checkpointId },
       );
     }
-    await dependencies.store.set(completionKey, JSON.stringify(envelope));
-    await publishAgentEvent(dependencies.stream, envelope);
-    await audit.publish("RUN_COMPLETED", {
+    const completed = await audit.envelope("RUN_COMPLETED", {
       status: "SUCCEEDED",
       fallback: envelope.fallback_used,
     });
+    await dependencies.completion.commit(completionKey, JSON.stringify(envelope), [
+      envelope,
+      completed,
+    ]);
     return envelope;
   } catch (error) {
     const classified = classifyError(error);

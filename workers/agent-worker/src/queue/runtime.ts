@@ -14,12 +14,18 @@ import {
   type WorkerJobEnvelope as WorkerJobEnvelopeValue,
 } from "@pymentor/contracts";
 
-import type { RedisStreamPort } from "./events.js";
+import {
+  AGENT_EVENT_STREAM,
+  AGENT_EVENT_STREAM_MAXLEN,
+  serializeAgentEvent,
+  type RedisStreamPort,
+} from "./events.js";
 import { jobIdForEvent } from "./identities.js";
 import {
   AgentJobProcessingError,
   processAgentJob,
   type AgentProcessorDependencies,
+  type AgentCompletionStore,
   type RedisRunStore,
 } from "./processor.js";
 
@@ -138,6 +144,40 @@ export function createRedisRunStore(redis: Redis): RedisRunStore {
       }
       const result = await redis.call("SET", key, value, ...commandOptions);
       return result === "OK";
+    },
+    async nextSequence(key) {
+      return redis.incr(key);
+    },
+  };
+}
+
+export function createRedisCompletionStore(redis: Redis): AgentCompletionStore {
+  return {
+    async commit(completionKey, completionValue, events) {
+      const script = `
+        local stream_type = redis.call('TYPE', KEYS[1]).ok
+        if stream_type ~= 'none' and stream_type ~= 'stream' then
+          return redis.error_reply('agent event key is not a stream')
+        end
+        for index = 3, #ARGV do
+          redis.call('XADD', KEYS[1], 'MAXLEN', '~', ARGV[1], '*', 'payload', ARGV[index])
+        end
+        redis.call('SET', KEYS[2], ARGV[2])
+        return #ARGV - 2
+      `;
+      const serializedEvents = events.map(serializeAgentEvent);
+      const result = await redis.eval(
+        script,
+        2,
+        AGENT_EVENT_STREAM,
+        completionKey,
+        AGENT_EVENT_STREAM_MAXLEN,
+        completionValue,
+        ...serializedEvents,
+      );
+      if (Number(result) !== serializedEvents.length) {
+        throw new Error("Redis completion script did not publish every terminal event.");
+      }
     },
   };
 }

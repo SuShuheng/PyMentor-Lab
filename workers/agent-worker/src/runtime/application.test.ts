@@ -141,6 +141,28 @@ describe("Worker application lifecycle", () => {
     await vi.waitFor(() => expect(close).toHaveBeenCalledOnce());
     remove();
   });
+
+  it("continues closing every resource when the first close operation fails", async () => {
+    const fixture = harness();
+    fixture.worker.close = vi.fn(async () => {
+      fixture.calls.push("worker.close");
+      throw new Error("simulated worker close failure");
+    });
+    const application = buildWorkerApplication(config, fixture.adapters);
+    await application.start();
+    fixture.calls.length = 0;
+
+    await expect(application.close()).rejects.toThrow(AggregateError);
+
+    expect(fixture.calls).toEqual([
+      "worker.pause",
+      "worker.close",
+      "queue.close",
+      "checkpoint.close",
+      "redis.close",
+      "http.close",
+    ]);
+  });
 });
 
 describe("Worker runtime config", () => {

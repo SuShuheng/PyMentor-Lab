@@ -1,6 +1,8 @@
-"""Smoke test: the Python toolchain (3.13) and project import resolve."""
+"""Smoke tests for the Python runtime and production dependency boundary."""
 
 import sys
+import tomllib
+from pathlib import Path
 
 from app import __name__ as app_pkg
 from app.contracts import __name__ as contracts_pkg
@@ -15,3 +17,12 @@ def test_backend_packages_importable() -> None:
     """The backend package layout resolves under pyproject pythonpath."""
     assert app_pkg == "app"
     assert contracts_pkg == "app.contracts"
+
+
+def test_sandbox_http_client_is_a_production_dependency() -> None:
+    """The API imports httpx at startup, so the runtime image must install it."""
+    project_root = Path(__file__).resolve().parents[2]
+    with (project_root / "pyproject.toml").open("rb") as project_file:
+        project = tomllib.load(project_file)
+
+    assert "httpx>=0.27" in project["project"]["dependencies"]

@@ -6,12 +6,12 @@ export const FORBIDDEN_AGENT_PERMISSIONS = Object.freeze([
 ] as const);
 
 export const AGENT_TOOL_ALLOWLISTS = Object.freeze({
-  orchestrator: Object.freeze([]),
-  profile: Object.freeze([]),
-  path: Object.freeze(["knowledge.search"]),
-  resource: Object.freeze(["knowledge.search", "resource.generate"]),
-  coach: Object.freeze(["knowledge.search"]),
-  assessment: Object.freeze([]),
+  orchestrator: Object.freeze(["llm.complete"]),
+  profile: Object.freeze(["evidence.read", "llm.complete"]),
+  path: Object.freeze(["profile.read", "course.read", "llm.complete"]),
+  resource: Object.freeze(["knowledge.search", "llm.complete", "image.generate"]),
+  coach: Object.freeze(["sandbox.evidence.read", "llm.complete"]),
+  assessment: Object.freeze(["evidence.read", "llm.complete"]),
 } as const);
 
 export const DEFAULT_AGENT_TIMEOUT_MS = 30_000;

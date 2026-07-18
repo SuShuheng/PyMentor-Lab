@@ -6,6 +6,7 @@ import type {
   AgentFallbackReason,
   AgentNodeDefinition,
 } from "./types.js";
+import { ToolRegistryError } from "./tool-registry.js";
 
 class AgentExecutionTimeout extends Error {}
 
@@ -59,6 +60,7 @@ export async function executeNode<TInput, TOutput>(
   });
 
   const controller = new AbortController();
+  let toolsActive = true;
   let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
   const deadline = new Promise<never>((_resolve, reject) => {
     timeoutHandle = setTimeout(() => {
@@ -101,8 +103,16 @@ export async function executeNode<TInput, TOutput>(
   const fallbackWithAudit = async (
     reason: AgentFallbackReason,
     retryCount: number,
-  ): Promise<TOutput> =>
-    completeWithAudit(definition.fallback(parsed.data, reason), retryCount, true, reason);
+  ): Promise<TOutput> => {
+    const fallback = definition.outputSchema.safeParse(definition.fallback(parsed.data, reason));
+    if (!fallback.success) {
+      throw new AgentExecutionError(
+        "INVALID_FALLBACK",
+        `Fallback for ${definition.name} did not match its output contract.`,
+      );
+    }
+    return completeWithAudit(fallback.data, retryCount, true, reason);
+  };
 
   try {
     for (const [retryCount, repair] of [false, true].entries()) {
@@ -112,6 +122,22 @@ export async function executeNode<TInput, TOutput>(
           input: parsed.data,
           repair,
           signal: controller.signal,
+          tools: {
+            invoke: async (toolName, toolInput) => {
+              if (!toolsActive || controller.signal.aborted) {
+                throw new ToolRegistryError(
+                  "TOOL_TIMEOUT",
+                  `${definition.name} tool capability is no longer active.`,
+                );
+              }
+              return await context.tools.invoke(definition, toolName, toolInput, {
+                audit: context.audit,
+                eventId: context.eventId,
+                sequence: context.nextToolSequence(),
+                signal: controller.signal,
+              });
+            },
+          },
         }),
         deadline,
       ]);
@@ -123,11 +149,19 @@ export async function executeNode<TInput, TOutput>(
 
     return await fallbackWithAudit("INVALID_OUTPUT", 1);
   } catch (error) {
+    if (error instanceof ToolRegistryError) {
+      throw error;
+    }
+    if (error instanceof AgentExecutionError && error.code === "INVALID_FALLBACK") {
+      throw error;
+    }
     if (error instanceof AgentExecutionTimeout) {
       return await fallbackWithAudit("TIMEOUT", 0);
     }
     return await fallbackWithAudit("PROVIDER_ERROR", 0);
   } finally {
+    toolsActive = false;
+    controller.abort();
     if (timeoutHandle !== undefined) {
       clearTimeout(timeoutHandle);
     }

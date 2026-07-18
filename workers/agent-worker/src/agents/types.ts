@@ -6,6 +6,8 @@ import type {
 } from "@pymentor/contracts";
 import type { ZodType } from "zod";
 
+import type { ToolRegistry } from "./tool-registry.js";
+
 export type AgentFallbackReason = "INVALID_OUTPUT" | "PROVIDER_ERROR" | "TIMEOUT";
 
 export interface AgentNodeDefinition<TInput, TOutput> {
@@ -23,6 +25,9 @@ export interface AgentProviderRequest<TInput> {
   readonly input: TInput;
   readonly repair: boolean;
   readonly signal: AbortSignal;
+  readonly tools: {
+    invoke(toolName: string, input: unknown): Promise<unknown>;
+  };
 }
 
 export interface AgentProviderPort {
@@ -46,6 +51,8 @@ export interface AgentExecutionContext {
   readonly provider: AgentProviderPort;
   readonly audit: AgentAuditSink;
   readonly eventId: string;
+  readonly tools: ToolRegistry;
+  readonly nextToolSequence: () => number;
   readonly onOutcome?: (outcome: AgentExecutionOutcome) => void;
 }
 
