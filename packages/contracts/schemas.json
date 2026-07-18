@@ -3911,5 +3911,387 @@
       }
     },
     "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "ResourceJobCreate": {
+    "$ref": "#/definitions/ResourceJobCreate",
+    "definitions": {
+      "ResourceJobCreate": {
+        "type": "object",
+        "properties": {
+          "course_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "node_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "resource_types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "MICRO_LECTURE",
+                "STRUCTURE_CARD",
+                "TRACE_ANIMATION",
+                "LAYERED_EXERCISE",
+                "NOTEBOOK_TASK"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 5
+          }
+        },
+        "required": [
+          "course_id",
+          "node_id",
+          "resource_types"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "ResourceObjectView": {
+    "$ref": "#/definitions/ResourceObjectView",
+    "definitions": {
+      "ResourceObjectView": {
+        "type": "object",
+        "properties": {
+          "object_key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "mime_type": {
+            "type": "string",
+            "minLength": 1
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "version": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "published": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "object_key",
+          "digest",
+          "mime_type",
+          "size_bytes",
+          "version",
+          "published"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "ResourceArtifactView": {
+    "$ref": "#/definitions/ResourceArtifactView",
+    "definitions": {
+      "ResourceArtifactView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "resource_type": {
+            "type": "string",
+            "enum": [
+              "MICRO_LECTURE",
+              "STRUCTURE_CARD",
+              "TRACE_ANIMATION",
+              "LAYERED_EXERCISE",
+              "NOTEBOOK_TASK"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "STAGED",
+              "REVIEWING",
+              "PUBLISHED",
+              "REJECTED"
+            ]
+          },
+          "source_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1
+          },
+          "context_digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "content_digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "object": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "object_key": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "digest": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "mime_type": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "size_bytes": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "published": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "object_key",
+                  "digest",
+                  "mime_type",
+                  "size_bytes",
+                  "version",
+                  "published"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "published_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "resource_type",
+          "version",
+          "status",
+          "source_ids",
+          "context_digest",
+          "content_digest",
+          "object",
+          "published_at"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "ResourceJobView": {
+    "$ref": "#/definitions/ResourceJobView",
+    "definitions": {
+      "ResourceJobView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "course_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "node_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "QUEUED",
+              "VALIDATING",
+              "GENERATING",
+              "PARTIAL_READY",
+              "REVIEWING",
+              "READY",
+              "FAILED_RETRYABLE",
+              "FAILED_FINAL",
+              "CANCELLED"
+            ]
+          },
+          "progress_percent": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "requested_types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "MICRO_LECTURE",
+                "STRUCTURE_CARD",
+                "TRACE_ANIMATION",
+                "LAYERED_EXERCISE",
+                "NOTEBOOK_TASK"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 5
+          },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "resource_type": {
+                  "$ref": "#/definitions/ResourceJobView/properties/requested_types/items"
+                },
+                "version": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "STAGED",
+                    "REVIEWING",
+                    "PUBLISHED",
+                    "REJECTED"
+                  ]
+                },
+                "source_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "minItems": 1
+                },
+                "context_digest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "content_digest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "object": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "object_key": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "digest": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        "mime_type": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "size_bytes": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "version": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "published": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "object_key",
+                        "digest",
+                        "mime_type",
+                        "size_bytes",
+                        "version",
+                        "published"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "published_at": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "resource_type",
+                "version",
+                "status",
+                "source_ids",
+                "context_digest",
+                "content_digest",
+                "object",
+                "published_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "minLength": 1
+          },
+          "updated_at": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "id",
+          "course_id",
+          "node_id",
+          "status",
+          "progress_percent",
+          "requested_types",
+          "artifacts",
+          "created_at",
+          "updated_at"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
   }
 }

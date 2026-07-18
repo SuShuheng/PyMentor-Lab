@@ -55,6 +55,10 @@ import {
   ReviewView,
   ResourceAgentInput,
   ResourceAgentOutput,
+  ResourceArtifactView,
+  ResourceJobCreate,
+  ResourceJobView,
+  ResourceObjectView,
   SandboxExecutionRequest,
   SandboxExecutionResponse,
   SandboxResult,
@@ -130,6 +134,10 @@ const schemas = {
   ReviewRescheduleRequest: zodToJsonSchema(ReviewRescheduleRequest, "ReviewRescheduleRequest"),
   ResourceAgentInput: zodToJsonSchema(ResourceAgentInput, "ResourceAgentInput"),
   ResourceAgentOutput: zodToJsonSchema(ResourceAgentOutput, "ResourceAgentOutput"),
+  ResourceJobCreate: zodToJsonSchema(ResourceJobCreate, "ResourceJobCreate"),
+  ResourceObjectView: zodToJsonSchema(ResourceObjectView, "ResourceObjectView"),
+  ResourceArtifactView: zodToJsonSchema(ResourceArtifactView, "ResourceArtifactView"),
+  ResourceJobView: zodToJsonSchema(ResourceJobView, "ResourceJobView"),
 } as const;
 
 writeFileSync(OUT, JSON.stringify(schemas, null, 2) + "\n", "utf8");

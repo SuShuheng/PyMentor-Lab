@@ -12,6 +12,7 @@ export * from "./consistency.js";
 export * from "./errors.js";
 export * from "./health.js";
 export * from "./learning.js";
+export * from "./resources.js";
 export * from "./streaming.js";
 export * from "./sandbox.js";
 export * from "./worker.js";

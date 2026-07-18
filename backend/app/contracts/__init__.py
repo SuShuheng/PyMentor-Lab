@@ -74,6 +74,15 @@ from app.contracts.sandbox import (
     TestVisibility,
     TraceFrame,
 )
+from app.contracts.resources import (
+    ResourceArtifactStatusContract,
+    ResourceArtifactView,
+    ResourceJobCreate,
+    ResourceJobStatusContract,
+    ResourceJobView,
+    ResourceObjectView,
+    ResourceTypeContract,
+)
 from app.contracts.streaming import (
     ChatCompletionChunk,
     ContentDeltaEvent,
@@ -177,6 +186,13 @@ __all__ = [
     "RegistrationDecisionRequest",
     "ResourceAgentInput",
     "ResourceAgentOutput",
+    "ResourceArtifactStatusContract",
+    "ResourceArtifactView",
+    "ResourceJobCreate",
+    "ResourceJobStatusContract",
+    "ResourceJobView",
+    "ResourceObjectView",
+    "ResourceTypeContract",
     "ReviewRescheduleRequest",
     "ReviewStatusContract",
     "ReviewView",

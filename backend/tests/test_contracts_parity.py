@@ -66,6 +66,10 @@ from app.contracts import (
     RegistrationDecisionRequest,
     ResourceAgentInput,
     ResourceAgentOutput,
+    ResourceArtifactView,
+    ResourceJobCreate,
+    ResourceJobView,
+    ResourceObjectView,
     ReviewRescheduleRequest,
     ReviewView,
     SandboxExecutionRequest,
@@ -706,6 +710,56 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
         }
     ],
     "ReviewRescheduleRequest": [{"due_at": "2026-07-25T00:00:00Z", "expected_version": 1}],
+    "ResourceJobCreate": [
+        {
+            "course_id": "69408047-3b99-5fb2-b383-81f7314ecd5d",
+            "node_id": "9512e5ec-f547-51b3-b0df-c5b3a877da9e",
+            "resource_types": ["STRUCTURE_CARD", "MICRO_LECTURE"],
+        }
+    ],
+    "ResourceObjectView": [
+        {
+            "object_key": "resources/tenant/job/structure-card/v1/digest",
+            "digest": "a" * 64,
+            "mime_type": "application/json",
+            "size_bytes": 42,
+            "version": 1,
+            "published": True,
+        }
+    ],
+    "ResourceArtifactView": [
+        {
+            "id": "55555555-5555-4555-8555-555555555555",
+            "resource_type": "STRUCTURE_CARD",
+            "version": 1,
+            "status": "PUBLISHED",
+            "source_ids": ["33333333-3333-4333-8333-333333333333"],
+            "context_digest": "b" * 64,
+            "content_digest": "a" * 64,
+            "object": {
+                "object_key": "resources/tenant/job/structure-card/v1/digest",
+                "digest": "a" * 64,
+                "mime_type": "application/json",
+                "size_bytes": 42,
+                "version": 1,
+                "published": True,
+            },
+            "published_at": "2026-07-18T00:00:00Z",
+        }
+    ],
+    "ResourceJobView": [
+        {
+            "id": "44444444-4444-4444-8444-444444444444",
+            "course_id": "69408047-3b99-5fb2-b383-81f7314ecd5d",
+            "node_id": "9512e5ec-f547-51b3-b0df-c5b3a877da9e",
+            "status": "PARTIAL_READY",
+            "progress_percent": 20,
+            "requested_types": ["STRUCTURE_CARD", "MICRO_LECTURE"],
+            "artifacts": [],
+            "created_at": "2026-07-18T00:00:00Z",
+            "updated_at": "2026-07-18T00:00:01Z",
+        }
+    ],
 }
 
 MODEL_BY_NAME: dict[str, type[BaseModel]] = {
@@ -760,6 +814,10 @@ MODEL_BY_NAME: dict[str, type[BaseModel]] = {
     "ReviewRescheduleRequest": ReviewRescheduleRequest,
     "ResourceAgentInput": ResourceAgentInput,
     "ResourceAgentOutput": ResourceAgentOutput,
+    "ResourceJobCreate": ResourceJobCreate,
+    "ResourceObjectView": ResourceObjectView,
+    "ResourceArtifactView": ResourceArtifactView,
+    "ResourceJobView": ResourceJobView,
 }
 
 
