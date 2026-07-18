@@ -1,4 +1,3 @@
-import { readServerUrl } from "@pymentor/config";
 import {
   createContext,
   type ReactNode,
@@ -8,50 +7,19 @@ import {
   useMemo,
   useState,
 } from "react";
+import { browserAuthApi, type AuthApi, type AuthResult, type AuthSession } from "./auth-api";
 
-export type AuthRole = "admin" | "demo" | "student";
-
-export type AuthSession = {
-  accessToken?: string;
-  accountStatus: "active";
-  displayName: string;
-  role: AuthRole;
-  userId: string;
-};
-
-export type AuthResult =
-  | { outcome: "authenticated"; session: AuthSession }
-  | { outcome: "pending" }
-  | { outcome: "rejected"; reason?: string }
-  | { outcome: "unauthenticated" };
-
-export type AuthApi = {
-  login(input: { identifier: string; password: string }): Promise<AuthResult>;
-  refresh(): Promise<AuthResult>;
-  register(input: {
-    displayName: string;
-    email: string;
-    password: string;
-    studentId: string;
-  }): Promise<AuthResult>;
-  startDemo(): Promise<AuthResult>;
-};
-
-export const studentSession: AuthSession = {
-  accountStatus: "active",
-  displayName: "林小满",
-  role: "student",
-  userId: "student-001",
-};
+export {
+  browserAuthApi,
+  studentSession,
+  type AuthApi,
+  type AuthResult,
+  type AuthRole,
+  type AuthSession,
+} from "./auth-api";
 
 type AuthStatus =
-  | "anonymous"
-  | "authenticated"
-  | "checking"
-  | "error"
-  | "pending"
-  | "refresh-failed"
-  | "rejected";
+  "anonymous" | "authenticated" | "checking" | "error" | "pending" | "refresh-failed" | "rejected";
 
 type AuthContextValue = {
   clearOutcome(): void;
@@ -67,60 +35,6 @@ type AuthContextValue = {
   session: AuthSession | null;
   startDemo(): Promise<void>;
   status: AuthStatus;
-};
-
-async function postAuth(path: string, body?: unknown): Promise<AuthResult> {
-  const response = await fetch(`${readServerUrl()}${path}`, {
-    body: body === undefined ? undefined : JSON.stringify(body),
-    credentials: "include",
-    headers: { Accept: "application/json", "Content-Type": "application/json" },
-    method: "POST",
-  });
-
-  const payload = (await response.json().catch(() => ({}))) as Record<
-    string,
-    unknown
-  >;
-  if (response.status === 202 || payload.account_status === "PENDING")
-    return { outcome: "pending" };
-  if (response.status === 403 && payload.account_status === "REJECTED") {
-    return {
-      outcome: "rejected",
-      reason: typeof payload.detail === "string" ? payload.detail : undefined,
-    };
-  }
-  if (response.status === 401) return { outcome: "unauthenticated" };
-  if (!response.ok) {
-    throw new Error(
-      typeof payload.detail === "string"
-        ? payload.detail
-        : "请求失败，请稍后重试",
-    );
-  }
-
-  const user = (payload.user ?? payload) as Record<string, unknown>;
-  return {
-    outcome: "authenticated",
-    session: {
-      accessToken:
-        typeof payload.access_token === "string"
-          ? payload.access_token
-          : undefined,
-      accountStatus: "active",
-      displayName:
-        typeof user.display_name === "string" ? user.display_name : "学习者",
-      role:
-        user.role === "admin" || user.role === "demo" ? user.role : "student",
-      userId: typeof user.id === "string" ? user.id : "current-user",
-    },
-  };
-}
-
-export const browserAuthApi: AuthApi = {
-  login: (input) => postAuth("/auth/login", input),
-  refresh: () => postAuth("/auth/refresh"),
-  register: (input) => postAuth("/auth/register", input),
-  startDemo: () => postAuth("/auth/demo"),
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -143,24 +57,16 @@ export function AuthProvider({
   children: ReactNode;
   initialSession?: AuthSession | null;
 }) {
-  const [session, setSession] = useState<AuthSession | null>(
-    initialSession ?? null,
-  );
+  const [session, setSession] = useState<AuthSession | null>(initialSession ?? null);
   const [status, setStatus] = useState<AuthStatus>(() =>
-    initialSession === undefined
-      ? "checking"
-      : initialSession
-        ? "authenticated"
-        : "anonymous",
+    initialSession === undefined ? "checking" : initialSession ? "authenticated" : "anonymous",
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const applyResult = useCallback((result: AuthResult) => {
     setSession(result.outcome === "authenticated" ? result.session : null);
     setStatus(statusFromResult(result));
-    setErrorMessage(
-      result.outcome === "rejected" ? (result.reason ?? null) : null,
-    );
+    setErrorMessage(result.outcome === "rejected" ? (result.reason ?? null) : null);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -188,9 +94,7 @@ export function AuthProvider({
       } catch (error) {
         setSession(null);
         setStatus("error");
-        setErrorMessage(
-          error instanceof Error ? error.message : "请求失败，请稍后重试",
-        );
+        setErrorMessage(error instanceof Error ? error.message : "请求失败，请稍后重试");
       }
     },
     [applyResult],

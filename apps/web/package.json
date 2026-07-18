@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
+    "@pymentor/api-client": "link:../../packages/api-client",
     "@pymentor/charts": "link:../../packages/charts",
     "@pymentor/config": "link:../../packages/config",
     "@pymentor/ui": "link:../../packages/ui",
