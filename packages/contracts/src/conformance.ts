@@ -11,6 +11,13 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 import {
+  AdminAgentRunView,
+  AdminEvidencePage,
+  AdminMasterySummary,
+  AdminResourceReviewPage,
+  AdminStudentPage,
+  AdminStudentProfile,
+  AdminStudentProgress,
   AgentAuditEnvelope,
   AgentProposalEnvelope,
   AgentReplayRequest,
@@ -84,6 +91,161 @@ const agentContext = {
 };
 
 const cases: Cases = {
+  AdminStudentPage: {
+    schema: AdminStudentPage,
+    samples: [
+      {
+        items: [
+          {
+            id: "10000000-0000-4000-8000-000000000001",
+            email: "student@example.com",
+            student_no: "S001",
+            display_name: "Student",
+            status: "ACTIVE",
+            created_at: "2026-07-18T00:00:00Z",
+            profile_version: 2,
+            completed_tasks: 3,
+            due_reviews: 1,
+          },
+        ],
+        page: { number: 1, size: 20, total_items: 1, total_pages: 1 },
+      },
+    ],
+  },
+  AdminStudentProfile: {
+    schema: AdminStudentProfile,
+    samples: [
+      {
+        student_id: "10000000-0000-4000-8000-000000000001",
+        version: 2,
+        dimensions: [
+          {
+            dimension: "DEBUGGING",
+            scope_key: "GLOBAL",
+            score: 0.75,
+            confidence: 0.8,
+            support_level: 1,
+          },
+        ],
+        created_at: "2026-07-18T00:00:00Z",
+      },
+    ],
+  },
+  AdminStudentProgress: {
+    schema: AdminStudentProgress,
+    samples: [
+      {
+        student_id: "10000000-0000-4000-8000-000000000001",
+        current_path_id: "20000000-0000-4000-8000-000000000001",
+        current_node_id: "30000000-0000-4000-8000-000000000001",
+        completed_tasks: 3,
+        due_reviews: 1,
+        mastery_counts: { LEARNING: 1 },
+        last_active_at: "2026-07-18T00:00:00Z",
+      },
+    ],
+  },
+  AdminEvidencePage: {
+    schema: AdminEvidencePage,
+    samples: [
+      {
+        items: [
+          {
+            id: "40000000-0000-4000-8000-000000000001",
+            event_id: "evt_admin_1",
+            event_type: "TASK_SUBMITTED",
+            course_id: "50000000-0000-4000-8000-000000000001",
+            node_id: "30000000-0000-4000-8000-000000000001",
+            task_id: null,
+            trace_id: "trc_admin_1",
+            evidence_confidence: 0.9,
+            created_at: "2026-07-18T00:00:00Z",
+          },
+        ],
+        page: { number: 1, size: 20, total_items: 1, total_pages: 1 },
+      },
+    ],
+  },
+  AdminMasterySummary: {
+    schema: AdminMasterySummary,
+    samples: [
+      {
+        course_id: "50000000-0000-4000-8000-000000000001",
+        total_states: 2,
+        counts: { LEARNING: 1, STABLE_MASTERY: 1 },
+        due_reviews: 1,
+        stable_ratio: 0.5,
+      },
+    ],
+  },
+  AdminResourceReviewPage: {
+    schema: AdminResourceReviewPage,
+    samples: [
+      {
+        items: [
+          {
+            resource_id: "60000000-0000-4000-8000-000000000001",
+            job_id: "70000000-0000-4000-8000-000000000001",
+            student_id: "10000000-0000-4000-8000-000000000001",
+            resource_type: "STRUCTURE_CARD",
+            version: 1,
+            status: "REVIEWING",
+            content_digest: "a".repeat(64),
+            created_at: "2026-07-18T00:00:00Z",
+            gates: [
+              {
+                gate: "FACTUAL",
+                version: 1,
+                passed: true,
+                findings: [],
+                reviewer: "factual-v1",
+                created_at: "2026-07-18T00:00:00Z",
+              },
+            ],
+          },
+        ],
+        page: { number: 1, size: 20, total_items: 1, total_pages: 1 },
+      },
+    ],
+  },
+  AdminAgentRunView: {
+    schema: AdminAgentRunView,
+    samples: [
+      {
+        external_run_id: "run_admin_1",
+        event_id: "evt_admin_1",
+        trace_id: "trc_admin_1",
+        student_id: "10000000-0000-4000-8000-000000000001",
+        status: "SUCCEEDED",
+        route: "resource",
+        latest_sequence: 2,
+        checkpoint_thread_id: "thread_admin_1",
+        latest_checkpoint_id: "checkpoint_admin_1",
+        fallback_used: false,
+        error_code: null,
+        input_snapshot: { api_key: "***", summary: "bounded" },
+        output_snapshot: { result: "safe" },
+        started_at: "2026-07-18T00:00:00Z",
+        completed_at: "2026-07-18T00:00:01Z",
+        created_at: "2026-07-18T00:00:00Z",
+        tool_calls: [
+          {
+            sequence: 1,
+            node: "resource",
+            tool_name: "knowledge_search",
+            event_type: "TOOL_COMPLETED",
+            status: "SUCCEEDED",
+            argument_digest: "b".repeat(64),
+            result_digest: "c".repeat(64),
+            latency_ms: 12,
+            retry_count: 0,
+            error_code: null,
+            occurred_at: "2026-07-18T00:00:00Z",
+          },
+        ],
+      },
+    ],
+  },
   ErrorEnvelope: {
     schema: ErrorEnvelope,
     samples: [

@@ -6,6 +6,15 @@ model here MUST stay field-identical to its Zod twin in
 ``backend/tests/test_contracts_parity.py`` enforces it.
 """
 
+from app.contracts.admin import (
+    AdminAgentRunView,
+    AdminEvidencePage,
+    AdminMasterySummary,
+    AdminResourceReviewPage,
+    AdminStudentPage,
+    AdminStudentProfile,
+    AdminStudentProgress,
+)
 from app.contracts.auth import (
     AuthTokens,
     LoginRequest,
@@ -126,6 +135,13 @@ from app.contracts.worker import (
 )
 
 __all__ = [
+    "AdminAgentRunView",
+    "AdminEvidencePage",
+    "AdminMasterySummary",
+    "AdminResourceReviewPage",
+    "AdminStudentPage",
+    "AdminStudentProfile",
+    "AdminStudentProgress",
     "AgentAuditDetail",
     "AgentAuditEnvelope",
     "AgentAuditEventType",

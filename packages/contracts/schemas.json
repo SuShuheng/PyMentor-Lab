@@ -1,4 +1,830 @@
 {
+  "AdminAgentRunView": {
+    "$ref": "#/definitions/AdminAgentRunView",
+    "definitions": {
+      "AdminAgentRunView": {
+        "type": "object",
+        "properties": {
+          "external_run_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "event_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "trace_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "student_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "route": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 32
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latest_sequence": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "checkpoint_thread_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latest_checkpoint_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fallback_used": {
+            "type": "boolean"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "input_snapshot": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "output_snapshot": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/AdminAgentRunView/properties/started_at/anyOf/0"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "$ref": "#/definitions/AdminAgentRunView/properties/started_at/anyOf/0"
+          },
+          "tool_calls": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sequence": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "node": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 32
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tool_name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "event_type": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                "status": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 32
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "argument_digest": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "result_digest": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/AdminAgentRunView/properties/tool_calls/items/properties/argument_digest/anyOf/0"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "latency_ms": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "retry_count": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "error_code": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "occurred_at": {
+                  "$ref": "#/definitions/AdminAgentRunView/properties/started_at/anyOf/0"
+                }
+              },
+              "required": [
+                "sequence",
+                "node",
+                "tool_name",
+                "event_type",
+                "status",
+                "argument_digest",
+                "result_digest",
+                "latency_ms",
+                "retry_count",
+                "error_code",
+                "occurred_at"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "external_run_id",
+          "event_id",
+          "trace_id",
+          "student_id",
+          "status",
+          "route",
+          "latest_sequence",
+          "checkpoint_thread_id",
+          "latest_checkpoint_id",
+          "fallback_used",
+          "error_code",
+          "input_snapshot",
+          "output_snapshot",
+          "started_at",
+          "completed_at",
+          "created_at",
+          "tool_calls"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "AdminEvidencePage": {
+    "$ref": "#/definitions/AdminEvidencePage",
+    "definitions": {
+      "AdminEvidencePage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "event_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "event_type": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "course_id": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/AdminEvidencePage/properties/items/items/properties/id"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "node_id": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/AdminEvidencePage/properties/items/items/properties/id"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "task_id": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/AdminEvidencePage/properties/items/items/properties/id"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "trace_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "evidence_confidence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "id",
+                "event_id",
+                "event_type",
+                "course_id",
+                "node_id",
+                "task_id",
+                "trace_id",
+                "evidence_confidence",
+                "created_at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "page": {
+            "type": "object",
+            "properties": {
+              "number": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "total_items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "total_pages": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "number",
+              "size",
+              "total_items",
+              "total_pages"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "AdminMasterySummary": {
+    "$ref": "#/definitions/AdminMasterySummary",
+    "definitions": {
+      "AdminMasterySummary": {
+        "type": "object",
+        "properties": {
+          "course_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_states": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "counts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "propertyNames": {
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          "due_reviews": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "stable_ratio": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "course_id",
+          "total_states",
+          "counts",
+          "due_reviews",
+          "stable_ratio"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "AdminResourceReviewPage": {
+    "$ref": "#/definitions/AdminResourceReviewPage",
+    "definitions": {
+      "AdminResourceReviewPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "resource_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "job_id": {
+                  "$ref": "#/definitions/AdminResourceReviewPage/properties/items/items/properties/resource_id"
+                },
+                "student_id": {
+                  "$ref": "#/definitions/AdminResourceReviewPage/properties/items/items/properties/resource_id"
+                },
+                "resource_type": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                "version": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "status": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                "content_digest": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "gates": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "gate": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 16
+                      },
+                      "version": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      },
+                      "passed": {
+                        "type": "boolean"
+                      },
+                      "findings": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "reviewer": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "created_at": {
+                        "$ref": "#/definitions/AdminResourceReviewPage/properties/items/items/properties/created_at"
+                      }
+                    },
+                    "required": [
+                      "gate",
+                      "version",
+                      "passed",
+                      "findings",
+                      "reviewer",
+                      "created_at"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "resource_id",
+                "job_id",
+                "student_id",
+                "resource_type",
+                "version",
+                "status",
+                "content_digest",
+                "created_at",
+                "gates"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "page": {
+            "type": "object",
+            "properties": {
+              "number": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "total_items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "total_pages": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "number",
+              "size",
+              "total_items",
+              "total_pages"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "AdminStudentPage": {
+    "$ref": "#/definitions/AdminStudentPage",
+    "definitions": {
+      "AdminStudentPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "email": {
+                  "type": "string",
+                  "minLength": 3,
+                  "maxLength": 255
+                },
+                "student_no": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "display_name": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "profile_version": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "completed_tasks": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "due_reviews": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "id",
+                "email",
+                "student_no",
+                "display_name",
+                "status",
+                "created_at",
+                "profile_version",
+                "completed_tasks",
+                "due_reviews"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "page": {
+            "type": "object",
+            "properties": {
+              "number": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "total_items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "total_pages": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "number",
+              "size",
+              "total_items",
+              "total_pages"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "AdminStudentProfile": {
+    "$ref": "#/definitions/AdminStudentProfile",
+    "definitions": {
+      "AdminStudentProfile": {
+        "type": "object",
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "dimensions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "dimension": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                "scope_key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "score": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "confidence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "support_level": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 3
+                }
+              },
+              "required": [
+                "dimension",
+                "scope_key",
+                "score",
+                "confidence",
+                "support_level"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "student_id",
+          "version",
+          "dimensions",
+          "created_at"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "AdminStudentProgress": {
+    "$ref": "#/definitions/AdminStudentProgress",
+    "definitions": {
+      "AdminStudentProgress": {
+        "type": "object",
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "current_path_id": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/AdminStudentProgress/properties/student_id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "current_node_id": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/AdminStudentProgress/properties/student_id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "completed_tasks": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "due_reviews": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mastery_counts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "propertyNames": {
+              "minLength": 1,
+              "maxLength": 32
+            }
+          },
+          "last_active_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "student_id",
+          "current_path_id",
+          "current_node_id",
+          "completed_tasks",
+          "due_reviews",
+          "mastery_counts",
+          "last_active_at"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
   "AgentAuditEnvelope": {
     "$ref": "#/definitions/AgentAuditEnvelope",
     "definitions": {

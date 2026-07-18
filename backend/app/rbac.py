@@ -28,6 +28,11 @@ ADMIN_ROLES = {
     RoleName.SYSTEM_ADMIN.value,
 }
 
+COURSE_ADMIN_ROLES = {
+    RoleName.COURSE_ADMIN.value,
+    RoleName.SYSTEM_ADMIN.value,
+}
+
 
 def _extract_bearer_token(request: Request) -> str:
     """从 Authorization 头提取 Bearer token。"""
@@ -92,6 +97,19 @@ def require_admin(user: User = Depends(get_current_user), db: Session = Depends(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="admin role required",
+        )
+    return user
+
+
+def require_course_admin(
+    user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> User:
+    """课程数据守卫：审核员不得读取学生、掌握度或智能体运行数据。"""
+    user_roles = set(get_user_roles(db, user.id))
+    if not user_roles.intersection(COURSE_ADMIN_ROLES):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="course admin role required",
         )
     return user
 

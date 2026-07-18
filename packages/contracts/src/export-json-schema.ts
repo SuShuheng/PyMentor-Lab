@@ -14,6 +14,13 @@ import { dirname, resolve } from "node:path";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 import {
+  AdminAgentRunView,
+  AdminEvidencePage,
+  AdminMasterySummary,
+  AdminResourceReviewPage,
+  AdminStudentPage,
+  AdminStudentProfile,
+  AdminStudentProgress,
   AgentAuditEnvelope,
   AgentProposalEnvelope,
   AgentReplayRequest,
@@ -78,6 +85,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT = resolve(__dirname, "..", "schemas.json");
 
 const schemas = {
+  AdminAgentRunView: zodToJsonSchema(AdminAgentRunView, "AdminAgentRunView"),
+  AdminEvidencePage: zodToJsonSchema(AdminEvidencePage, "AdminEvidencePage"),
+  AdminMasterySummary: zodToJsonSchema(AdminMasterySummary, "AdminMasterySummary"),
+  AdminResourceReviewPage: zodToJsonSchema(
+    AdminResourceReviewPage,
+    "AdminResourceReviewPage",
+  ),
+  AdminStudentPage: zodToJsonSchema(AdminStudentPage, "AdminStudentPage"),
+  AdminStudentProfile: zodToJsonSchema(AdminStudentProfile, "AdminStudentProfile"),
+  AdminStudentProgress: zodToJsonSchema(AdminStudentProgress, "AdminStudentProgress"),
   AgentAuditEnvelope: zodToJsonSchema(AgentAuditEnvelope, "AgentAuditEnvelope"),
   AgentProposalEnvelope: zodToJsonSchema(AgentProposalEnvelope, "AgentProposalEnvelope"),
   AgentReplayRequest: zodToJsonSchema(AgentReplayRequest, "AgentReplayRequest"),
