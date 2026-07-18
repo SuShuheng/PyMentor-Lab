@@ -5,9 +5,8 @@
     "rootDir": ".",
     "types": ["node"]
   },
-  // Generated code (src/generated/**) is owned by openapi-ts and excluded from
-  // type-checking per the standard generated-code convention; its correctness
-  // is enforced by the freshness gate (pnpm freshness) and the vitest suite.
+  // src/index.ts imports the generated SDK, so tsc checks its complete public
+  // graph. The exclusion only prevents generated files becoming extra roots.
   "include": ["src/index.ts"],
   "exclude": ["src/generated/**", "src/**/*.test.ts"]
 }
