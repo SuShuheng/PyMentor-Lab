@@ -5,7 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from app.knowledge_assets import validate_course_document
+from app.knowledge_assets import generate_asset_schemas, validate_course_document
 
 
 def _minimal_document() -> dict[str, Any]:
@@ -21,6 +21,10 @@ def _minimal_document() -> dict[str, Any]:
             "audience": "零基础或基础薄弱的高校非计算机与计算机专业学生",
             "language": "zh-CN",
             "chapter_ids": ["20000000-0000-4000-8000-000000000001"],
+            "required_chapter_count": 1,
+            "minimum_node_count": 1,
+            "required_deep_unit_count": 1,
+            "deep_unit_node_ids": ["30000000-0000-4000-8000-000000000001"],
             "version": "1.0.0",
         },
         "chapters": [
@@ -60,7 +64,19 @@ def _minimal_document() -> dict[str, Any]:
                 "version": "1.0.0",
             }
         ],
-        "error_patterns": [],
+        "error_patterns": [
+            {
+                "error_id": "50000000-0000-4000-8000-000000000001",
+                "node_ids": ["30000000-0000-4000-8000-000000000001"],
+                "title": "混淆源代码与执行结果",
+                "symptom": "把输出文本直接写在源文件中并期待它自动显示",
+                "misconception": "源代码本身就是运行结果",
+                "diagnosis_prompts": ["哪一部分由解释器执行？"],
+                "remediation": ["用 print 调用显式产生标准输出"],
+                "source_ids": ["40000000-0000-4000-8000-000000000001"],
+                "version": "1.0.0",
+            }
+        ],
         "question_templates": [
             {
                 "question_id": "60000000-0000-4000-8000-000000000001",
@@ -172,3 +188,32 @@ def test_validator_reports_asset_version_conflict() -> None:
     assert [(finding.code, finding.path) for finding in report.findings] == [
         ("VERSION_CONFLICT", "question_templates[0].version")
     ]
+
+
+def test_validator_reports_declared_course_count_mismatch() -> None:
+    document = _minimal_document()
+    document["course"]["required_chapter_count"] = 2
+    document["course"]["minimum_node_count"] = 2
+
+    report = validate_course_document(document)
+
+    assert {(finding.code, finding.path) for finding in report.findings} == {
+        ("CHAPTER_COUNT_INVALID", "chapters"),
+        ("NODE_COUNT_INVALID", "nodes"),
+    }
+
+
+def test_schema_generator_exports_every_governed_asset_contract() -> None:
+    schemas = generate_asset_schemas()
+
+    assert set(schemas) == {
+        "course.schema.json",
+        "node.schema.json",
+        "source.schema.json",
+        "error-pattern.schema.json",
+        "question-template.schema.json",
+        "test-case.schema.json",
+        "mastery-policy.schema.json",
+        "course-bundle.schema.json",
+    }
+    assert schemas["node.schema.json"]["additionalProperties"] is False

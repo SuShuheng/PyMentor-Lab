@@ -8,6 +8,8 @@ on the first malformed asset.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Mapping
 from typing import Annotated, Any, Literal
 from uuid import UUID
@@ -31,6 +33,10 @@ class CourseAsset(StrictAssetModel):
     audience: NonEmptyText
     language: Literal["zh-CN"]
     chapter_ids: list[UUID]
+    required_chapter_count: Annotated[int, Field(ge=1)]
+    minimum_node_count: Annotated[int, Field(ge=1)]
+    required_deep_unit_count: Annotated[int, Field(ge=1)]
+    deep_unit_node_ids: Annotated[list[UUID], Field(min_length=1)]
     version: SemanticVersion
 
 
@@ -136,6 +142,32 @@ class ValidationFinding(StrictAssetModel):
 class CourseValidationReport(StrictAssetModel):
     valid: bool
     findings: list[ValidationFinding]
+    counts: dict[str, int]
+    content_digest: str
+
+
+ASSET_SCHEMA_MODELS: dict[str, type[StrictAssetModel]] = {
+    "course.schema.json": CourseAsset,
+    "node.schema.json": NodeAsset,
+    "source.schema.json": SourceAsset,
+    "error-pattern.schema.json": ErrorPatternAsset,
+    "question-template.schema.json": QuestionTemplateAsset,
+    "test-case.schema.json": TestCaseAsset,
+    "mastery-policy.schema.json": MasteryPolicyAsset,
+    "course-bundle.schema.json": CourseAssetBundle,
+}
+
+
+def generate_asset_schemas() -> dict[str, dict[str, Any]]:
+    """Return deterministic JSON Schemas for every governed asset contract."""
+
+    schemas: dict[str, dict[str, Any]] = {}
+    for filename, model in ASSET_SCHEMA_MODELS.items():
+        schema = model.model_json_schema(mode="validation")
+        schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+        schema["$id"] = f"https://pymentor-lab.local/schemas/v1/{filename}"
+        schemas[filename] = schema
+    return schemas
 
 
 def _format_error_path(location: tuple[int | str, ...]) -> str:
@@ -205,6 +237,43 @@ def _semantic_findings(bundle: CourseAssetBundle) -> list[ValidationFinding]:
         if chapter_id not in chapter_ids:
             add("REFERENCE_MISSING", f"course.chapter_ids[{index}]", chapter_id)
 
+    if len(bundle.chapters) != bundle.course.required_chapter_count:
+        findings.append(
+            ValidationFinding(
+                code="CHAPTER_COUNT_INVALID",
+                path="chapters",
+                message=(
+                    f"expected {bundle.course.required_chapter_count} chapters, "
+                    f"found {len(bundle.chapters)}"
+                ),
+            )
+        )
+    if len(bundle.nodes) < bundle.course.minimum_node_count:
+        findings.append(
+            ValidationFinding(
+                code="NODE_COUNT_INVALID",
+                path="nodes",
+                message=(
+                    f"expected at least {bundle.course.minimum_node_count} nodes, "
+                    f"found {len(bundle.nodes)}"
+                ),
+            )
+        )
+    if len(bundle.course.deep_unit_node_ids) != bundle.course.required_deep_unit_count:
+        findings.append(
+            ValidationFinding(
+                code="DEEP_UNIT_COUNT_INVALID",
+                path="course.deep_unit_node_ids",
+                message=(
+                    f"expected {bundle.course.required_deep_unit_count} deep units, "
+                    f"found {len(bundle.course.deep_unit_node_ids)}"
+                ),
+            )
+        )
+    for index, node_id in enumerate(bundle.course.deep_unit_node_ids):
+        if node_id not in node_ids:
+            add("REFERENCE_MISSING", f"course.deep_unit_node_ids[{index}]", node_id)
+
     for chapter_index, chapter in enumerate(bundle.chapters):
         if chapter.course_id != bundle.course.course_id:
             add("REFERENCE_MISSING", f"chapters[{chapter_index}].course_id", chapter.course_id)
@@ -263,6 +332,19 @@ def _semantic_findings(bundle: CourseAssetBundle) -> list[ValidationFinding]:
                     f"error_patterns[{error_index}].source_ids[{reference_index}]",
                     source_id,
                 )
+
+    covered_by_error_pattern = {
+        node_id for pattern in bundle.error_patterns for node_id in pattern.node_ids
+    }
+    for index, node_id in enumerate(bundle.course.deep_unit_node_ids):
+        if node_id in node_ids and node_id not in covered_by_error_pattern:
+            findings.append(
+                ValidationFinding(
+                    code="DEEP_UNIT_ERROR_PATTERN_MISSING",
+                    path=f"course.deep_unit_node_ids[{index}]",
+                    message=f"deep unit has no linked error pattern: {node_id}",
+                )
+            )
 
     for question_index, question in enumerate(bundle.question_templates):
         if question.node_id not in node_ids:
@@ -327,6 +409,8 @@ def _semantic_findings(bundle: CourseAssetBundle) -> list[ValidationFinding]:
 def validate_course_document(document: Mapping[str, object]) -> CourseValidationReport:
     """Validate one raw course document and return stable, machine-readable findings."""
 
+    serialized = json.dumps(document, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    content_digest = hashlib.sha256(serialized.encode()).hexdigest()
     try:
         bundle = CourseAssetBundle.model_validate(document)
     except ValidationError as error:
@@ -339,7 +423,27 @@ def validate_course_document(document: Mapping[str, object]) -> CourseValidation
             for item in error.errors(include_url=False)
         ]
         findings.sort(key=lambda finding: (finding.path, finding.code, finding.message))
-        return CourseValidationReport(valid=False, findings=findings)
+        return CourseValidationReport(
+            valid=False,
+            findings=findings,
+            counts={},
+            content_digest=content_digest,
+        )
 
     findings = _semantic_findings(bundle)
-    return CourseValidationReport(valid=not findings, findings=findings)
+    counts = {
+        "chapters": len(bundle.chapters),
+        "nodes": len(bundle.nodes),
+        "sources": len(bundle.sources),
+        "error_patterns": len(bundle.error_patterns),
+        "question_templates": len(bundle.question_templates),
+        "test_cases": len(bundle.test_cases),
+        "mastery_policies": len(bundle.mastery_policies),
+        "deep_units": len(bundle.course.deep_unit_node_ids),
+    }
+    return CourseValidationReport(
+        valid=not findings,
+        findings=findings,
+        counts=counts,
+        content_digest=content_digest,
+    )
