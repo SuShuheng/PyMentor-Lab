@@ -28,6 +28,7 @@ from app.api.profiles import router as profiles_router
 from app.api.providers import router as providers_router
 from app.api.resources import router as resources_router
 from app.api.reviews import router as reviews_router
+from app.api.system_maintenance import router as system_maintenance_router
 from app.api.system_observability import router as system_observability_router
 from app.api.tasks import router as tasks_router
 from app.config import get_settings
@@ -96,6 +97,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_queries_router)
     app.include_router(providers_router)
     app.include_router(system_observability_router)
+    app.include_router(system_maintenance_router)
     app.include_router(evidence_router)
     app.include_router(profiles_router)
     app.include_router(learning_router)

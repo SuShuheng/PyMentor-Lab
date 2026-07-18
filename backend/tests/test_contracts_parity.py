@@ -51,6 +51,10 @@ from app.contracts import (
     CodeRunRequest,
     CodeRunView,
     CodeSubmissionRequest,
+    DatabaseBackupView,
+    DatabaseRestoreRequest,
+    DatabaseStatusView,
+    DemoResetView,
     ErrorCode,
     ErrorEnvelope,
     EvidenceEvent,
@@ -59,6 +63,8 @@ from app.contracts import (
     HintUsageView,
     IdempotencyRecord,
     LoginRequest,
+    MaintenanceConfirmationRequest,
+    MaintenanceOperationView,
     MasteryView,
     OrchestratorAgentInput,
     OrchestratorAgentOutput,
@@ -93,6 +99,7 @@ from app.contracts import (
     SandboxExecutionResponse,
     SandboxResult,
     SandboxRunStatus,
+    StudentDeleteView,
     SystemPingResponse,
     TaskStartResponse,
     TaskSubmissionResponse,
@@ -107,6 +114,56 @@ SCHEMAS_PATH = REPO_ROOT / "packages" / "contracts" / "schemas.json"
 
 # --- Shared fixtures (kept in lock-step with packages/contracts/src/conformance.ts) ---
 FIXTURES: dict[str, list[dict[str, Any]]] = {
+    "MaintenanceConfirmationRequest": [{"confirmation": "BACKUP DATABASE"}],
+    "DatabaseRestoreRequest": [
+        {
+            "confirmation": "RESTORE DATABASE",
+            "backup_id": "91000000-0000-4000-8000-000000000001",
+        }
+    ],
+    "DatabaseBackupView": [
+        {
+            "id": "91000000-0000-4000-8000-000000000001",
+            "status": "AVAILABLE",
+            "content_digest": "a" * 64,
+            "size_bytes": 4096,
+            "created_at": "2026-07-18T12:00:00Z",
+        }
+    ],
+    "DatabaseStatusView": [
+        {
+            "connected": True,
+            "engine": "PostgreSQL",
+            "schema_revision": "0011",
+            "database_size_bytes": 1048576,
+            "active_connections": 2,
+            "slow_query_count": 0,
+            "table_count": 1,
+            "tables": [{"name": "users", "size_bytes": 16384, "estimated_rows": 4}],
+            "last_backup": None,
+        }
+    ],
+    "MaintenanceOperationView": [
+        {
+            "id": "92000000-0000-4000-8000-000000000001",
+            "operation": "DATABASE_RESTORE",
+            "status": "SUCCEEDED",
+            "backup_id": "91000000-0000-4000-8000-000000000001",
+            "error_code": None,
+            "requested_at": "2026-07-18T12:00:00Z",
+            "completed_at": "2026-07-18T12:00:01Z",
+        }
+    ],
+    "StudentDeleteView": [
+        {"student_id": "93000000-0000-4000-8000-000000000001", "deleted": True}
+    ],
+    "DemoResetView": [
+        {
+            "tenant_id": "94000000-0000-4000-8000-000000000001",
+            "reset": "completed",
+            "users_removed": 3,
+        }
+    ],
     "AdminSystemHealthView": [
         {
             "status": "DEGRADED",
@@ -1023,6 +1080,13 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
 }
 
 MODEL_BY_NAME: dict[str, type[BaseModel]] = {
+    "MaintenanceConfirmationRequest": MaintenanceConfirmationRequest,
+    "DatabaseRestoreRequest": DatabaseRestoreRequest,
+    "DatabaseBackupView": DatabaseBackupView,
+    "DatabaseStatusView": DatabaseStatusView,
+    "MaintenanceOperationView": MaintenanceOperationView,
+    "StudentDeleteView": StudentDeleteView,
+    "DemoResetView": DemoResetView,
     "AdminLogPage": AdminLogPage,
     "AdminSystemHealthView": AdminSystemHealthView,
     "ProviderMetricsView": ProviderMetricsView,

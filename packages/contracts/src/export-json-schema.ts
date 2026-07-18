@@ -39,6 +39,10 @@ import {
   CodeRunRequest,
   CodeRunView,
   CodeSubmissionRequest,
+  DatabaseBackupView,
+  DatabaseRestoreRequest,
+  DatabaseStatusView,
+  DemoResetView,
   ErrorEnvelope,
   EvidenceEvent,
   HealthResponse,
@@ -46,6 +50,8 @@ import {
   HintUsageView,
   IdempotencyRecord,
   LoginRequest,
+  MaintenanceConfirmationRequest,
+  MaintenanceOperationView,
   MasteryView,
   OutboxEvent,
   OrchestratorAgentInput,
@@ -80,6 +86,7 @@ import {
   SandboxExecutionResponse,
   SandboxResult,
   StreamEvent,
+  StudentDeleteView,
   SystemPingResponse,
   TaskStartResponse,
   TaskSubmissionResponse,
@@ -93,6 +100,22 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT = resolve(__dirname, "..", "schemas.json");
 
 const schemas = {
+  MaintenanceConfirmationRequest: zodToJsonSchema(
+    MaintenanceConfirmationRequest,
+    "MaintenanceConfirmationRequest",
+  ),
+  DatabaseRestoreRequest: zodToJsonSchema(
+    DatabaseRestoreRequest,
+    "DatabaseRestoreRequest",
+  ),
+  DatabaseBackupView: zodToJsonSchema(DatabaseBackupView, "DatabaseBackupView"),
+  DatabaseStatusView: zodToJsonSchema(DatabaseStatusView, "DatabaseStatusView"),
+  MaintenanceOperationView: zodToJsonSchema(
+    MaintenanceOperationView,
+    "MaintenanceOperationView",
+  ),
+  StudentDeleteView: zodToJsonSchema(StudentDeleteView, "StudentDeleteView"),
+  DemoResetView: zodToJsonSchema(DemoResetView, "DemoResetView"),
   AdminAgentRunView: zodToJsonSchema(AdminAgentRunView, "AdminAgentRunView"),
   AdminLogPage: zodToJsonSchema(AdminLogPage, "AdminLogPage"),
   AdminEvidencePage: zodToJsonSchema(AdminEvidencePage, "AdminEvidencePage"),

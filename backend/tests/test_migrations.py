@@ -66,6 +66,7 @@ EXPECTED_0008_TABLES = {
 }
 EXPECTED_0009_TABLES = {"provider_configs"}
 EXPECTED_0010_TABLES = {"operational_logs", "provider_call_records"}
+EXPECTED_0011_TABLES = {"database_backups", "maintenance_operations"}
 
 
 def _skip_if_no_postgres() -> None:
@@ -405,3 +406,31 @@ def test_migration_0010_creates_observability_tables_and_bounds() -> None:
     assert "context_data" in log_columns
     assert "headers" not in log_columns
     assert "body" not in log_columns
+
+
+def test_migration_0011_creates_audited_maintenance_records() -> None:
+    """0011 persists opaque backup metadata and operation outcomes, never credentials."""
+    _skip_if_no_postgres()
+    cfg = _make_config()
+    command.upgrade(cfg, "head")
+
+    from app.db import engine
+
+    inspector = inspect(engine)
+    assert set(inspector.get_table_names()) >= EXPECTED_0011_TABLES
+    backup_columns = {row["name"] for row in inspector.get_columns("database_backups")}
+    assert {"object_key", "digest", "size_bytes", "status"} <= backup_columns
+    assert not {"database_url", "password", "local_path"}.intersection(backup_columns)
+    checks = {row["name"] for row in inspector.get_check_constraints("database_backups")}
+    assert {
+        "ck_database_backups_size_nonnegative",
+        "ck_database_backups_digest_length",
+        "ck_database_backups_status",
+    } <= checks
+    operation_checks = {
+        row["name"] for row in inspector.get_check_constraints("maintenance_operations")
+    }
+    assert {
+        "ck_maintenance_operations_type",
+        "ck_maintenance_operations_status",
+    } <= operation_checks

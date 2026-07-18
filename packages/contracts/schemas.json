@@ -1,4 +1,330 @@
 {
+  "MaintenanceConfirmationRequest": {
+    "$ref": "#/definitions/MaintenanceConfirmationRequest",
+    "definitions": {
+      "MaintenanceConfirmationRequest": {
+        "type": "object",
+        "properties": {
+          "confirmation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "confirmation"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "DatabaseRestoreRequest": {
+    "$ref": "#/definitions/DatabaseRestoreRequest",
+    "definitions": {
+      "DatabaseRestoreRequest": {
+        "type": "object",
+        "properties": {
+          "confirmation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "backup_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "confirmation",
+          "backup_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "DatabaseBackupView": {
+    "$ref": "#/definitions/DatabaseBackupView",
+    "definitions": {
+      "DatabaseBackupView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16
+          },
+          "content_digest": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "content_digest",
+          "size_bytes",
+          "created_at"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "DatabaseStatusView": {
+    "$ref": "#/definitions/DatabaseStatusView",
+    "definitions": {
+      "DatabaseStatusView": {
+        "type": "object",
+        "properties": {
+          "connected": {
+            "type": "boolean"
+          },
+          "engine": {
+            "type": "string",
+            "const": "PostgreSQL"
+          },
+          "schema_revision": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "database_size_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "active_connections": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "slow_query_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "table_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "tables": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "size_bytes": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "estimated_rows": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "name",
+                "size_bytes",
+                "estimated_rows"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "last_backup": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "status": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16
+                  },
+                  "content_digest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "size_bytes": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                },
+                "required": [
+                  "id",
+                  "status",
+                  "content_digest",
+                  "size_bytes",
+                  "created_at"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "connected",
+          "engine",
+          "schema_revision",
+          "database_size_bytes",
+          "active_connections",
+          "slow_query_count",
+          "table_count",
+          "tables",
+          "last_backup"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "MaintenanceOperationView": {
+    "$ref": "#/definitions/MaintenanceOperationView",
+    "definitions": {
+      "MaintenanceOperationView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "operation": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "status": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16
+          },
+          "backup_id": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/MaintenanceOperationView/properties/id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requested_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/MaintenanceOperationView/properties/requested_at"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "operation",
+          "status",
+          "backup_id",
+          "error_code",
+          "requested_at",
+          "completed_at"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "StudentDeleteView": {
+    "$ref": "#/definitions/StudentDeleteView",
+    "definitions": {
+      "StudentDeleteView": {
+        "type": "object",
+        "properties": {
+          "student_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deleted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "student_id",
+          "deleted"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "DemoResetView": {
+    "$ref": "#/definitions/DemoResetView",
+    "definitions": {
+      "DemoResetView": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reset": {
+            "type": "string",
+            "const": "completed"
+          },
+          "users_removed": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "tenant_id",
+          "reset",
+          "users_removed"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
   "AdminAgentRunView": {
     "$ref": "#/definitions/AdminAgentRunView",
     "definitions": {

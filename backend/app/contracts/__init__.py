@@ -56,6 +56,15 @@ from app.contracts.learning import (
     TaskSubmissionResponse,
     TodayItem,
 )
+from app.contracts.maintenance import (
+    DatabaseBackupView,
+    DatabaseRestoreRequest,
+    DatabaseStatusView,
+    DemoResetView,
+    MaintenanceConfirmationRequest,
+    MaintenanceOperationView,
+    StudentDeleteView,
+)
 from app.contracts.observability import (
     AdminLogPage,
     AdminSystemHealthView,
@@ -180,6 +189,10 @@ __all__ = [
     "CodeRunView",
     "CodeSubmissionRequest",
     "ContentDeltaEvent",
+    "DatabaseBackupView",
+    "DatabaseRestoreRequest",
+    "DatabaseStatusView",
+    "DemoResetView",
     "DoneEvent",
     "ErrorCode",
     "ErrorEnvelope",
@@ -194,6 +207,8 @@ __all__ = [
     "LearningPathStatusContract",
     "LearningResourceType",
     "LoginRequest",
+    "MaintenanceConfirmationRequest",
+    "MaintenanceOperationView",
     "MasteryStatusContract",
     "MasteryView",
     "OrchestratorAgentInput",
@@ -256,6 +271,7 @@ __all__ = [
     "StreamEvent",
     "StreamEventType",
     "StreamInlineError",
+    "StudentDeleteView",
     "SystemPingResponse",
     "TaskInstanceStatusContract",
     "TaskStartResponse",

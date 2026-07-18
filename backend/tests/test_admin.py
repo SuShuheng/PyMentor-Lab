@@ -109,6 +109,40 @@ class TestAdminGuard:
 # 审核流转
 # --------------------------------------------------------------------------- #
 class TestRegistrationApproval:
+    def test_registration_reads_and_decisions_are_tenant_scoped(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        _make_admin(db_session)
+        foreign_tenant = get_or_create_tenant(
+            db_session, slug="foreign-review", name="Foreign Review"
+        )
+        db_session.flush()
+        foreign = create_student_user(
+            db_session,
+            tenant_id=foreign_tenant.id,
+            email="foreign-pending@example.com",
+            password_hash=hash_password("ValidPass1!"),
+        )
+        token = _login(client, "admin@uni.edu", "AdminPass1!")
+
+        pending = client.get(
+            "/api/v1/admin/registrations/pending",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        decision = client.post(
+            f"/api/v1/admin/registrations/{foreign.id}/approve",
+            json={},
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Idempotency-Key": "foreign-registration-decision",
+            },
+        )
+
+        assert pending.status_code == 200
+        assert all(item["user_id"] != str(foreign.id) for item in pending.json())
+        assert decision.status_code == 404
+        assert foreign.status == UserStatus.PENDING
+
     def test_approve_pending_user(self, client: TestClient, db_session: Session) -> None:
         admin = _make_admin(db_session)
         tenant = get_or_create_tenant(db_session, slug="default", name="Default Tenant")
@@ -126,11 +160,22 @@ class TestRegistrationApproval:
             json={},
             headers={
                 "Authorization": f"Bearer {admin_token}",
+                "Idempotency-Key": "approve-pending-user",
                 "x-trace-id": "trc_approve_test",
             },
         )
         assert resp.status_code == 200
         assert resp.json()["status"] == "ACTIVE"
+        replay = client.post(
+            f"/api/v1/admin/registrations/{pending.id}/approve",
+            json={},
+            headers={
+                "Authorization": f"Bearer {admin_token}",
+                "Idempotency-Key": "approve-pending-user",
+            },
+        )
+        assert replay.status_code == 200
+        assert replay.json() == resp.json()
 
         # 批准后能登录。
         login_resp = client.post(
@@ -173,7 +218,10 @@ class TestRegistrationApproval:
         resp = client.post(
             f"/api/v1/admin/registrations/{pending.id}/reject",
             json={},
-            headers={"Authorization": f"Bearer {admin_token}"},
+            headers={
+                "Authorization": f"Bearer {admin_token}",
+                "Idempotency-Key": "reject-pending-user",
+            },
         )
         assert resp.status_code == 200
         assert resp.json()["status"] == "REJECTED"
@@ -225,8 +273,10 @@ class TestDemoTenantReset:
         # 重置 demo 租户。
         resp = client.post(
             f"/api/v1/admin/tenants/{demo.id}/reset",
+            json={"confirmation": f"RESET DEMO TENANT {demo.id}"},
             headers={
                 "Authorization": f"Bearer {admin_token}",
+                "Idempotency-Key": "legacy-demo-reset",
                 "x-trace-id": "trc_demo_reset",
             },
         )

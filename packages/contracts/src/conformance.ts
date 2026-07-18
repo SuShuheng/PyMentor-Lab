@@ -36,6 +36,10 @@ import {
   CodeRunRequest,
   CodeRunView,
   CodeSubmissionRequest,
+  DatabaseBackupView,
+  DatabaseRestoreRequest,
+  DatabaseStatusView,
+  DemoResetView,
   ErrorEnvelope,
   EvidenceEvent,
   HealthResponse,
@@ -43,6 +47,8 @@ import {
   HintUsageView,
   IdempotencyRecord,
   LoginRequest,
+  MaintenanceConfirmationRequest,
+  MaintenanceOperationView,
   MasteryView,
   OutboxEvent,
   OrchestratorAgentInput,
@@ -77,6 +83,7 @@ import {
   SandboxExecutionResponse,
   SandboxResult,
   StreamEvent,
+  StudentDeleteView,
   SystemPingResponse,
   TaskStartResponse,
   TaskSubmissionResponse,
@@ -99,6 +106,77 @@ const agentContext = {
 };
 
 const cases: Cases = {
+  MaintenanceConfirmationRequest: {
+    schema: MaintenanceConfirmationRequest,
+    samples: [{ confirmation: "BACKUP DATABASE" }],
+  },
+  DatabaseRestoreRequest: {
+    schema: DatabaseRestoreRequest,
+    samples: [
+      {
+        confirmation: "RESTORE DATABASE",
+        backup_id: "91000000-0000-4000-8000-000000000001",
+      },
+    ],
+  },
+  DatabaseBackupView: {
+    schema: DatabaseBackupView,
+    samples: [
+      {
+        id: "91000000-0000-4000-8000-000000000001",
+        status: "AVAILABLE",
+        content_digest: "a".repeat(64),
+        size_bytes: 4096,
+        created_at: "2026-07-18T12:00:00Z",
+      },
+    ],
+  },
+  DatabaseStatusView: {
+    schema: DatabaseStatusView,
+    samples: [
+      {
+        connected: true,
+        engine: "PostgreSQL",
+        schema_revision: "0011",
+        database_size_bytes: 1048576,
+        active_connections: 2,
+        slow_query_count: 0,
+        table_count: 1,
+        tables: [{ name: "users", size_bytes: 16384, estimated_rows: 4 }],
+        last_backup: null,
+      },
+    ],
+  },
+  MaintenanceOperationView: {
+    schema: MaintenanceOperationView,
+    samples: [
+      {
+        id: "92000000-0000-4000-8000-000000000001",
+        operation: "DATABASE_RESTORE",
+        status: "SUCCEEDED",
+        backup_id: "91000000-0000-4000-8000-000000000001",
+        error_code: null,
+        requested_at: "2026-07-18T12:00:00Z",
+        completed_at: "2026-07-18T12:00:01Z",
+      },
+    ],
+  },
+  StudentDeleteView: {
+    schema: StudentDeleteView,
+    samples: [
+      { student_id: "93000000-0000-4000-8000-000000000001", deleted: true },
+    ],
+  },
+  DemoResetView: {
+    schema: DemoResetView,
+    samples: [
+      {
+        tenant_id: "94000000-0000-4000-8000-000000000001",
+        reset: "completed",
+        users_removed: 3,
+      },
+    ],
+  },
   AdminSystemHealthView: {
     schema: AdminSystemHealthView,
     samples: [

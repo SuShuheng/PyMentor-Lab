@@ -61,6 +61,7 @@ from app.models.learning import (
     TaskStatusHistory,
     TaskVersion,
 )
+from app.models.maintenance import DatabaseBackup, MaintenanceOperation
 from app.models.observability import OperationalLog, ProviderCallRecord
 from app.models.provider import ProviderConfig
 from app.models.resource import (
@@ -81,6 +82,7 @@ __all__ = [
     "CodeRunStatusHistory",
     "CourseCatalog",
     "CourseChapter",
+    "DatabaseBackup",
     "EvidenceEvent",
     "HintSource",
     "HintUsage",
@@ -96,11 +98,12 @@ __all__ = [
     "LearningPathStatus",
     "LearningPathStep",
     "LearningResourceRecord",
+    "MaintenanceOperation",
     "MasteryState",
     "MasteryStateHistory",
     "MasteryStatus",
-    "OutboxEvent",
     "OperationalLog",
+    "OutboxEvent",
     "PathStepKind",
     "PathValidationStatus",
     "ProfileChangeProposal",
@@ -109,8 +112,8 @@ __all__ = [
     "ProfileDispute",
     "ProfileProposalStatus",
     "ProfileVersion",
-    "ProviderConfig",
     "ProviderCallRecord",
+    "ProviderConfig",
     "ResourceJobRecord",
     "ResourceObjectRecord",
     "ResourceReviewRecord",

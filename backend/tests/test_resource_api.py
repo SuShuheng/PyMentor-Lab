@@ -82,7 +82,12 @@ def test_create_resource_job_derives_sources_writes_outbox_and_replays(
     assert body["requested_types"] == ["STRUCTURE_CARD", "MICRO_LECTURE"]
     assert "source_ids" not in body
 
-    jobs = list(db_session.scalars(select(ResourceJobRecord)))
+    jobs = list(
+        db_session.scalars(
+            select(ResourceJobRecord).where(ResourceJobRecord.tenant_id == user.tenant_id)
+            .where(ResourceJobRecord.idempotency_key == "resource-create-1")
+        )
+    )
     assert len(jobs) == 1
     node = db_session.get(KnowledgeNode, NODE_ID)
     assert node is not None
