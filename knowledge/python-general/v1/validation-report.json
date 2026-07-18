@@ -1,0 +1,15 @@
+{
+  "valid": true,
+  "findings": [],
+  "counts": {
+    "chapters": 14,
+    "nodes": 84,
+    "sources": 16,
+    "error_patterns": 84,
+    "question_templates": 168,
+    "test_cases": 168,
+    "mastery_policies": 2,
+    "deep_units": 4
+  },
+  "content_digest": "fc1cd55e05c3cfcc680826379e15a4e6dfde1c933397067fb9f7a89c10ed6647"
+}

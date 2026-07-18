@@ -1,0 +1,81 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "error_id": {
+      "format": "uuid",
+      "title": "Error Id",
+      "type": "string"
+    },
+    "node_ids": {
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Node Ids",
+      "type": "array"
+    },
+    "title": {
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "symptom": {
+      "minLength": 1,
+      "title": "Symptom",
+      "type": "string"
+    },
+    "misconception": {
+      "minLength": 1,
+      "title": "Misconception",
+      "type": "string"
+    },
+    "diagnosis_prompts": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Diagnosis Prompts",
+      "type": "array"
+    },
+    "remediation": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Remediation",
+      "type": "array"
+    },
+    "source_ids": {
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Source Ids",
+      "type": "array"
+    },
+    "version": {
+      "pattern": "^[1-9]\\d*\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "error_id",
+    "node_ids",
+    "title",
+    "symptom",
+    "misconception",
+    "diagnosis_prompts",
+    "remediation",
+    "source_ids",
+    "version"
+  ],
+  "title": "ErrorPatternAsset",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pymentor-lab.local/schemas/v1/error-pattern.schema.json"
+}

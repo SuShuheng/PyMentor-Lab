@@ -2,10 +2,20 @@
 
 from __future__ import annotations
 
+import json
 from copy import deepcopy
+from pathlib import Path
 from typing import Any
 
 from app.knowledge_assets import generate_asset_schemas, validate_course_document
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+PUBLISHED_CATALOG = (
+    REPOSITORY_ROOT / "knowledge" / "python-general" / "v1" / "course-bundle.json"
+)
+PUBLISHED_REPORT = (
+    REPOSITORY_ROOT / "knowledge" / "python-general" / "v1" / "validation-report.json"
+)
 
 
 def _minimal_document() -> dict[str, Any]:
@@ -217,3 +227,38 @@ def test_schema_generator_exports_every_governed_asset_contract() -> None:
         "course-bundle.schema.json",
     }
     assert schemas["node.schema.json"]["additionalProperties"] is False
+
+
+def test_published_university_course_is_complete_and_reproducibly_valid() -> None:
+    document = json.loads(PUBLISHED_CATALOG.read_text(encoding="utf-8"))
+    published_report = json.loads(PUBLISHED_REPORT.read_text(encoding="utf-8"))
+
+    report = validate_course_document(document)
+
+    assert report.valid is True
+    assert report.counts == {
+        "chapters": 14,
+        "nodes": 84,
+        "sources": 16,
+        "error_patterns": 84,
+        "question_templates": 168,
+        "test_cases": 168,
+        "mastery_policies": 2,
+        "deep_units": 4,
+    }
+    assert report.model_dump(mode="json") == published_report
+
+    nodes_by_id = {node["node_id"]: node for node in document["nodes"]}
+    deep_titles = {
+        nodes_by_id[node_id]["title"] for node_id in document["course"]["deep_unit_node_ids"]
+    }
+    assert deep_titles == {
+        "循环边界综合调试",
+        "UnboundLocalError 深度调试",
+        "可变默认参数共享陷阱",
+        "调用栈深度追踪",
+    }
+    assert all(
+        source["url"].startswith(("https://docs.python.org/", "https://peps.python.org/"))
+        for source in document["sources"]
+    )
