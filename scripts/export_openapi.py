@@ -15,7 +15,7 @@ from pathlib import Path
 # Ensure the backend app package is importable when run from the repo root.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
-from app.main import create_app  # noqa: E402
+from app.main import create_app
 
 OUTPUT = Path(__file__).resolve().parents[1] / "packages" / "api-client" / "openapi.json"
 
