@@ -8,6 +8,20 @@
 
 import { z } from "zod";
 
+export const ChatMessage = z.object({
+  role: z.enum(["system", "user", "assistant", "tool"]),
+  content: z.string().min(1).max(20_000),
+});
+export type ChatMessage = z.infer<typeof ChatMessage>;
+
+export const ChatCompletionRequest = z.object({
+  course_id: z.string().uuid(),
+  node_id: z.string().uuid(),
+  messages: z.array(ChatMessage).min(1).max(64),
+  stream: z.literal(true).default(true),
+});
+export type ChatCompletionRequest = z.infer<typeof ChatCompletionRequest>;
+
 /** A single tool-call delta carried on the streaming response. */
 export const ToolCallDelta = z.object({
   /** Index groups pieces of the same logical tool call across chunks. */

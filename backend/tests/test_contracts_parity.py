@@ -35,6 +35,8 @@ from app.contracts import (
     AuditEvent,
     AuthTokens,
     ChatCompletionChunk,
+    ChatCompletionRequest,
+    ChatMessage,
     CoachAgentInput,
     CoachAgentOutput,
     CodeRunRequest,
@@ -134,6 +136,15 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
             "delta_tool_calls": [{"index": 0, "id": "call_1", "name": "lookup", "arguments": "{}"}],
             "timestamp": "2026-07-17T00:00:00Z",
         },
+    ],
+    "ChatMessage": [{"role": "user", "content": "Explain Python loops."}],
+    "ChatCompletionRequest": [
+        {
+            "course_id": "69408047-3b99-5fb2-b383-81f7314ecd5d",
+            "node_id": "9512e5ec-f547-51b3-b0df-c5b3a877da9e",
+            "messages": [{"role": "user", "content": "Explain Python loops."}],
+            "stream": True,
+        }
     ],
     "SandboxResult": [
         {
@@ -772,6 +783,8 @@ MODEL_BY_NAME: dict[str, type[BaseModel]] = {
     "HealthResponse": HealthResponse,
     "SystemPingResponse": SystemPingResponse,
     "ChatCompletionChunk": ChatCompletionChunk,
+    "ChatMessage": ChatMessage,
+    "ChatCompletionRequest": ChatCompletionRequest,
     "CoachAgentInput": CoachAgentInput,
     "CoachAgentOutput": CoachAgentOutput,
     "SandboxResult": SandboxResult,

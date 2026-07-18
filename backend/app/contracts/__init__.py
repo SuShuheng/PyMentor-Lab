@@ -85,6 +85,8 @@ from app.contracts.resources import (
 )
 from app.contracts.streaming import (
     ChatCompletionChunk,
+    ChatCompletionRequest,
+    ChatMessage,
     ContentDeltaEvent,
     DoneEvent,
     ProgressEvent,
@@ -137,6 +139,8 @@ __all__ = [
     "AuditEvent",
     "AuthTokens",
     "ChatCompletionChunk",
+    "ChatCompletionRequest",
+    "ChatMessage",
     "CoachAgentInput",
     "CoachAgentOutput",
     "CodeRevisionView",

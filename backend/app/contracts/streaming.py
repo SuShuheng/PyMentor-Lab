@@ -7,8 +7,25 @@ from __future__ import annotations
 
 from enum import StrEnum
 from typing import Annotated, Literal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
+
+class ChatMessage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    role: Literal["system", "user", "assistant", "tool"]
+    content: str = Field(min_length=1, max_length=20_000)
+
+
+class ChatCompletionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    course_id: UUID
+    node_id: UUID
+    messages: list[ChatMessage] = Field(min_length=1, max_length=64)
+    stream: Literal[True] = True
 
 
 class ToolCallDelta(BaseModel):

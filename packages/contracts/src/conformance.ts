@@ -20,6 +20,8 @@ import {
   AuthTokens,
   AuditEvent,
   ChatCompletionChunk,
+  ChatCompletionRequest,
+  ChatMessage,
   CoachAgentInput,
   CoachAgentOutput,
   CodeRunRequest,
@@ -131,6 +133,21 @@ const cases: Cases = {
         delta_reasoning: "thinking",
         delta_tool_calls: [{ index: 0, id: "call_1", name: "lookup", arguments: "{}" }],
         timestamp: "2026-07-17T00:00:00Z",
+      },
+    ],
+  },
+  ChatMessage: {
+    schema: ChatMessage,
+    samples: [{ role: "user", content: "Explain Python loops." }],
+  },
+  ChatCompletionRequest: {
+    schema: ChatCompletionRequest,
+    samples: [
+      {
+        course_id: "69408047-3b99-5fb2-b383-81f7314ecd5d",
+        node_id: "9512e5ec-f547-51b3-b0df-c5b3a877da9e",
+        messages: [{ role: "user", content: "Explain Python loops." }],
+        stream: true,
       },
     ],
   },
