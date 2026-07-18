@@ -48,6 +48,16 @@ EXPECTED_0005_TABLES = {
     "hint_usages",
 }
 EXPECTED_0006_TABLES = {"agent_definitions", "agent_runs", "agent_tool_calls"}
+EXPECTED_0007_TABLES = {
+    "course_catalog",
+    "course_chapters",
+    "knowledge_nodes",
+    "knowledge_sources",
+    "knowledge_error_patterns",
+    "knowledge_question_templates",
+    "knowledge_test_cases",
+    "knowledge_mastery_policies",
+}
 
 
 def _skip_if_no_postgres() -> None:
@@ -250,3 +260,44 @@ def test_agent_audit_uniques_and_checks_are_named() -> None:
     assert "uq_agent_tool_calls_run_sequence" in tool_uniques
     assert "ck_agent_runs_latest_sequence_nonnegative" in run_checks
     assert "ck_agent_tool_calls_sequence_positive" in tool_checks
+
+
+def test_migration_0007_creates_governed_knowledge_catalog() -> None:
+    """0007 persists every governed BE-009 asset family."""
+    _skip_if_no_postgres()
+    cfg = _make_config()
+    command.upgrade(cfg, "head")
+
+    from app.db import engine
+
+    actual_tables = set(inspect(engine).get_table_names())
+    missing = EXPECTED_0007_TABLES - actual_tables
+    assert not missing, f"knowledge-catalog tables missing: {missing}"
+
+
+def test_learning_loop_uses_governed_course_and_node_foreign_keys() -> None:
+    """Formal learning rows cannot point at absent or cross-course catalogue nodes."""
+    _skip_if_no_postgres()
+    cfg = _make_config()
+    command.upgrade(cfg, "head")
+
+    from app.db import engine
+
+    inspector = inspect(engine)
+    foreign_keys = {
+        table: {row["name"] for row in inspector.get_foreign_keys(table)}
+        for table in (
+            "learning_paths",
+            "learning_path_steps",
+            "task_definitions",
+            "assessment_results",
+            "mastery_states",
+            "review_schedules",
+        )
+    }
+    assert "fk_learning_paths_course_catalog" in foreign_keys["learning_paths"]
+    assert "fk_learning_path_steps_knowledge_node" in foreign_keys["learning_path_steps"]
+    assert "fk_task_definitions_course_node" in foreign_keys["task_definitions"]
+    assert "fk_assessment_results_course_node" in foreign_keys["assessment_results"]
+    assert "fk_mastery_states_course_node" in foreign_keys["mastery_states"]
+    assert "fk_review_schedules_course_node" in foreign_keys["review_schedules"]

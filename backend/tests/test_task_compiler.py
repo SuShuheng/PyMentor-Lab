@@ -20,8 +20,8 @@ from app.task_compiler import (
     start_task_instance,
 )
 
-COURSE_ID = UUID("00000000-0000-0000-0000-000000000201")
-NODE_ID = UUID("00000000-0000-0000-0000-000000000202")
+COURSE_ID = UUID("69408047-3b99-5fb2-b383-81f7314ecd5d")
+NODE_ID = UUID("e5809fab-7e1e-5b7f-b384-ead7958d0b59")
 
 
 @pytest.fixture()

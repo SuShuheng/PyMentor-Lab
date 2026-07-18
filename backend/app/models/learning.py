@@ -1,7 +1,6 @@
 """Normalized persistence for the deterministic learning loop (BE-004).
 
-Course and knowledge-node identifiers intentionally remain UUID references
-without foreign keys until BE-009 introduces the governed course catalogue.
+Course and knowledge-node identifiers are governed by the BE-009 catalogue.
 Current formal rows carry optimistic versions; history, assessment, dispute,
 and review-attempt rows are append-only by service policy.
 """
@@ -19,6 +18,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     String,
     UniqueConstraint,
@@ -269,7 +269,14 @@ class LearningPath(Base):
     student_id: Mapped[UUID] = mapped_column(
         Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    course_id: Mapped[UUID] = mapped_column(Uuid, nullable=False, index=True)
+    course_id: Mapped[UUID] = mapped_column(
+        Uuid,
+        ForeignKey(
+            "course_catalog.id", name="fk_learning_paths_course_catalog", ondelete="RESTRICT"
+        ),
+        nullable=False,
+        index=True,
+    )
     version: Mapped[int] = mapped_column(nullable=False)
     status: Mapped[LearningPathStatus] = mapped_column(
         SqlEnum(LearningPathStatus, native_enum=False, length=16),
@@ -299,7 +306,16 @@ class LearningPathStep(Base):
         Uuid, ForeignKey("learning_paths.id", ondelete="CASCADE"), nullable=False, index=True
     )
     position: Mapped[int] = mapped_column(nullable=False)
-    node_id: Mapped[UUID] = mapped_column(Uuid, nullable=False, index=True)
+    node_id: Mapped[UUID] = mapped_column(
+        Uuid,
+        ForeignKey(
+            "knowledge_nodes.id",
+            name="fk_learning_path_steps_knowledge_node",
+            ondelete="RESTRICT",
+        ),
+        nullable=False,
+        index=True,
+    )
     kind: Mapped[PathStepKind] = mapped_column(
         SqlEnum(PathStepKind, native_enum=False, length=16), nullable=False
     )
@@ -318,6 +334,12 @@ class TaskDefinition(Base):
     __table_args__ = (
         UniqueConstraint("tenant_id", "course_id", "key", name="uq_task_definition_key"),
         CheckConstraint("version >= 1", name="ck_task_definition_version_positive"),
+        ForeignKeyConstraint(
+            ["node_id", "course_id"],
+            ["knowledge_nodes.id", "knowledge_nodes.course_id"],
+            name="fk_task_definitions_course_node",
+            ondelete="RESTRICT",
+        ),
     )
 
     id: Mapped[UUID] = _uuid_pk()
@@ -427,6 +449,12 @@ class AssessmentResult(Base):
             "transfer_score >= 0.0 AND transfer_score <= 1.0",
             name="ck_assessment_transfer_range",
         ),
+        ForeignKeyConstraint(
+            ["node_id", "course_id"],
+            ["knowledge_nodes.id", "knowledge_nodes.course_id"],
+            name="fk_assessment_results_course_node",
+            ondelete="RESTRICT",
+        ),
     )
 
     id: Mapped[UUID] = _uuid_pk()
@@ -461,6 +489,12 @@ class MasteryState(Base):
             name="uq_mastery_student_course_node",
         ),
         CheckConstraint("version >= 1", name="ck_mastery_state_version_positive"),
+        ForeignKeyConstraint(
+            ["node_id", "course_id"],
+            ["knowledge_nodes.id", "knowledge_nodes.course_id"],
+            name="fk_mastery_states_course_node",
+            ondelete="RESTRICT",
+        ),
     )
 
     id: Mapped[UUID] = _uuid_pk()
@@ -520,6 +554,12 @@ class ReviewSchedule(Base):
             "node_id",
             unique=True,
             postgresql_where=text("status IN ('SCHEDULED', 'DUE')"),
+        ),
+        ForeignKeyConstraint(
+            ["node_id", "course_id"],
+            ["knowledge_nodes.id", "knowledge_nodes.course_id"],
+            name="fk_review_schedules_course_node",
+            ondelete="RESTRICT",
         ),
     )
 

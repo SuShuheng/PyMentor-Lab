@@ -11,6 +11,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.knowledge_seed import seed_published_course
 from app.models.base import RoleName, TenantType, UserStatus
 from app.models.identity import User
 from app.security import hash_password
@@ -92,6 +93,7 @@ def seed_demo_tenant(db: Session) -> None:
 
 def run_bootstrap(db: Session) -> None:
     """执行全部引导步骤（启动时调用）。"""
+    seed_published_course(db)
     ensure_roles_seeded(db)
     db.commit()
     bootstrap_initial_admin(db)

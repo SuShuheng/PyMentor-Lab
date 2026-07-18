@@ -42,9 +42,9 @@ from app.security import hash_password
 from app.services import create_student_user, get_or_create_tenant
 from app.task_compiler import CompileInput, compile_task_version, start_task_instance
 
-COURSE_ID = UUID("00000000-0000-0000-0000-000000000401")
-NODE_ID = UUID("00000000-0000-0000-0000-000000000402")
-OTHER_NODE_ID = UUID("00000000-0000-0000-0000-000000000403")
+COURSE_ID = UUID("69408047-3b99-5fb2-b383-81f7314ecd5d")
+NODE_ID = UUID("9512e5ec-f547-51b3-b0df-c5b3a877da9e")
+OTHER_NODE_ID = UUID("666b57e9-813f-5eaa-a3dc-4f2a1b19a7d9")
 NOW = datetime(2026, 7, 17, 8, 0, tzinfo=UTC)
 POLICY = MasteryPolicy(
     independence_min=0.7,

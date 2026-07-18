@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy.orm import Session
@@ -21,6 +21,8 @@ from app.models import (
 )
 
 NOW = datetime(2026, 7, 17, 8, 0, tzinfo=UTC)
+COURSE_ID = UUID("69408047-3b99-5fb2-b383-81f7314ecd5d")
+NODE_ID = UUID("9512e5ec-f547-51b3-b0df-c5b3a877da9e")
 
 
 @pytest.fixture()
@@ -39,8 +41,8 @@ def hint_task(db_session: Session) -> tuple[TaskInstance, User]:
     db_session.flush()
     definition = TaskDefinition(
         tenant_id=tenant.id,
-        course_id=uuid4(),
-        node_id=uuid4(),
+        course_id=COURSE_ID,
+        node_id=NODE_ID,
         key=f"hint-{suffix}",
         title="Hint task",
     )

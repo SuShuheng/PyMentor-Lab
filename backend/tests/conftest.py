@@ -18,7 +18,9 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
+from app.knowledge_seed import seed_published_course
 from app.models import (
+    CourseCatalog,
     IdempotencyKey,
     TaskDefinition,
     TaskInstance,
@@ -40,8 +42,8 @@ TEST_DB_URL = os.environ.get(
 
 # BE-005 共享常量与快照（test_code_runs / test_code_execution 共用）。
 NOW = datetime(2026, 7, 17, 8, 0, tzinfo=UTC)
-COURSE_ID = UUID("00000000-0000-0000-0000-000000000501")
-NODE_ID = UUID("00000000-0000-0000-0000-000000000502")
+COURSE_ID = UUID("69408047-3b99-5fb2-b383-81f7314ecd5d")
+NODE_ID = UUID("9512e5ec-f547-51b3-b0df-c5b3a877da9e")
 
 
 @dataclass(slots=True)
@@ -189,6 +191,14 @@ def db_session(db_engine: Engine) -> Iterator[Session]:
     注意：BE-002 的迁移测试直接用 alembic 命令而非此 fixture（DDL 不在
     savepoint 内回滚）；此 fixture 供需要 ORM 写入的业务测试使用。
     """
+    # Migration round-trip tests can recreate an empty head schema midway through
+    # the session. Seed once whenever the canonical course is absent so all formal
+    # learning fixtures use governed IDs without paying the upsert cost per test.
+    with Session(db_engine) as seed_session:
+        if seed_session.get(CourseCatalog, COURSE_ID) is None:
+            seed_published_course(seed_session)
+            seed_session.commit()
+
     connection = db_engine.connect()
     trans = connection.begin()
     session = Session(bind=connection, expire_on_commit=False)
