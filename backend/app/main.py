@@ -23,6 +23,7 @@ from app.api.learning import router as learning_router
 from app.api.mastery import router as mastery_router
 from app.api.paths import router as paths_router
 from app.api.profiles import router as profiles_router
+from app.api.resources import router as resources_router
 from app.api.reviews import router as reviews_router
 from app.api.tasks import router as tasks_router
 from app.config import get_settings
@@ -94,6 +95,7 @@ def create_app() -> FastAPI:
     app.include_router(tasks_router)
     app.include_router(mastery_router)
     app.include_router(reviews_router)
+    app.include_router(resources_router)
     app.include_router(code_router)
     app.include_router(hints_router)
 

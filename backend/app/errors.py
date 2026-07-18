@@ -106,6 +106,7 @@ def install_error_handlers(app: FastAPI) -> None:
         ProfileScopeError,
         ProfileVersionConflict,
     )
+    from app.resources import ResourceJobConflict
     from app.reviews import InvalidReviewOperation, ReviewVersionConflict
     from app.task_compiler import (
         InvalidTaskCompileInput,
@@ -119,6 +120,7 @@ def install_error_handlers(app: FastAPI) -> None:
         PathVersionConflict,
         ProfileVersionConflict,
         ReviewVersionConflict,
+        ResourceJobConflict,
     )
     for conflict_type in conflict_errors:
         app.add_exception_handler(
