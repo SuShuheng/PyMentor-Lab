@@ -11,6 +11,7 @@ export * from "./queue/processor.js";
 export * from "./queue/runtime.js";
 export * from "./providers/capabilities.js";
 export * from "./providers/openai-compatible.js";
+export * from "./rag/source-bound.js";
 export * from "./runtime/application.js";
 export * from "./runtime/config.js";
 export * from "./workflow/checkpoints.js";
