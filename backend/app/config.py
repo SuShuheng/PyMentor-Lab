@@ -8,7 +8,7 @@ behind explicit config objects; the renderer never receives any of these.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 def _env(name: str, default: str) -> str:
@@ -80,6 +80,19 @@ class Settings:
     )
     sandbox_request_timeout_seconds: int = int(
         _env("PYMENTOR_SANDBOX_REQUEST_TIMEOUT_SECONDS", "30")
+    )
+
+    # Private, versioned object storage (BE-007). The secret is server-only and
+    # excluded from dataclass repr to prevent accidental structured logging.
+    object_store_endpoint: str = _env("PYMENTOR_OBJECT_STORE_ENDPOINT", "minio:9000")
+    object_store_access_key: str = _env("PYMENTOR_OBJECT_STORE_ACCESS_KEY", "pymentor")
+    object_store_secret_key: str = field(
+        default_factory=lambda: _env("PYMENTOR_OBJECT_STORE_SECRET_KEY", "pymentor_dev"),
+        repr=False,
+    )
+    object_store_bucket: str = _env("PYMENTOR_OBJECT_STORE_BUCKET", "pymentor-resources")
+    object_store_secure: bool = (
+        _env("PYMENTOR_OBJECT_STORE_SECURE", "false").lower() == "true"
     )
 
 

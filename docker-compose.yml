@@ -64,12 +64,19 @@ services:
       PYMENTOR_AGENT_EVENT_STREAM: pymentor:agent-events:v1
       PYMENTOR_AGENT_EVENT_GROUP: pymentor-api-v1
       PYMENTOR_AGENT_EVENT_CONSUMER: api-1
+      PYMENTOR_OBJECT_STORE_ENDPOINT: minio:9000
+      PYMENTOR_OBJECT_STORE_ACCESS_KEY: ${MINIO_ROOT_USER:-pymentor}
+      PYMENTOR_OBJECT_STORE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-pymentor_dev}
+      PYMENTOR_OBJECT_STORE_BUCKET: pymentor-resources
+      PYMENTOR_OBJECT_STORE_SECURE: "false"
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     healthcheck:
       test:
