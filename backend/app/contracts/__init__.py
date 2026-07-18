@@ -47,6 +47,15 @@ from app.contracts.learning import (
     TaskSubmissionResponse,
     TodayItem,
 )
+from app.contracts.resources import (
+    ResourceArtifactStatusContract,
+    ResourceArtifactView,
+    ResourceJobCreate,
+    ResourceJobStatusContract,
+    ResourceJobView,
+    ResourceObjectView,
+    ResourceTypeContract,
+)
 from app.contracts.sandbox import (
     CodeRevisionView,
     CodeRunMode,
@@ -73,15 +82,6 @@ from app.contracts.sandbox import (
     SandboxTestCaseResult,
     TestVisibility,
     TraceFrame,
-)
-from app.contracts.resources import (
-    ResourceArtifactStatusContract,
-    ResourceArtifactView,
-    ResourceJobCreate,
-    ResourceJobStatusContract,
-    ResourceJobView,
-    ResourceObjectView,
-    ResourceTypeContract,
 )
 from app.contracts.streaming import (
     ChatCompletionChunk,
