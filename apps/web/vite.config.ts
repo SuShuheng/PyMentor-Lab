@@ -1,7 +1,7 @@
 import react from "@vitejs/plugin-react";
 import { createRequire } from "node:module";
 import { dirname } from "node:path";
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 
 const require = createRequire(import.meta.url);
 
