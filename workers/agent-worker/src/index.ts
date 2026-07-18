@@ -9,6 +9,7 @@ export * from "./queue/events.js";
 export * from "./queue/identities.js";
 export * from "./queue/processor.js";
 export * from "./queue/runtime.js";
+export * from "./providers/capabilities.js";
 export * from "./providers/openai-compatible.js";
 export * from "./runtime/application.js";
 export * from "./runtime/config.js";
