@@ -54,6 +54,11 @@ import {
   ProfileSnapshot,
   ProfileAgentInput,
   ProfileAgentOutput,
+  ProviderConfigCreate,
+  ProviderConfigPage,
+  ProviderConfigUpdate,
+  ProviderConfigView,
+  ProviderConnectivityView,
   RegisterRequest,
   RegisterResponse,
   RegistrationDecisionRequest,
@@ -91,6 +96,70 @@ const agentContext = {
 };
 
 const cases: Cases = {
+  ProviderConfigCreate: {
+    schema: ProviderConfigCreate,
+    samples: [
+      {
+        provider_type: "LLM",
+        vendor: "xfyun",
+        model: "spark-v4",
+        api_key: "test-provider-key",
+        endpoint: "https://provider.example.com/v1/models",
+        params: { temperature: 0.2 },
+        enabled: true,
+      },
+    ],
+  },
+  ProviderConfigUpdate: {
+    schema: ProviderConfigUpdate,
+    samples: [{ api_key: "rotated-test-key", enabled: true }],
+  },
+  ProviderConfigView: {
+    schema: ProviderConfigView,
+    samples: [
+      {
+        id: "80000000-0000-4000-8000-000000000001",
+        provider_type: "LLM",
+        vendor: "xfyun",
+        model: "spark-v4",
+        api_key_masked: "********-key",
+        endpoint: "https://provider.example.com/v1/models",
+        params: { temperature: 0.2 },
+        enabled: true,
+        version: 1,
+        created_at: "2026-07-18T00:00:00Z",
+        updated_at: "2026-07-18T00:00:00Z",
+      },
+    ],
+  },
+  ProviderConfigPage: {
+    schema: ProviderConfigPage,
+    samples: [
+      {
+        items: [
+          {
+            id: "80000000-0000-4000-8000-000000000001",
+            provider_type: "LLM",
+            vendor: "xfyun",
+            model: "spark-v4",
+            api_key_masked: "********-key",
+            endpoint: null,
+            params: {},
+            enabled: false,
+            version: 2,
+            created_at: "2026-07-18T00:00:00Z",
+            updated_at: "2026-07-18T00:00:01Z",
+          },
+        ],
+      },
+    ],
+  },
+  ProviderConnectivityView: {
+    schema: ProviderConnectivityView,
+    samples: [
+      { ok: true, latency_ms: 14, status_code: 200, detail: "reachable" },
+    ],
+  },
   AdminStudentPage: {
     schema: AdminStudentPage,
     samples: [

@@ -61,6 +61,7 @@ from app.models.learning import (
     TaskStatusHistory,
     TaskVersion,
 )
+from app.models.provider import ProviderConfig
 from app.models.resource import (
     LearningResourceRecord,
     ResourceJobRecord,
@@ -106,6 +107,7 @@ __all__ = [
     "ProfileDispute",
     "ProfileProposalStatus",
     "ProfileVersion",
+    "ProviderConfig",
     "ResourceJobRecord",
     "ResourceObjectRecord",
     "ResourceReviewRecord",

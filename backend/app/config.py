@@ -91,8 +91,13 @@ class Settings:
         repr=False,
     )
     object_store_bucket: str = _env("PYMENTOR_OBJECT_STORE_BUCKET", "pymentor-resources")
-    object_store_secure: bool = (
-        _env("PYMENTOR_OBJECT_STORE_SECURE", "false").lower() == "true"
+    object_store_secure: bool = _env("PYMENTOR_OBJECT_STORE_SECURE", "false").lower() == "true"
+
+    # AES-256 key for Provider credentials. It is intentionally unset by
+    # default and excluded from repr/log output.
+    provider_master_key: str = field(
+        default_factory=lambda: _env("PYMENTOR_PROVIDER_MASTER_KEY", ""),
+        repr=False,
     )
 
 

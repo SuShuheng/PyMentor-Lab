@@ -4279,6 +4279,321 @@
     },
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
+  "ProviderConfigCreate": {
+    "$ref": "#/definitions/ProviderConfigCreate",
+    "definitions": {
+      "ProviderConfigCreate": {
+        "type": "object",
+        "properties": {
+          "provider_type": {
+            "type": "string",
+            "enum": [
+              "LLM",
+              "TTS",
+              "ASR",
+              "IMAGE",
+              "OCR",
+              "MODERATION",
+              "EMBEDDING"
+            ]
+          },
+          "vendor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9._-]+$"
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9._:/-]+$"
+          },
+          "api_key": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 4096
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "provider_type",
+          "vendor",
+          "model",
+          "api_key",
+          "endpoint",
+          "params",
+          "enabled"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "ProviderConfigPage": {
+    "$ref": "#/definitions/ProviderConfigPage",
+    "definitions": {
+      "ProviderConfigPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "provider_type": {
+                  "type": "string",
+                  "enum": [
+                    "LLM",
+                    "TTS",
+                    "ASR",
+                    "IMAGE",
+                    "OCR",
+                    "MODERATION",
+                    "EMBEDDING"
+                  ]
+                },
+                "vendor": {
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "api_key_masked": {
+                  "type": "string"
+                },
+                "endpoint": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "params": {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "version": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updated_at": {
+                  "$ref": "#/definitions/ProviderConfigPage/properties/items/items/properties/created_at"
+                }
+              },
+              "required": [
+                "id",
+                "provider_type",
+                "vendor",
+                "model",
+                "api_key_masked",
+                "endpoint",
+                "params",
+                "enabled",
+                "version",
+                "created_at",
+                "updated_at"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "ProviderConfigUpdate": {
+    "$ref": "#/definitions/ProviderConfigUpdate",
+    "definitions": {
+      "ProviderConfigUpdate": {
+        "type": "object",
+        "properties": {
+          "vendor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9._-]+$"
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9._:/-]+$"
+          },
+          "api_key": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 4096
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "ProviderConfigView": {
+    "$ref": "#/definitions/ProviderConfigView",
+    "definitions": {
+      "ProviderConfigView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "provider_type": {
+            "type": "string",
+            "enum": [
+              "LLM",
+              "TTS",
+              "ASR",
+              "IMAGE",
+              "OCR",
+              "MODERATION",
+              "EMBEDDING"
+            ]
+          },
+          "vendor": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "api_key_masked": {
+            "type": "string"
+          },
+          "endpoint": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "$ref": "#/definitions/ProviderConfigView/properties/created_at"
+          }
+        },
+        "required": [
+          "id",
+          "provider_type",
+          "vendor",
+          "model",
+          "api_key_masked",
+          "endpoint",
+          "params",
+          "enabled",
+          "version",
+          "created_at",
+          "updated_at"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
+  "ProviderConnectivityView": {
+    "$ref": "#/definitions/ProviderConnectivityView",
+    "definitions": {
+      "ProviderConnectivityView": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "latency_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "detail": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "ok",
+          "latency_ms",
+          "status_code",
+          "detail"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "$schema": "http://json-schema.org/draft-07/schema#"
+  },
   "PathSnapshot": {
     "$ref": "#/definitions/PathSnapshot",
     "definitions": {

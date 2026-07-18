@@ -64,6 +64,7 @@ EXPECTED_0008_TABLES = {
     "resource_objects",
     "resource_reviews",
 }
+EXPECTED_0009_TABLES = {"provider_configs"}
 
 
 def _skip_if_no_postgres() -> None:
@@ -350,3 +351,38 @@ def test_resource_publication_uniques_checks_and_catalog_foreign_key() -> None:
     assert "ck_resource_jobs_progress_range" in job_checks
     assert "ck_learning_resources_version_positive" in resource_checks
     assert "fk_resource_jobs_course_node" in job_foreign_keys
+
+
+def test_migration_0009_creates_encrypted_provider_configs() -> None:
+    """0009 persists tenant-scoped Provider metadata and opaque credential bytes."""
+    _skip_if_no_postgres()
+    cfg = _make_config()
+    command.upgrade(cfg, "head")
+
+    from app.db import engine
+
+    inspector = inspect(engine)
+    actual_tables = set(inspector.get_table_names())
+    assert actual_tables >= EXPECTED_0009_TABLES
+    columns = {column["name"]: column for column in inspector.get_columns("provider_configs")}
+    assert columns["api_key_encrypted"]["type"].__class__.__name__ == "BYTEA"
+    assert "api_key" not in columns
+
+
+def test_provider_config_uniques_and_version_check_are_database_enforced() -> None:
+    """Only one enabled config per tenant/type and identities cannot duplicate."""
+    _skip_if_no_postgres()
+    cfg = _make_config()
+    command.upgrade(cfg, "head")
+
+    from app.db import engine
+
+    inspector = inspect(engine)
+    unique_names = {
+        row["name"] for row in inspector.get_unique_constraints("provider_configs")
+    }
+    indexes = {row["name"]: row for row in inspector.get_indexes("provider_configs")}
+    checks = {row["name"] for row in inspector.get_check_constraints("provider_configs")}
+    assert "uq_provider_configs_identity" in unique_names
+    assert indexes["uq_provider_configs_enabled_type"]["unique"] is True
+    assert "ck_provider_configs_version_positive" in checks

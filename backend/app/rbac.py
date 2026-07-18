@@ -114,6 +114,18 @@ def require_course_admin(
     return user
 
 
+def require_system_admin(
+    user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> User:
+    """系统运维守卫：仅 System Admin 可访问密钥和破坏性运维接口。"""
+    if RoleName.SYSTEM_ADMIN.value not in set(get_user_roles(db, user.id)):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="system admin role required",
+        )
+    return user
+
+
 def require_tenant_match(resource_tenant_id: UUID, user: User) -> None:
     """租户隔离断言：用户只能访问自己租户的资源。违反 → 403。"""
     if user.tenant_id != resource_tenant_id:

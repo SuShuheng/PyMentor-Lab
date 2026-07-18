@@ -69,6 +69,7 @@ services:
       PYMENTOR_OBJECT_STORE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-pymentor_dev}
       PYMENTOR_OBJECT_STORE_BUCKET: pymentor-resources
       PYMENTOR_OBJECT_STORE_SECURE: "false"
+      PYMENTOR_PROVIDER_MASTER_KEY: ${PYMENTOR_PROVIDER_MASTER_KEY:-}
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:

@@ -70,6 +70,11 @@ from app.contracts import (
     ProfileDisputeRequest,
     ProfileDisputeView,
     ProfileSnapshot,
+    ProviderConfigCreate,
+    ProviderConfigPage,
+    ProviderConfigUpdate,
+    ProviderConfigView,
+    ProviderConnectivityView,
     RegisterRequest,
     RegisterResponse,
     RegistrationDecisionRequest,
@@ -99,6 +104,55 @@ SCHEMAS_PATH = REPO_ROOT / "packages" / "contracts" / "schemas.json"
 
 # --- Shared fixtures (kept in lock-step with packages/contracts/src/conformance.ts) ---
 FIXTURES: dict[str, list[dict[str, Any]]] = {
+    "ProviderConfigCreate": [
+        {
+            "provider_type": "LLM",
+            "vendor": "xfyun",
+            "model": "spark-v4",
+            "api_key": "test-provider-key",
+            "endpoint": "https://provider.example.com/v1/models",
+            "params": {"temperature": 0.2},
+            "enabled": True,
+        }
+    ],
+    "ProviderConfigUpdate": [{"api_key": "rotated-test-key", "enabled": True}],
+    "ProviderConfigView": [
+        {
+            "id": "80000000-0000-4000-8000-000000000001",
+            "provider_type": "LLM",
+            "vendor": "xfyun",
+            "model": "spark-v4",
+            "api_key_masked": "********-key",
+            "endpoint": "https://provider.example.com/v1/models",
+            "params": {"temperature": 0.2},
+            "enabled": True,
+            "version": 1,
+            "created_at": "2026-07-18T00:00:00Z",
+            "updated_at": "2026-07-18T00:00:00Z",
+        }
+    ],
+    "ProviderConfigPage": [
+        {
+            "items": [
+                {
+                    "id": "80000000-0000-4000-8000-000000000001",
+                    "provider_type": "LLM",
+                    "vendor": "xfyun",
+                    "model": "spark-v4",
+                    "api_key_masked": "********-key",
+                    "endpoint": None,
+                    "params": {},
+                    "enabled": False,
+                    "version": 2,
+                    "created_at": "2026-07-18T00:00:00Z",
+                    "updated_at": "2026-07-18T00:00:01Z",
+                }
+            ]
+        }
+    ],
+    "ProviderConnectivityView": [
+        {"ok": True, "latency_ms": 14, "status_code": 200, "detail": "reachable"}
+    ],
     "AdminStudentPage": [
         {
             "items": [
@@ -915,6 +969,11 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
 }
 
 MODEL_BY_NAME: dict[str, type[BaseModel]] = {
+    "ProviderConfigCreate": ProviderConfigCreate,
+    "ProviderConfigPage": ProviderConfigPage,
+    "ProviderConfigUpdate": ProviderConfigUpdate,
+    "ProviderConfigView": ProviderConfigView,
+    "ProviderConnectivityView": ProviderConnectivityView,
     "AdminAgentRunView": AdminAgentRunView,
     "AdminEvidencePage": AdminEvidencePage,
     "AdminMasterySummary": AdminMasterySummary,

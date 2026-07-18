@@ -56,6 +56,13 @@ from app.contracts.learning import (
     TaskSubmissionResponse,
     TodayItem,
 )
+from app.contracts.providers import (
+    ProviderConfigCreate,
+    ProviderConfigPage,
+    ProviderConfigUpdate,
+    ProviderConfigView,
+    ProviderConnectivityView,
+)
 from app.contracts.resources import (
     ResourceArtifactStatusContract,
     ResourceArtifactView,
@@ -200,6 +207,11 @@ __all__ = [
     "ProfileDisputeView",
     "ProfileSnapshot",
     "ProgressEvent",
+    "ProviderConfigCreate",
+    "ProviderConfigPage",
+    "ProviderConfigUpdate",
+    "ProviderConfigView",
+    "ProviderConnectivityView",
     "ReasoningDeltaEvent",
     "RegisterRequest",
     "RegisterResponse",
