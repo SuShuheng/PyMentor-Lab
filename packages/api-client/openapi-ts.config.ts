@@ -20,5 +20,6 @@ export default defineConfig({
     // Runtime base URL is configured by the renderer (server-address input).
     "@hey-api/client-fetch",
     "@hey-api/typescript",
+    "@hey-api/sdk",
   ],
 });
