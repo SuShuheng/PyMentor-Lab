@@ -609,15 +609,15 @@ git commit -m "feat(worker): run the checkpointed agent service"
 - Create: `workers/agent-worker/src/acceptance/workflow.integration.test.ts`
 - Modify: `docs/superpowers/plans/2026-07-17-be-006-multi-agent-workflow-audit.md`
 - Modify outside code repository: `../.making/pymentor-lab/work-items/backend/BE-006/TASK.md`
-- Modify outside code repository: `../.making/pymentor-lab/work-items/backend/BE-008/TASK.md`
+- Modify outside code repository: `../.making/pymentor-lab/work-items/backend/BE-009/TASK.md`
 - Modify outside code repository: `../.making/pymentor-lab/workstreams/backend/2026-07-17-pymentor-lab-v1/TRACK.md`
 
 **Interfaces:**
 - Consumes: the complete Worker, Redis Stack, FastAPI audit consumer, and
   PostgreSQL audit tables.
-- Produces: dated, command-level BE-006 evidence and a clean handoff to BE-008.
+- Produces: dated, command-level BE-006 evidence and a clean handoff to BE-009.
 
-- [ ] **Step 1: Write end-to-end Red acceptance**
+- [x] **Step 1: Write end-to-end Red acceptance**
 
 Submit one golden job for each Worker kind plus invalid-schema,
 forbidden-tool/prompt-injection, provider-timeout, duplicate, retry, checkpoint,
@@ -625,7 +625,7 @@ and replay cases. Assert six validated terminal proposals, no duplicated run or
 tool audit rows, checkpoint history and replay linkage, redacted persistence,
 and zero writes to formal learning tables.
 
-- [ ] **Step 2: Rebuild/start exact services and verify the acceptance Red**
+- [x] **Step 2: Rebuild/start exact services and verify the acceptance Red**
 
 Run:
 
@@ -640,7 +640,7 @@ Expected before the final wiring correction: at least one focused assertion
 fails for the missing or incorrect integration behavior; fix production code,
 not the assertion, until Green.
 
-- [ ] **Step 3: Run the complete verification matrix**
+- [x] **Step 3: Run the complete verification matrix**
 
 Run:
 
@@ -662,14 +662,14 @@ Run mypy only on Python paths if the mixed-language path is rejected by mypy;
 record the exact corrected command. Expected: every applicable gate exits 0,
 with only intentional, documented skip markers.
 
-- [ ] **Step 4: Request independent review and resolve all Critical/Important findings**
+- [x] **Step 4: Request independent review and resolve all Critical/Important findings**
 
 The reviewer checks contract parity, six distinct authorities, prompt/tool
 isolation, timeout/fallback behavior, queue idempotency, checkpoint/replay,
 Redis/PostgreSQL failure handling, audit redaction, and formal-state ownership.
 Every accepted finding receives a regression test before its fix.
 
-- [ ] **Step 5: Commit acceptance evidence code**
+- [x] **Step 5: Commit acceptance evidence code**
 
 ```powershell
 git add workers/agent-worker/src/acceptance docs/superpowers/plans/2026-07-17-be-006-multi-agent-workflow-audit.md
@@ -679,5 +679,5 @@ git commit -m "test(worker): verify BE-006 replayable workflow"
 - [ ] **Step 6: Close durable task records**
 
 Move BE-006 through `IN_REVIEW` to `DONE`, record commits, commands, platform,
-material results, reviewer identity/findings, and remaining risk. Set BE-008 to
+material results, reviewer identity/findings, and remaining risk. Set BE-009 to
 `READY`, update `current_task`, and commit only those sidecar records.
