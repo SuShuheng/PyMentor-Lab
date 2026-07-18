@@ -260,11 +260,11 @@ def test_published_university_course_is_complete_and_reproducibly_valid() -> Non
     assert report.valid is True
     assert report.counts == {
         "chapters": 14,
-        "nodes": 84,
-        "sources": 16,
-        "error_patterns": 84,
-        "question_templates": 168,
-        "test_cases": 168,
+        "nodes": 93,
+        "sources": 22,
+        "error_patterns": 93,
+        "question_templates": 186,
+        "test_cases": 186,
         "mastery_policies": 2,
         "deep_units": 4,
     }
@@ -284,3 +284,14 @@ def test_published_university_course_is_complete_and_reproducibly_valid() -> Non
         source["url"].startswith(("https://docs.python.org/", "https://peps.python.org/"))
         for source in document["sources"]
     )
+    assert {
+        "标识符、关键字与命名",
+        "进制、位运算与掩码",
+        "对象共享与参数传递",
+        "虚拟环境与依赖隔离",
+        "SQLite 持久化入门",
+        "assert、异常与测试职责",
+        "封装、私有约定与多态",
+        "robots 规则与负责任抓取",
+        "描述性统计入门",
+    } <= {node["title"] for node in document["nodes"]}

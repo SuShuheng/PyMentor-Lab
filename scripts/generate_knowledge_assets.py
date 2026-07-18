@@ -49,6 +49,12 @@ SOURCES: dict[str, tuple[str, str, str, str]] = {
         "Python Software Foundation",
         "真值、数值、序列、映射与集合语义",
     ),
+    "lexical": (
+        "Python 语言参考：词法分析",
+        "https://docs.python.org/zh-cn/3/reference/lexical_analysis.html",
+        "Python Software Foundation",
+        "标识符、关键字、字面值与词法结构",
+    ),
     "controlflow": (
         "Python 教程：更多流程控制工具",
         "https://docs.python.org/zh-cn/3/tutorial/controlflow.html",
@@ -128,6 +134,36 @@ SOURCES: dict[str, tuple[str, str, str, str]] = {
         "Python Software Foundation",
         "测试用例、断言、夹具与测试发现",
     ),
+    "simple_statements": (
+        "Python 语言参考：简单语句",
+        "https://docs.python.org/zh-cn/3/reference/simple_stmts.html",
+        "Python Software Foundation",
+        "assert、赋值、return、raise 与导入语义",
+    ),
+    "venv": (
+        "Python 教程：虚拟环境和包",
+        "https://docs.python.org/zh-cn/3/tutorial/venv.html",
+        "Python Software Foundation",
+        "虚拟环境、pip 与依赖隔离",
+    ),
+    "sqlite3": (
+        "Python 标准库：sqlite3",
+        "https://docs.python.org/zh-cn/3/library/sqlite3.html",
+        "Python Software Foundation",
+        "SQLite 连接、参数化查询、事务与行访问",
+    ),
+    "robotparser": (
+        "Python 标准库：urllib.robotparser",
+        "https://docs.python.org/zh-cn/3/library/urllib.robotparser.html",
+        "Python Software Foundation",
+        "robots.txt 解析与抓取许可检查",
+    ),
+    "statistics": (
+        "Python 标准库：statistics",
+        "https://docs.python.org/zh-cn/3/library/statistics.html",
+        "Python Software Foundation",
+        "均值、中位数、众数、方差与描述性统计",
+    ),
 }
 
 
@@ -151,11 +187,13 @@ CHAPTERS: tuple[ChapterSpec, ...] = (
         "理解名称绑定、基础类型和表达式求值",
         (
             ("name-binding", "变量与名称绑定", "把赋值解释为名称绑定到对象", "变量是固定类型的盒子", "x = 1\nx = '一'", "executionmodel"),
+            ("identifiers-keywords", "标识符、关键字与命名", "遵守标识符规则并识别不能重绑定的关键字", "任意 Unicode 文本都可直接作为变量名", "student_score = 95", "lexical"),
             ("numeric-types", "整数与浮点数", "选择 int 或 float 表示数量", "浮点数能精确表示所有小数", "print(0.1 + 0.2)", "stdtypes"),
             ("boolean-values", "布尔值与真值测试", "用 bool 解释条件上下文", "只有 True 和 False 可作条件", "print(bool([]), bool([0]))", "stdtypes"),
             ("type-conversion", "显式类型转换", "安全地转换文本、整数和浮点数", "int 会四舍五入浮点数", "print(int(3.9))", "stdtypes"),
             ("arithmetic-operators", "算术与整除取余", "解释 /、//、% 和 **", "整除总是向零截断", "print(-7 // 3, -7 % 3)", "stdtypes"),
             ("operator-precedence", "优先级与括号", "按优先级计算复合表达式", "代码从左到右无条件计算", "print(2 + 3 * 4)", "stdtypes"),
+            ("binary-bitwise", "进制、位运算与掩码", "解释二进制表示并用位运算读取或设置标志位", "按位与和逻辑 and 完全相同", "flags = 0b1010\nprint(flags & 0b0010)", "stdtypes"),
         ),
     ),
     (
@@ -217,6 +255,7 @@ CHAPTERS: tuple[ChapterSpec, ...] = (
         (
             ("define-call", "定义与调用函数", "区分函数对象、调用和返回结果", "写出 def 就会立即运行函数体", "def greet(): return '你好'\nprint(greet())", "controlflow"),
             ("parameters-return", "参数与返回值", "用参数输入和 return 输出结果", "print 与 return 可以互换", "def area(w, h): return w * h", "controlflow"),
+            ("object-argument-semantics", "对象共享与参数传递", "根据名称绑定和对象可变性预测调用后的状态", "函数调用会深拷贝所有实参", "items = []\ndef add(values): values.append(1)\nadd(items)", "executionmodel"),
             ("positional-keyword", "位置参数与关键字参数", "按函数签名正确传参", "关键字参数可放在位置参数之前", "print(round(number=3.14159, ndigits=2))", "controlflow"),
             ("variadic-arguments", "*args 与 **kwargs", "收集数量可变的位置和关键字参数", "星号参数会丢失原有顺序", "def collect(*items): return list(items)", "controlflow"),
             ("function-contract", "函数契约与文档", "写清前置条件、输出和异常", "函数名足以表达所有约束", "def positive(n: int) -> bool:\n    return n > 0", "controlflow"),
@@ -255,6 +294,7 @@ CHAPTERS: tuple[ChapterSpec, ...] = (
         "用模块边界组织代码并理解导入行为",
         (
             ("module-import", "模块与 import", "解释导入、模块对象和名称绑定", "import 会把模块代码复制到当前文件", "import math\nprint(math.sqrt(9))", "modules"),
+            ("venv-dependencies", "虚拟环境与依赖隔离", "为项目创建独立环境并记录可复现依赖", "全局安装包不会造成项目间版本冲突", "python -m venv .venv", "venv"),
             ("import-forms", "导入形式与别名", "比较 import、from import 和别名", "通配符导入能明确依赖", "from statistics import mean as average", "modules"),
             ("module-main", "__name__ 与程序入口", "区分作为脚本运行和作为模块导入", "导入模块时 __name__ 总是 __main__", "if __name__ == '__main__':\n    main()", "modules"),
             ("packages", "包与相对导入", "按目录和包组织多个模块", "有目录就一定是可导入包", "from .models import Student", "modules"),
@@ -268,11 +308,13 @@ CHAPTERS: tuple[ChapterSpec, ...] = (
         "可靠处理外部数据、资源生命周期和失败路径",
         (
             ("pathlib-paths", "pathlib 路径", "用 Path 组合并检查相对路径", "字符串拼接路径在所有系统都可靠", "path = Path('data') / 'scores.txt'", "pathlib"),
+            ("sqlite-persistence", "SQLite 持久化入门", "使用参数化查询和事务保存结构化数据", "把输入拼进 SQL 字符串与参数化查询同样安全", "connection.execute('SELECT * FROM scores WHERE id = ?', (student_id,))", "sqlite3"),
             ("text-files", "文本文件与编码", "显式选择编码并读写文本", "文本文件天然都是 UTF-8", "Path('a.txt').write_text('你好', encoding='utf-8')", "inputoutput"),
             ("with-resources", "with 与资源清理", "用上下文管理器保证文件关闭", "正常运行时才需要关闭文件", "with open('a.txt', encoding='utf-8') as file:\n    text = file.read()", "inputoutput"),
             ("json-data", "JSON 序列化", "区分 Python 对象与 JSON 数据", "JSON 能直接保存任意 Python 对象", "payload = json.dumps({'score': 90}, ensure_ascii=False)", "inputoutput"),
             ("handle-exceptions", "精确捕获异常", "只捕获可处理的异常并保留意外失败", "except Exception 后 pass 最稳妥", "try:\n    value = int(text)\nexcept ValueError:\n    value = 0", "errors"),
             ("raise-cleanup", "抛出、自定义与清理", "用 raise 表达契约失败并理解 finally", "raise 只能用于系统异常", "if age < 0:\n    raise ValueError('年龄不能为负')", "errors"),
+            ("assert-exception-test", "assert、异常与测试职责", "区分内部断言、运行时输入校验和测试断言", "assert 可替代所有用户输入校验", "assert total >= 0, '总数不应为负'", "simple_statements"),
         ),
     ),
     (
@@ -281,6 +323,7 @@ CHAPTERS: tuple[ChapterSpec, ...] = (
         "用对象封装状态和行为并选择适度抽象",
         (
             ("class-instance", "类与实例", "区分类对象、实例对象和构造过程", "类定义等同创建一个实例", "class Student:\n    pass\ns = Student()", "classes"),
+            ("encapsulation-polymorphism", "封装、私有约定与多态", "用统一协议调用不同实现并理解下划线命名约定", "双下划线属性在运行时绝对不可访问", "def render(item):\n    return item.to_text()", "classes"),
             ("attributes-methods", "属性与方法", "用 self 访问实例状态", "self 是 Python 保留关键字", "class Counter:\n    def inc(self): self.value += 1", "classes"),
             ("class-instance-vars", "类变量与实例变量", "避免在类变量中意外共享可变状态", "实例会复制所有类变量", "class Team:\n    members = []", "classes"),
             ("inheritance", "继承与组合", "按 is-a 与 has-a 选择复用方式", "继承总比组合减少耦合", "class Admin(User):\n    pass", "classes"),
@@ -303,14 +346,16 @@ CHAPTERS: tuple[ChapterSpec, ...] = (
     ),
     (
         "iteration-testing",
-        "第 14 章 迭代器、生成器、测试与综合实践",
-        "用惰性数据流和自动化测试完成可维护小项目",
+        "第 14 章 迭代器、测试与应用拓展",
+        "用惰性数据流、自动化测试和标准库能力完成可维护小项目",
         (
             ("iterator-protocol", "迭代协议", "解释 iter、next 与 StopIteration", "可迭代对象就是迭代器", "iterator = iter([1, 2])\nprint(next(iterator))", "functional"),
             ("generator-yield", "生成器与 yield", "理解生成器暂停和恢复执行", "调用生成器函数会立即运行函数体", "def numbers():\n    yield 1\n    yield 2", "functional"),
             ("lazy-pipeline", "惰性数据管道", "组合生成器处理流式数据", "生成器会一次性保存全部结果", "squares = (n*n for n in range(10))", "functional"),
             ("unit-tests", "unittest 与断言", "为函数编写独立可重复测试", "没有抛异常就代表测试通过", "class TestTotal(unittest.TestCase):\n    def test_empty(self): self.assertEqual(total([]), 0)", "unittest"),
             ("test-boundaries", "边界、异常与回归测试", "从等价类和失败历史选择用例", "测试数量越多质量一定越高", "with self.assertRaises(ValueError):\n    parse_age('-1')", "unittest"),
+            ("responsible-robots", "robots 规则与负责任抓取", "在自动获取站点内容前检查 robots 规则和访问边界", "公开网页默认允许任意频率抓取", "parser = RobotFileParser()\nparser.set_url('/robots.txt')", "robotparser"),
+            ("descriptive-statistics", "描述性统计入门", "用均值、中位数和离散程度描述一组数据", "平均数总能代表典型水平", "print(mean([60, 80, 100]))", "statistics"),
             ("integrated-project", "综合项目与复盘", "整合模块、文件、异常和测试交付小项目", "功能跑通后无需整理契约和测试", "def main() -> None:\n    records = load_records()\n    print(report(records))", "unittest"),
         ),
     ),

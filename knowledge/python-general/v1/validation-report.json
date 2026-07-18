@@ -3,13 +3,13 @@
   "findings": [],
   "counts": {
     "chapters": 14,
-    "nodes": 84,
-    "sources": 16,
-    "error_patterns": 84,
-    "question_templates": 168,
-    "test_cases": 168,
+    "nodes": 93,
+    "sources": 22,
+    "error_patterns": 93,
+    "question_templates": 186,
+    "test_cases": 186,
     "mastery_policies": 2,
     "deep_units": 4
   },
-  "content_digest": "fc1cd55e05c3cfcc680826379e15a4e6dfde1c933397067fb9f7a89c10ed6647"
+  "content_digest": "bebdc37daf66d844e64fd281617b2aa42a8e5d74a401bd1eb2616838e40864eb"
 }

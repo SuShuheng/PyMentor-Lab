@@ -63,11 +63,13 @@
       ],
       "node_ids": [
         "a07ca01f-ccbf-5b56-86a0-085ced79707d",
+        "43103b5b-929d-58ab-9c35-7c3e80e397d7",
         "5b8ac768-79e6-5d73-adc4-b99c2988f1a9",
         "162c819a-53ad-5dab-8440-0dbaa2cca8bc",
         "1308eb70-dacf-5de3-83d3-78db966db02b",
         "18d945ef-e157-508f-82d6-77a460691532",
-        "14eec4d0-459b-52f5-a0f9-e93750bacc03"
+        "14eec4d0-459b-52f5-a0f9-e93750bacc03",
+        "2e637b3e-2367-517d-8852-5f35bb46be73"
       ],
       "version": "1.0.0"
     },
@@ -154,6 +156,7 @@
       "node_ids": [
         "7d860f51-3524-55c8-a30e-a627b26aaa30",
         "5b74098b-0aa9-5a81-990d-b5e8b14da1f8",
+        "82382c0e-dcdd-5cf5-afde-6ab199c4f463",
         "5e83c169-9d5c-5db0-8124-2cdfe7321953",
         "f0f5efe7-4d5e-5a54-acde-58810ceab173",
         "e049be15-58ba-54c0-a751-2bb7fa1017ec",
@@ -207,6 +210,7 @@
       ],
       "node_ids": [
         "fdc287db-6a02-5ebc-b03b-9b0b5d9be9cd",
+        "a2b19993-d47b-59a9-8048-56a79286a32c",
         "6fa32f59-eacf-5d56-a22e-49107d496671",
         "935d1322-e26a-5a3f-89e0-45e537c07af6",
         "f4c23e5d-55bc-5c59-9a90-3e88b77f4cc7",
@@ -225,11 +229,13 @@
       ],
       "node_ids": [
         "b126b182-5c7f-555e-86c0-8962070afc19",
+        "2078bf0c-953d-57b8-b521-ff304ef4ec57",
         "00fcccba-16ba-5c9a-b159-f3dc60b516f6",
         "62a4e3c6-b50f-5c1a-806c-dea76c72f22b",
         "809230d5-cb6d-579a-8bc7-4a271ccecd17",
         "c7e7bdb7-ed84-5491-afa3-8d615a255f0f",
-        "672e485b-59a7-5b74-ba28-cc687b3404c6"
+        "672e485b-59a7-5b74-ba28-cc687b3404c6",
+        "cc274f40-ecb5-579d-a9d9-138e0ce19184"
       ],
       "version": "1.0.0"
     },
@@ -243,6 +249,7 @@
       ],
       "node_ids": [
         "f93ba50d-6a86-5fce-b514-9f4a28ed5323",
+        "e589e879-8512-5a36-addf-a8f84bb398a6",
         "b048eb75-91d9-5984-a4f6-4d47dcc0e9f4",
         "f416ba75-5a0c-56fe-b6b3-d4fc28486a2c",
         "efbf1241-eb71-5496-bf6e-6172a8cea636",
@@ -273,9 +280,9 @@
       "chapter_id": "1f25f708-2a24-59b0-a04a-5b5e08abc5a4",
       "course_id": "69408047-3b99-5fb2-b383-81f7314ecd5d",
       "order": 14,
-      "title": "第 14 章 迭代器、生成器、测试与综合实践",
+      "title": "第 14 章 迭代器、测试与应用拓展",
       "learning_objectives": [
-        "用惰性数据流和自动化测试完成可维护小项目"
+        "用惰性数据流、自动化测试和标准库能力完成可维护小项目"
       ],
       "node_ids": [
         "44133f9a-d59d-5d2f-96f7-4ff3b0176a98",
@@ -283,6 +290,8 @@
         "3a2b4a03-a224-59a4-9fd6-52198af9ae39",
         "db64d02c-7c50-58ef-be90-d655ff67089c",
         "9db6beb0-0353-5b00-823e-e5b7df1e0863",
+        "9602bc42-6529-5cda-bd04-34f39a935804",
+        "fb0ed463-ea95-5e10-b130-5427cb524245",
         "09aa903b-95e0-5f0f-bb94-33f950af6368"
       ],
       "version": "1.0.0"
@@ -484,6 +493,34 @@
       "version": "1.0.0"
     },
     {
+      "node_id": "43103b5b-929d-58ab-9c35-7c3e80e397d7",
+      "title": "标识符、关键字与命名",
+      "chapter_id": "fd63bbc3-1d49-51ce-96c4-8a1ac3f04ff0",
+      "learning_objectives": [
+        "遵守标识符规则并识别不能重绑定的关键字"
+      ],
+      "prerequisites": [
+        "a07ca01f-ccbf-5b56-86a0-085ced79707d"
+      ],
+      "misconceptions": [
+        "任意 Unicode 文本都可直接作为变量名"
+      ],
+      "examples": [
+        "student_score = 95"
+      ],
+      "diagnostic_items": [
+        "c6e4c4d2-ade0-571f-9f9e-9311bc1539ac"
+      ],
+      "practice_templates": [
+        "4561444d-73f0-5289-bb9f-7bd2ec083ec6"
+      ],
+      "mastery_policy_id": "cd4f1f18-323a-5748-be5b-2838f976951f",
+      "source_ids": [
+        "d7da58cc-194c-5c3a-9b75-d10b303e1677"
+      ],
+      "version": "1.0.0"
+    },
+    {
       "node_id": "5b8ac768-79e6-5d73-adc4-b99c2988f1a9",
       "title": "整数与浮点数",
       "chapter_id": "fd63bbc3-1d49-51ce-96c4-8a1ac3f04ff0",
@@ -491,7 +528,7 @@
         "选择 int 或 float 表示数量"
       ],
       "prerequisites": [
-        "a07ca01f-ccbf-5b56-86a0-085ced79707d"
+        "43103b5b-929d-58ab-9c35-7c3e80e397d7"
       ],
       "misconceptions": [
         "浮点数能精确表示所有小数"
@@ -624,6 +661,34 @@
       "version": "1.0.0"
     },
     {
+      "node_id": "2e637b3e-2367-517d-8852-5f35bb46be73",
+      "title": "进制、位运算与掩码",
+      "chapter_id": "fd63bbc3-1d49-51ce-96c4-8a1ac3f04ff0",
+      "learning_objectives": [
+        "解释二进制表示并用位运算读取或设置标志位"
+      ],
+      "prerequisites": [
+        "14eec4d0-459b-52f5-a0f9-e93750bacc03"
+      ],
+      "misconceptions": [
+        "按位与和逻辑 and 完全相同"
+      ],
+      "examples": [
+        "flags = 0b1010\nprint(flags & 0b0010)"
+      ],
+      "diagnostic_items": [
+        "5318f7e8-57e8-5d1a-ab05-662492e6dff1"
+      ],
+      "practice_templates": [
+        "46b1a97a-407e-53ba-a838-29ff386ff8ec"
+      ],
+      "mastery_policy_id": "cd4f1f18-323a-5748-be5b-2838f976951f",
+      "source_ids": [
+        "89fdfb4e-3278-5740-9da4-fbfb94b14598"
+      ],
+      "version": "1.0.0"
+    },
+    {
       "node_id": "5c7c0861-75c5-56b9-a8e1-8b10cbaeb8f2",
       "title": "字符串字面量与转义",
       "chapter_id": "155135eb-61d4-5bd5-af9f-5f36fe7fa418",
@@ -631,7 +696,7 @@
         "正确表示引号、换行和原始字符串"
       ],
       "prerequisites": [
-        "14eec4d0-459b-52f5-a0f9-e93750bacc03"
+        "2e637b3e-2367-517d-8852-5f35bb46be73"
       ],
       "misconceptions": [
         "反斜杠总是普通字符"
@@ -1352,6 +1417,34 @@
       "version": "1.0.0"
     },
     {
+      "node_id": "82382c0e-dcdd-5cf5-afde-6ab199c4f463",
+      "title": "对象共享与参数传递",
+      "chapter_id": "f80daf49-1e90-5cc7-99ce-f7a1bc843747",
+      "learning_objectives": [
+        "根据名称绑定和对象可变性预测调用后的状态"
+      ],
+      "prerequisites": [
+        "5b74098b-0aa9-5a81-990d-b5e8b14da1f8"
+      ],
+      "misconceptions": [
+        "函数调用会深拷贝所有实参"
+      ],
+      "examples": [
+        "items = []\ndef add(values): values.append(1)\nadd(items)"
+      ],
+      "diagnostic_items": [
+        "d3959f0e-16e4-5236-b07b-ab43f60cbe68"
+      ],
+      "practice_templates": [
+        "eb299b44-b74d-5173-a55b-35127d822179"
+      ],
+      "mastery_policy_id": "cd4f1f18-323a-5748-be5b-2838f976951f",
+      "source_ids": [
+        "38fe9a64-9474-5874-b31d-c449247e6e31"
+      ],
+      "version": "1.0.0"
+    },
+    {
       "node_id": "5e83c169-9d5c-5db0-8124-2cdfe7321953",
       "title": "位置参数与关键字参数",
       "chapter_id": "f80daf49-1e90-5cc7-99ce-f7a1bc843747",
@@ -1359,7 +1452,7 @@
         "按函数签名正确传参"
       ],
       "prerequisites": [
-        "5b74098b-0aa9-5a81-990d-b5e8b14da1f8"
+        "82382c0e-dcdd-5cf5-afde-6ab199c4f463"
       ],
       "misconceptions": [
         "关键字参数可放在位置参数之前"
@@ -1828,6 +1921,34 @@
       "version": "1.0.0"
     },
     {
+      "node_id": "a2b19993-d47b-59a9-8048-56a79286a32c",
+      "title": "虚拟环境与依赖隔离",
+      "chapter_id": "039868f3-f618-5067-b9f8-96ff94c8aef6",
+      "learning_objectives": [
+        "为项目创建独立环境并记录可复现依赖"
+      ],
+      "prerequisites": [
+        "fdc287db-6a02-5ebc-b03b-9b0b5d9be9cd"
+      ],
+      "misconceptions": [
+        "全局安装包不会造成项目间版本冲突"
+      ],
+      "examples": [
+        "python -m venv .venv"
+      ],
+      "diagnostic_items": [
+        "3d1bece6-7582-5d9f-8f5e-eb6991d3c584"
+      ],
+      "practice_templates": [
+        "109b9245-8fb5-59b5-8c10-4dbe0e736962"
+      ],
+      "mastery_policy_id": "cd4f1f18-323a-5748-be5b-2838f976951f",
+      "source_ids": [
+        "aa78928c-6f47-56ce-9118-54e9b21ea114"
+      ],
+      "version": "1.0.0"
+    },
+    {
       "node_id": "6fa32f59-eacf-5d56-a22e-49107d496671",
       "title": "导入形式与别名",
       "chapter_id": "039868f3-f618-5067-b9f8-96ff94c8aef6",
@@ -1835,7 +1956,7 @@
         "比较 import、from import 和别名"
       ],
       "prerequisites": [
-        "fdc287db-6a02-5ebc-b03b-9b0b5d9be9cd"
+        "a2b19993-d47b-59a9-8048-56a79286a32c"
       ],
       "misconceptions": [
         "通配符导入能明确依赖"
@@ -1996,6 +2117,34 @@
       "version": "1.0.0"
     },
     {
+      "node_id": "2078bf0c-953d-57b8-b521-ff304ef4ec57",
+      "title": "SQLite 持久化入门",
+      "chapter_id": "c2f08c86-591e-51cf-998d-bf35590a7ae0",
+      "learning_objectives": [
+        "使用参数化查询和事务保存结构化数据"
+      ],
+      "prerequisites": [
+        "b126b182-5c7f-555e-86c0-8962070afc19"
+      ],
+      "misconceptions": [
+        "把输入拼进 SQL 字符串与参数化查询同样安全"
+      ],
+      "examples": [
+        "connection.execute('SELECT * FROM scores WHERE id = ?', (student_id,))"
+      ],
+      "diagnostic_items": [
+        "7b914db5-0747-57fc-be0f-4acf7b8714f3"
+      ],
+      "practice_templates": [
+        "596986df-2337-5034-bd05-5b9c3484d065"
+      ],
+      "mastery_policy_id": "cd4f1f18-323a-5748-be5b-2838f976951f",
+      "source_ids": [
+        "2dc99be8-2f59-50f9-b8cd-ee0b9c7a439e"
+      ],
+      "version": "1.0.0"
+    },
+    {
       "node_id": "00fcccba-16ba-5c9a-b159-f3dc60b516f6",
       "title": "文本文件与编码",
       "chapter_id": "c2f08c86-591e-51cf-998d-bf35590a7ae0",
@@ -2003,7 +2152,7 @@
         "显式选择编码并读写文本"
       ],
       "prerequisites": [
-        "b126b182-5c7f-555e-86c0-8962070afc19"
+        "2078bf0c-953d-57b8-b521-ff304ef4ec57"
       ],
       "misconceptions": [
         "文本文件天然都是 UTF-8"
@@ -2136,6 +2285,34 @@
       "version": "1.0.0"
     },
     {
+      "node_id": "cc274f40-ecb5-579d-a9d9-138e0ce19184",
+      "title": "assert、异常与测试职责",
+      "chapter_id": "c2f08c86-591e-51cf-998d-bf35590a7ae0",
+      "learning_objectives": [
+        "区分内部断言、运行时输入校验和测试断言"
+      ],
+      "prerequisites": [
+        "672e485b-59a7-5b74-ba28-cc687b3404c6"
+      ],
+      "misconceptions": [
+        "assert 可替代所有用户输入校验"
+      ],
+      "examples": [
+        "assert total >= 0, '总数不应为负'"
+      ],
+      "diagnostic_items": [
+        "c8ae4395-6c55-5db6-8127-9a461f3ed920"
+      ],
+      "practice_templates": [
+        "a1a2bf2b-fd45-5e65-96c0-a937f58c91d4"
+      ],
+      "mastery_policy_id": "cd4f1f18-323a-5748-be5b-2838f976951f",
+      "source_ids": [
+        "aad98a6e-483e-5b0f-9b35-32470dbbcb11"
+      ],
+      "version": "1.0.0"
+    },
+    {
       "node_id": "f93ba50d-6a86-5fce-b514-9f4a28ed5323",
       "title": "类与实例",
       "chapter_id": "5abd6f95-c0b7-5bcd-b5bf-7d09288b7611",
@@ -2143,7 +2320,7 @@
         "区分类对象、实例对象和构造过程"
       ],
       "prerequisites": [
-        "672e485b-59a7-5b74-ba28-cc687b3404c6"
+        "cc274f40-ecb5-579d-a9d9-138e0ce19184"
       ],
       "misconceptions": [
         "类定义等同创建一个实例"
@@ -2164,6 +2341,34 @@
       "version": "1.0.0"
     },
     {
+      "node_id": "e589e879-8512-5a36-addf-a8f84bb398a6",
+      "title": "封装、私有约定与多态",
+      "chapter_id": "5abd6f95-c0b7-5bcd-b5bf-7d09288b7611",
+      "learning_objectives": [
+        "用统一协议调用不同实现并理解下划线命名约定"
+      ],
+      "prerequisites": [
+        "f93ba50d-6a86-5fce-b514-9f4a28ed5323"
+      ],
+      "misconceptions": [
+        "双下划线属性在运行时绝对不可访问"
+      ],
+      "examples": [
+        "def render(item):\n    return item.to_text()"
+      ],
+      "diagnostic_items": [
+        "8f6aa812-e466-55e8-ab1d-f1129f20745c"
+      ],
+      "practice_templates": [
+        "e230bc59-d6ed-5cca-b101-f8e91d971037"
+      ],
+      "mastery_policy_id": "cd4f1f18-323a-5748-be5b-2838f976951f",
+      "source_ids": [
+        "90a25bdb-b213-5703-a2fa-1f05fe374b43"
+      ],
+      "version": "1.0.0"
+    },
+    {
       "node_id": "b048eb75-91d9-5984-a4f6-4d47dcc0e9f4",
       "title": "属性与方法",
       "chapter_id": "5abd6f95-c0b7-5bcd-b5bf-7d09288b7611",
@@ -2171,7 +2376,7 @@
         "用 self 访问实例状态"
       ],
       "prerequisites": [
-        "f93ba50d-6a86-5fce-b514-9f4a28ed5323"
+        "e589e879-8512-5a36-addf-a8f84bb398a6"
       ],
       "misconceptions": [
         "self 是 Python 保留关键字"
@@ -2612,6 +2817,62 @@
       "version": "1.0.0"
     },
     {
+      "node_id": "9602bc42-6529-5cda-bd04-34f39a935804",
+      "title": "robots 规则与负责任抓取",
+      "chapter_id": "1f25f708-2a24-59b0-a04a-5b5e08abc5a4",
+      "learning_objectives": [
+        "在自动获取站点内容前检查 robots 规则和访问边界"
+      ],
+      "prerequisites": [
+        "9db6beb0-0353-5b00-823e-e5b7df1e0863"
+      ],
+      "misconceptions": [
+        "公开网页默认允许任意频率抓取"
+      ],
+      "examples": [
+        "parser = RobotFileParser()\nparser.set_url('/robots.txt')"
+      ],
+      "diagnostic_items": [
+        "74831fae-20bf-580b-ad3b-b614768605c5"
+      ],
+      "practice_templates": [
+        "48da3caa-204f-51f7-85c6-3a595ae53476"
+      ],
+      "mastery_policy_id": "cd4f1f18-323a-5748-be5b-2838f976951f",
+      "source_ids": [
+        "fee6af71-dd90-541a-a837-79484455ecef"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "node_id": "fb0ed463-ea95-5e10-b130-5427cb524245",
+      "title": "描述性统计入门",
+      "chapter_id": "1f25f708-2a24-59b0-a04a-5b5e08abc5a4",
+      "learning_objectives": [
+        "用均值、中位数和离散程度描述一组数据"
+      ],
+      "prerequisites": [
+        "9602bc42-6529-5cda-bd04-34f39a935804"
+      ],
+      "misconceptions": [
+        "平均数总能代表典型水平"
+      ],
+      "examples": [
+        "print(mean([60, 80, 100]))"
+      ],
+      "diagnostic_items": [
+        "a9dd19ee-6e44-59f5-bda3-596c4cf11162"
+      ],
+      "practice_templates": [
+        "d02a6076-f5a8-51b2-91eb-7c9269cd5d66"
+      ],
+      "mastery_policy_id": "cd4f1f18-323a-5748-be5b-2838f976951f",
+      "source_ids": [
+        "70d84064-a1b6-5995-90f8-bc544d057aae"
+      ],
+      "version": "1.0.0"
+    },
+    {
       "node_id": "09aa903b-95e0-5f0f-bb94-33f950af6368",
       "title": "综合项目与复盘",
       "chapter_id": "1f25f708-2a24-59b0-a04a-5b5e08abc5a4",
@@ -2619,7 +2880,7 @@
         "整合模块、文件、异常和测试交付小项目"
       ],
       "prerequisites": [
-        "9db6beb0-0353-5b00-823e-e5b7df1e0863"
+        "fb0ed463-ea95-5e10-b130-5427cb524245"
       ],
       "misconceptions": [
         "功能跑通后无需整理契约和测试"
@@ -2663,6 +2924,14 @@
       "url": "https://docs.python.org/zh-cn/3/library/stdtypes.html",
       "publisher": "Python Software Foundation",
       "content_scope": "真值、数值、序列、映射与集合语义",
+      "version": "1.0.0"
+    },
+    {
+      "source_id": "d7da58cc-194c-5c3a-9b75-d10b303e1677",
+      "title": "Python 语言参考：词法分析",
+      "url": "https://docs.python.org/zh-cn/3/reference/lexical_analysis.html",
+      "publisher": "Python Software Foundation",
+      "content_scope": "标识符、关键字、字面值与词法结构",
       "version": "1.0.0"
     },
     {
@@ -2767,6 +3036,46 @@
       "url": "https://docs.python.org/zh-cn/3/library/unittest.html",
       "publisher": "Python Software Foundation",
       "content_scope": "测试用例、断言、夹具与测试发现",
+      "version": "1.0.0"
+    },
+    {
+      "source_id": "aad98a6e-483e-5b0f-9b35-32470dbbcb11",
+      "title": "Python 语言参考：简单语句",
+      "url": "https://docs.python.org/zh-cn/3/reference/simple_stmts.html",
+      "publisher": "Python Software Foundation",
+      "content_scope": "assert、赋值、return、raise 与导入语义",
+      "version": "1.0.0"
+    },
+    {
+      "source_id": "aa78928c-6f47-56ce-9118-54e9b21ea114",
+      "title": "Python 教程：虚拟环境和包",
+      "url": "https://docs.python.org/zh-cn/3/tutorial/venv.html",
+      "publisher": "Python Software Foundation",
+      "content_scope": "虚拟环境、pip 与依赖隔离",
+      "version": "1.0.0"
+    },
+    {
+      "source_id": "2dc99be8-2f59-50f9-b8cd-ee0b9c7a439e",
+      "title": "Python 标准库：sqlite3",
+      "url": "https://docs.python.org/zh-cn/3/library/sqlite3.html",
+      "publisher": "Python Software Foundation",
+      "content_scope": "SQLite 连接、参数化查询、事务与行访问",
+      "version": "1.0.0"
+    },
+    {
+      "source_id": "fee6af71-dd90-541a-a837-79484455ecef",
+      "title": "Python 标准库：urllib.robotparser",
+      "url": "https://docs.python.org/zh-cn/3/library/urllib.robotparser.html",
+      "publisher": "Python Software Foundation",
+      "content_scope": "robots.txt 解析与抓取许可检查",
+      "version": "1.0.0"
+    },
+    {
+      "source_id": "70d84064-a1b6-5995-90f8-bc544d057aae",
+      "title": "Python 标准库：statistics",
+      "url": "https://docs.python.org/zh-cn/3/library/statistics.html",
+      "publisher": "Python Software Foundation",
+      "content_scope": "均值、中位数、众数、方差与描述性统计",
       "version": "1.0.0"
     }
   ],
@@ -2905,6 +3214,25 @@
       "version": "1.0.0"
     },
     {
+      "error_id": "1e020189-880c-5685-aea0-20969154272f",
+      "node_ids": [
+        "43103b5b-929d-58ab-9c35-7c3e80e397d7"
+      ],
+      "title": "标识符、关键字与命名：典型误区",
+      "symptom": "学习者在“标识符、关键字与命名”任务中给出稳定但错误的解释或边界结果",
+      "misconception": "任意 Unicode 文本都可直接作为变量名",
+      "diagnosis_prompts": [
+        "请逐步解释“student_score = 95”中每一步的值或控制流。"
+      ],
+      "remediation": [
+        "回到“遵守标识符规则并识别不能重绑定的关键字”，再用一个正常值和一个边界值验证。"
+      ],
+      "source_ids": [
+        "d7da58cc-194c-5c3a-9b75-d10b303e1677"
+      ],
+      "version": "1.0.0"
+    },
+    {
       "error_id": "86d6fd67-3866-57f1-9807-69ec18d9ff5b",
       "node_ids": [
         "5b8ac768-79e6-5d73-adc4-b99c2988f1a9"
@@ -2993,6 +3321,25 @@
       ],
       "remediation": [
         "回到“按优先级计算复合表达式”，再用一个正常值和一个边界值验证。"
+      ],
+      "source_ids": [
+        "89fdfb4e-3278-5740-9da4-fbfb94b14598"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "error_id": "5a1f0cb6-a594-5489-861a-68ed8b46790b",
+      "node_ids": [
+        "2e637b3e-2367-517d-8852-5f35bb46be73"
+      ],
+      "title": "进制、位运算与掩码：典型误区",
+      "symptom": "学习者在“进制、位运算与掩码”任务中给出稳定但错误的解释或边界结果",
+      "misconception": "按位与和逻辑 and 完全相同",
+      "diagnosis_prompts": [
+        "请逐步解释“flags = 0b1010\nprint(flags & 0b0010)”中每一步的值或控制流。"
+      ],
+      "remediation": [
+        "回到“解释二进制表示并用位运算读取或设置标志位”，再用一个正常值和一个边界值验证。"
       ],
       "source_ids": [
         "89fdfb4e-3278-5740-9da4-fbfb94b14598"
@@ -3494,6 +3841,25 @@
       "version": "1.0.0"
     },
     {
+      "error_id": "710bb056-f713-5d71-a176-7fc380057a49",
+      "node_ids": [
+        "82382c0e-dcdd-5cf5-afde-6ab199c4f463"
+      ],
+      "title": "对象共享与参数传递：典型误区",
+      "symptom": "学习者在“对象共享与参数传递”任务中给出稳定但错误的解释或边界结果",
+      "misconception": "函数调用会深拷贝所有实参",
+      "diagnosis_prompts": [
+        "请逐步解释“items = []\ndef add(values): values.append(1)\nadd(items)”中每一步的值或控制流。"
+      ],
+      "remediation": [
+        "回到“根据名称绑定和对象可变性预测调用后的状态”，再用一个正常值和一个边界值验证。"
+      ],
+      "source_ids": [
+        "38fe9a64-9474-5874-b31d-c449247e6e31"
+      ],
+      "version": "1.0.0"
+    },
+    {
       "error_id": "319bf833-c7ca-5175-93e0-cd807ea9f86a",
       "node_ids": [
         "5e83c169-9d5c-5db0-8124-2cdfe7321953"
@@ -3817,6 +4183,25 @@
       "version": "1.0.0"
     },
     {
+      "error_id": "e8556890-01a3-59e4-9bd9-976b432e5de3",
+      "node_ids": [
+        "a2b19993-d47b-59a9-8048-56a79286a32c"
+      ],
+      "title": "虚拟环境与依赖隔离：典型误区",
+      "symptom": "学习者在“虚拟环境与依赖隔离”任务中给出稳定但错误的解释或边界结果",
+      "misconception": "全局安装包不会造成项目间版本冲突",
+      "diagnosis_prompts": [
+        "请逐步解释“python -m venv .venv”中每一步的值或控制流。"
+      ],
+      "remediation": [
+        "回到“为项目创建独立环境并记录可复现依赖”，再用一个正常值和一个边界值验证。"
+      ],
+      "source_ids": [
+        "aa78928c-6f47-56ce-9118-54e9b21ea114"
+      ],
+      "version": "1.0.0"
+    },
+    {
       "error_id": "1542e87f-52af-5cfa-8ed9-bc04ba929c23",
       "node_ids": [
         "6fa32f59-eacf-5d56-a22e-49107d496671"
@@ -3931,6 +4316,25 @@
       "version": "1.0.0"
     },
     {
+      "error_id": "19df05cd-a5f1-506d-b5f9-925990a74006",
+      "node_ids": [
+        "2078bf0c-953d-57b8-b521-ff304ef4ec57"
+      ],
+      "title": "SQLite 持久化入门：典型误区",
+      "symptom": "学习者在“SQLite 持久化入门”任务中给出稳定但错误的解释或边界结果",
+      "misconception": "把输入拼进 SQL 字符串与参数化查询同样安全",
+      "diagnosis_prompts": [
+        "请逐步解释“connection.execute('SELECT * FROM scores WHERE id = ?', (student_id,))”中每一步的值或控制流。"
+      ],
+      "remediation": [
+        "回到“使用参数化查询和事务保存结构化数据”，再用一个正常值和一个边界值验证。"
+      ],
+      "source_ids": [
+        "2dc99be8-2f59-50f9-b8cd-ee0b9c7a439e"
+      ],
+      "version": "1.0.0"
+    },
+    {
       "error_id": "07b9d24f-222b-5dee-81a5-295d249453f3",
       "node_ids": [
         "00fcccba-16ba-5c9a-b159-f3dc60b516f6"
@@ -4026,6 +4430,25 @@
       "version": "1.0.0"
     },
     {
+      "error_id": "a7b42828-e03d-5b42-b275-076e284c699a",
+      "node_ids": [
+        "cc274f40-ecb5-579d-a9d9-138e0ce19184"
+      ],
+      "title": "assert、异常与测试职责：典型误区",
+      "symptom": "学习者在“assert、异常与测试职责”任务中给出稳定但错误的解释或边界结果",
+      "misconception": "assert 可替代所有用户输入校验",
+      "diagnosis_prompts": [
+        "请逐步解释“assert total >= 0, '总数不应为负'”中每一步的值或控制流。"
+      ],
+      "remediation": [
+        "回到“区分内部断言、运行时输入校验和测试断言”，再用一个正常值和一个边界值验证。"
+      ],
+      "source_ids": [
+        "aad98a6e-483e-5b0f-9b35-32470dbbcb11"
+      ],
+      "version": "1.0.0"
+    },
+    {
       "error_id": "4ddc962f-3e2a-57d0-aab4-b1a4b9f4b4bb",
       "node_ids": [
         "f93ba50d-6a86-5fce-b514-9f4a28ed5323"
@@ -4038,6 +4461,25 @@
       ],
       "remediation": [
         "回到“区分类对象、实例对象和构造过程”，再用一个正常值和一个边界值验证。"
+      ],
+      "source_ids": [
+        "90a25bdb-b213-5703-a2fa-1f05fe374b43"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "error_id": "d0b69dcc-9c33-526e-b396-214a0ddc5c82",
+      "node_ids": [
+        "e589e879-8512-5a36-addf-a8f84bb398a6"
+      ],
+      "title": "封装、私有约定与多态：典型误区",
+      "symptom": "学习者在“封装、私有约定与多态”任务中给出稳定但错误的解释或边界结果",
+      "misconception": "双下划线属性在运行时绝对不可访问",
+      "diagnosis_prompts": [
+        "请逐步解释“def render(item):\n    return item.to_text()”中每一步的值或控制流。"
+      ],
+      "remediation": [
+        "回到“用统一协议调用不同实现并理解下划线命名约定”，再用一个正常值和一个边界值验证。"
       ],
       "source_ids": [
         "90a25bdb-b213-5703-a2fa-1f05fe374b43"
@@ -4349,6 +4791,44 @@
       "version": "1.0.0"
     },
     {
+      "error_id": "f3154eb9-7bc2-5aa4-8e84-0402de6076d9",
+      "node_ids": [
+        "9602bc42-6529-5cda-bd04-34f39a935804"
+      ],
+      "title": "robots 规则与负责任抓取：典型误区",
+      "symptom": "学习者在“robots 规则与负责任抓取”任务中给出稳定但错误的解释或边界结果",
+      "misconception": "公开网页默认允许任意频率抓取",
+      "diagnosis_prompts": [
+        "请逐步解释“parser = RobotFileParser()\nparser.set_url('/robots.txt')”中每一步的值或控制流。"
+      ],
+      "remediation": [
+        "回到“在自动获取站点内容前检查 robots 规则和访问边界”，再用一个正常值和一个边界值验证。"
+      ],
+      "source_ids": [
+        "fee6af71-dd90-541a-a837-79484455ecef"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "error_id": "c0d5c6e0-93a1-590f-bd11-33029482a571",
+      "node_ids": [
+        "fb0ed463-ea95-5e10-b130-5427cb524245"
+      ],
+      "title": "描述性统计入门：典型误区",
+      "symptom": "学习者在“描述性统计入门”任务中给出稳定但错误的解释或边界结果",
+      "misconception": "平均数总能代表典型水平",
+      "diagnosis_prompts": [
+        "请逐步解释“print(mean([60, 80, 100]))”中每一步的值或控制流。"
+      ],
+      "remediation": [
+        "回到“用均值、中位数和离散程度描述一组数据”，再用一个正常值和一个边界值验证。"
+      ],
+      "source_ids": [
+        "70d84064-a1b6-5995-90f8-bc544d057aae"
+      ],
+      "version": "1.0.0"
+    },
+    {
       "error_id": "1230544c-eb14-586e-8bd9-53b5935f3b6f",
       "node_ids": [
         "09aa903b-95e0-5f0f-bb94-33f950af6368"
@@ -4622,6 +5102,42 @@
       "version": "1.0.0"
     },
     {
+      "question_id": "c6e4c4d2-ade0-571f-9f9e-9311bc1539ac",
+      "node_id": "43103b5b-929d-58ab-9c35-7c3e80e397d7",
+      "kind": "MULTIPLE_CHOICE",
+      "prompt_template": "关于“标识符、关键字与命名”，哪项分析符合 Python 语义？A. 遵守标识符规则并识别不能重绑定的关键字；B. 任意 Unicode 文本都可直接作为变量名",
+      "parameter_schema": {},
+      "answer_schema": {
+        "type": "string",
+        "const": "A"
+      },
+      "test_case_ids": [
+        "4966efa5-2f2f-5edb-8376-07a9a23cb1c4"
+      ],
+      "source_ids": [
+        "d7da58cc-194c-5c3a-9b75-d10b303e1677"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "question_id": "4561444d-73f0-5289-bb9f-7bd2ec083ec6",
+      "node_id": "43103b5b-929d-58ab-9c35-7c3e80e397d7",
+      "kind": "CODE_WRITING",
+      "prompt_template": "围绕“标识符、关键字与命名”编写最小程序，输出“完成：标识符、关键字与命名”，并用注释说明如何遵守标识符规则并识别不能重绑定的关键字。",
+      "parameter_schema": {},
+      "answer_schema": {
+        "type": "string",
+        "minLength": 1
+      },
+      "test_case_ids": [
+        "b93cd043-5294-5a3c-bf44-e0bb1fb2f8ee"
+      ],
+      "source_ids": [
+        "d7da58cc-194c-5c3a-9b75-d10b303e1677"
+      ],
+      "version": "1.0.0"
+    },
+    {
       "question_id": "520d103c-974e-5212-9157-9e2aa952aaef",
       "node_id": "5b8ac768-79e6-5d73-adc4-b99c2988f1a9",
       "kind": "MULTIPLE_CHOICE",
@@ -4795,6 +5311,42 @@
       },
       "test_case_ids": [
         "24dd45e6-89ad-5863-8d17-52857dfe0233"
+      ],
+      "source_ids": [
+        "89fdfb4e-3278-5740-9da4-fbfb94b14598"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "question_id": "5318f7e8-57e8-5d1a-ab05-662492e6dff1",
+      "node_id": "2e637b3e-2367-517d-8852-5f35bb46be73",
+      "kind": "MULTIPLE_CHOICE",
+      "prompt_template": "关于“进制、位运算与掩码”，哪项分析符合 Python 语义？A. 解释二进制表示并用位运算读取或设置标志位；B. 按位与和逻辑 and 完全相同",
+      "parameter_schema": {},
+      "answer_schema": {
+        "type": "string",
+        "const": "A"
+      },
+      "test_case_ids": [
+        "fdb1f95f-eef0-5f15-a06d-5d862f28b6da"
+      ],
+      "source_ids": [
+        "89fdfb4e-3278-5740-9da4-fbfb94b14598"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "question_id": "46b1a97a-407e-53ba-a838-29ff386ff8ec",
+      "node_id": "2e637b3e-2367-517d-8852-5f35bb46be73",
+      "kind": "CODE_WRITING",
+      "prompt_template": "围绕“进制、位运算与掩码”编写最小程序，输出“完成：进制、位运算与掩码”，并用注释说明如何解释二进制表示并用位运算读取或设置标志位。",
+      "parameter_schema": {},
+      "answer_schema": {
+        "type": "string",
+        "minLength": 1
+      },
+      "test_case_ids": [
+        "7463165a-3127-5505-8e74-9856d93e600e"
       ],
       "source_ids": [
         "89fdfb4e-3278-5740-9da4-fbfb94b14598"
@@ -5738,6 +6290,42 @@
       "version": "1.0.0"
     },
     {
+      "question_id": "d3959f0e-16e4-5236-b07b-ab43f60cbe68",
+      "node_id": "82382c0e-dcdd-5cf5-afde-6ab199c4f463",
+      "kind": "MULTIPLE_CHOICE",
+      "prompt_template": "关于“对象共享与参数传递”，哪项分析符合 Python 语义？A. 根据名称绑定和对象可变性预测调用后的状态；B. 函数调用会深拷贝所有实参",
+      "parameter_schema": {},
+      "answer_schema": {
+        "type": "string",
+        "const": "A"
+      },
+      "test_case_ids": [
+        "fc23dbb9-1e4d-569a-8a3b-4ba390762e1d"
+      ],
+      "source_ids": [
+        "38fe9a64-9474-5874-b31d-c449247e6e31"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "question_id": "eb299b44-b74d-5173-a55b-35127d822179",
+      "node_id": "82382c0e-dcdd-5cf5-afde-6ab199c4f463",
+      "kind": "CODE_WRITING",
+      "prompt_template": "围绕“对象共享与参数传递”编写最小程序，输出“完成：对象共享与参数传递”，并用注释说明如何根据名称绑定和对象可变性预测调用后的状态。",
+      "parameter_schema": {},
+      "answer_schema": {
+        "type": "string",
+        "minLength": 1
+      },
+      "test_case_ids": [
+        "ec0a04f6-15fc-5631-9e78-970cfd0f3482"
+      ],
+      "source_ids": [
+        "38fe9a64-9474-5874-b31d-c449247e6e31"
+      ],
+      "version": "1.0.0"
+    },
+    {
       "question_id": "14ccf3f8-df3f-56f5-8b43-26bd2a9294a2",
       "node_id": "5e83c169-9d5c-5db0-8124-2cdfe7321953",
       "kind": "MULTIPLE_CHOICE",
@@ -6350,6 +6938,42 @@
       "version": "1.0.0"
     },
     {
+      "question_id": "3d1bece6-7582-5d9f-8f5e-eb6991d3c584",
+      "node_id": "a2b19993-d47b-59a9-8048-56a79286a32c",
+      "kind": "MULTIPLE_CHOICE",
+      "prompt_template": "关于“虚拟环境与依赖隔离”，哪项分析符合 Python 语义？A. 为项目创建独立环境并记录可复现依赖；B. 全局安装包不会造成项目间版本冲突",
+      "parameter_schema": {},
+      "answer_schema": {
+        "type": "string",
+        "const": "A"
+      },
+      "test_case_ids": [
+        "dcdca419-c1d0-5e12-8603-0fc82903176a"
+      ],
+      "source_ids": [
+        "aa78928c-6f47-56ce-9118-54e9b21ea114"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "question_id": "109b9245-8fb5-59b5-8c10-4dbe0e736962",
+      "node_id": "a2b19993-d47b-59a9-8048-56a79286a32c",
+      "kind": "CODE_WRITING",
+      "prompt_template": "围绕“虚拟环境与依赖隔离”编写最小程序，输出“完成：虚拟环境与依赖隔离”，并用注释说明如何为项目创建独立环境并记录可复现依赖。",
+      "parameter_schema": {},
+      "answer_schema": {
+        "type": "string",
+        "minLength": 1
+      },
+      "test_case_ids": [
+        "10959f02-1d3e-5d81-a4d9-33952ddca11a"
+      ],
+      "source_ids": [
+        "aa78928c-6f47-56ce-9118-54e9b21ea114"
+      ],
+      "version": "1.0.0"
+    },
+    {
       "question_id": "1e0940fa-e350-51f6-8958-d278bcb16939",
       "node_id": "6fa32f59-eacf-5d56-a22e-49107d496671",
       "kind": "MULTIPLE_CHOICE",
@@ -6566,6 +7190,42 @@
       "version": "1.0.0"
     },
     {
+      "question_id": "7b914db5-0747-57fc-be0f-4acf7b8714f3",
+      "node_id": "2078bf0c-953d-57b8-b521-ff304ef4ec57",
+      "kind": "MULTIPLE_CHOICE",
+      "prompt_template": "关于“SQLite 持久化入门”，哪项分析符合 Python 语义？A. 使用参数化查询和事务保存结构化数据；B. 把输入拼进 SQL 字符串与参数化查询同样安全",
+      "parameter_schema": {},
+      "answer_schema": {
+        "type": "string",
+        "const": "A"
+      },
+      "test_case_ids": [
+        "e295c60f-0a23-522e-a8d5-d71b517daed9"
+      ],
+      "source_ids": [
+        "2dc99be8-2f59-50f9-b8cd-ee0b9c7a439e"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "question_id": "596986df-2337-5034-bd05-5b9c3484d065",
+      "node_id": "2078bf0c-953d-57b8-b521-ff304ef4ec57",
+      "kind": "CODE_WRITING",
+      "prompt_template": "围绕“SQLite 持久化入门”编写最小程序，输出“完成：SQLite 持久化入门”，并用注释说明如何使用参数化查询和事务保存结构化数据。",
+      "parameter_schema": {},
+      "answer_schema": {
+        "type": "string",
+        "minLength": 1
+      },
+      "test_case_ids": [
+        "fbefa85a-1c07-527e-b908-16cd31f2fcd6"
+      ],
+      "source_ids": [
+        "2dc99be8-2f59-50f9-b8cd-ee0b9c7a439e"
+      ],
+      "version": "1.0.0"
+    },
+    {
       "question_id": "5a430cea-abcd-5aaf-b905-b5073bfe0967",
       "node_id": "00fcccba-16ba-5c9a-b159-f3dc60b516f6",
       "kind": "MULTIPLE_CHOICE",
@@ -6746,6 +7406,42 @@
       "version": "1.0.0"
     },
     {
+      "question_id": "c8ae4395-6c55-5db6-8127-9a461f3ed920",
+      "node_id": "cc274f40-ecb5-579d-a9d9-138e0ce19184",
+      "kind": "MULTIPLE_CHOICE",
+      "prompt_template": "关于“assert、异常与测试职责”，哪项分析符合 Python 语义？A. 区分内部断言、运行时输入校验和测试断言；B. assert 可替代所有用户输入校验",
+      "parameter_schema": {},
+      "answer_schema": {
+        "type": "string",
+        "const": "A"
+      },
+      "test_case_ids": [
+        "f6f86463-4e4a-5d83-9489-c1e5a1cfa038"
+      ],
+      "source_ids": [
+        "aad98a6e-483e-5b0f-9b35-32470dbbcb11"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "question_id": "a1a2bf2b-fd45-5e65-96c0-a937f58c91d4",
+      "node_id": "cc274f40-ecb5-579d-a9d9-138e0ce19184",
+      "kind": "CODE_WRITING",
+      "prompt_template": "围绕“assert、异常与测试职责”编写最小程序，输出“完成：assert、异常与测试职责”，并用注释说明如何区分内部断言、运行时输入校验和测试断言。",
+      "parameter_schema": {},
+      "answer_schema": {
+        "type": "string",
+        "minLength": 1
+      },
+      "test_case_ids": [
+        "374b58e5-ced5-5cf3-8429-5818bcec3e24"
+      ],
+      "source_ids": [
+        "aad98a6e-483e-5b0f-9b35-32470dbbcb11"
+      ],
+      "version": "1.0.0"
+    },
+    {
       "question_id": "f048f3bc-fd47-503c-a042-84d77669fb5d",
       "node_id": "f93ba50d-6a86-5fce-b514-9f4a28ed5323",
       "kind": "MULTIPLE_CHOICE",
@@ -6775,6 +7471,42 @@
       },
       "test_case_ids": [
         "f27a342f-6d24-5fed-9deb-227d827bea74"
+      ],
+      "source_ids": [
+        "90a25bdb-b213-5703-a2fa-1f05fe374b43"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "question_id": "8f6aa812-e466-55e8-ab1d-f1129f20745c",
+      "node_id": "e589e879-8512-5a36-addf-a8f84bb398a6",
+      "kind": "MULTIPLE_CHOICE",
+      "prompt_template": "关于“封装、私有约定与多态”，哪项分析符合 Python 语义？A. 用统一协议调用不同实现并理解下划线命名约定；B. 双下划线属性在运行时绝对不可访问",
+      "parameter_schema": {},
+      "answer_schema": {
+        "type": "string",
+        "const": "A"
+      },
+      "test_case_ids": [
+        "8fd258a2-a19c-59b0-a5d4-5bb042ff3ec7"
+      ],
+      "source_ids": [
+        "90a25bdb-b213-5703-a2fa-1f05fe374b43"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "question_id": "e230bc59-d6ed-5cca-b101-f8e91d971037",
+      "node_id": "e589e879-8512-5a36-addf-a8f84bb398a6",
+      "kind": "CODE_WRITING",
+      "prompt_template": "围绕“封装、私有约定与多态”编写最小程序，输出“完成：封装、私有约定与多态”，并用注释说明如何用统一协议调用不同实现并理解下划线命名约定。",
+      "parameter_schema": {},
+      "answer_schema": {
+        "type": "string",
+        "minLength": 1
+      },
+      "test_case_ids": [
+        "91b12167-ab17-5516-8ec5-394865035536"
       ],
       "source_ids": [
         "90a25bdb-b213-5703-a2fa-1f05fe374b43"
@@ -7358,6 +8090,78 @@
       "version": "1.0.0"
     },
     {
+      "question_id": "74831fae-20bf-580b-ad3b-b614768605c5",
+      "node_id": "9602bc42-6529-5cda-bd04-34f39a935804",
+      "kind": "MULTIPLE_CHOICE",
+      "prompt_template": "关于“robots 规则与负责任抓取”，哪项分析符合 Python 语义？A. 在自动获取站点内容前检查 robots 规则和访问边界；B. 公开网页默认允许任意频率抓取",
+      "parameter_schema": {},
+      "answer_schema": {
+        "type": "string",
+        "const": "A"
+      },
+      "test_case_ids": [
+        "11b88fae-97eb-5acf-b9b8-99f5b3f5bcb1"
+      ],
+      "source_ids": [
+        "fee6af71-dd90-541a-a837-79484455ecef"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "question_id": "48da3caa-204f-51f7-85c6-3a595ae53476",
+      "node_id": "9602bc42-6529-5cda-bd04-34f39a935804",
+      "kind": "CODE_WRITING",
+      "prompt_template": "围绕“robots 规则与负责任抓取”编写最小程序，输出“完成：robots 规则与负责任抓取”，并用注释说明如何在自动获取站点内容前检查 robots 规则和访问边界。",
+      "parameter_schema": {},
+      "answer_schema": {
+        "type": "string",
+        "minLength": 1
+      },
+      "test_case_ids": [
+        "f844be29-59b0-5ceb-8e28-c7976ba97f2f"
+      ],
+      "source_ids": [
+        "fee6af71-dd90-541a-a837-79484455ecef"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "question_id": "a9dd19ee-6e44-59f5-bda3-596c4cf11162",
+      "node_id": "fb0ed463-ea95-5e10-b130-5427cb524245",
+      "kind": "MULTIPLE_CHOICE",
+      "prompt_template": "关于“描述性统计入门”，哪项分析符合 Python 语义？A. 用均值、中位数和离散程度描述一组数据；B. 平均数总能代表典型水平",
+      "parameter_schema": {},
+      "answer_schema": {
+        "type": "string",
+        "const": "A"
+      },
+      "test_case_ids": [
+        "6a7fc41b-8807-55d6-ae9e-d89e447e5a9f"
+      ],
+      "source_ids": [
+        "70d84064-a1b6-5995-90f8-bc544d057aae"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "question_id": "d02a6076-f5a8-51b2-91eb-7c9269cd5d66",
+      "node_id": "fb0ed463-ea95-5e10-b130-5427cb524245",
+      "kind": "CODE_WRITING",
+      "prompt_template": "围绕“描述性统计入门”编写最小程序，输出“完成：描述性统计入门”，并用注释说明如何用均值、中位数和离散程度描述一组数据。",
+      "parameter_schema": {},
+      "answer_schema": {
+        "type": "string",
+        "minLength": 1
+      },
+      "test_case_ids": [
+        "4394ad29-7953-54b7-9619-9da8e5bbe5dd"
+      ],
+      "source_ids": [
+        "70d84064-a1b6-5995-90f8-bc544d057aae"
+      ],
+      "version": "1.0.0"
+    },
+    {
       "question_id": "fd572606-0a9d-5866-8425-be32c9a06e5d",
       "node_id": "09aa903b-95e0-5f0f-bb94-33f950af6368",
       "kind": "MULTIPLE_CHOICE",
@@ -7536,6 +8340,26 @@
       "version": "1.0.0"
     },
     {
+      "test_id": "4966efa5-2f2f-5edb-8376-07a9a23cb1c4",
+      "node_id": "43103b5b-929d-58ab-9c35-7c3e80e397d7",
+      "kind": "RETURN_VALUE",
+      "input": "",
+      "expected": "A",
+      "hidden": false,
+      "timeout_ms": 1000,
+      "version": "1.0.0"
+    },
+    {
+      "test_id": "b93cd043-5294-5a3c-bf44-e0bb1fb2f8ee",
+      "node_id": "43103b5b-929d-58ab-9c35-7c3e80e397d7",
+      "kind": "STDOUT",
+      "input": "",
+      "expected": "完成：标识符、关键字与命名\n",
+      "hidden": true,
+      "timeout_ms": 1000,
+      "version": "1.0.0"
+    },
+    {
       "test_id": "a596d3ba-d0e9-5a3a-b89b-0791d3ddbf6d",
       "node_id": "5b8ac768-79e6-5d73-adc4-b99c2988f1a9",
       "kind": "RETURN_VALUE",
@@ -7631,6 +8455,26 @@
       "kind": "STDOUT",
       "input": "",
       "expected": "完成：优先级与括号\n",
+      "hidden": true,
+      "timeout_ms": 1000,
+      "version": "1.0.0"
+    },
+    {
+      "test_id": "fdb1f95f-eef0-5f15-a06d-5d862f28b6da",
+      "node_id": "2e637b3e-2367-517d-8852-5f35bb46be73",
+      "kind": "RETURN_VALUE",
+      "input": "",
+      "expected": "A",
+      "hidden": false,
+      "timeout_ms": 1000,
+      "version": "1.0.0"
+    },
+    {
+      "test_id": "7463165a-3127-5505-8e74-9856d93e600e",
+      "node_id": "2e637b3e-2367-517d-8852-5f35bb46be73",
+      "kind": "STDOUT",
+      "input": "",
+      "expected": "完成：进制、位运算与掩码\n",
       "hidden": true,
       "timeout_ms": 1000,
       "version": "1.0.0"
@@ -8156,6 +9000,26 @@
       "version": "1.0.0"
     },
     {
+      "test_id": "fc23dbb9-1e4d-569a-8a3b-4ba390762e1d",
+      "node_id": "82382c0e-dcdd-5cf5-afde-6ab199c4f463",
+      "kind": "RETURN_VALUE",
+      "input": "",
+      "expected": "A",
+      "hidden": false,
+      "timeout_ms": 1000,
+      "version": "1.0.0"
+    },
+    {
+      "test_id": "ec0a04f6-15fc-5631-9e78-970cfd0f3482",
+      "node_id": "82382c0e-dcdd-5cf5-afde-6ab199c4f463",
+      "kind": "STDOUT",
+      "input": "",
+      "expected": "完成：对象共享与参数传递\n",
+      "hidden": true,
+      "timeout_ms": 1000,
+      "version": "1.0.0"
+    },
+    {
       "test_id": "6a2f1191-0740-5ef9-bd25-ff600cd0f432",
       "node_id": "5e83c169-9d5c-5db0-8124-2cdfe7321953",
       "kind": "RETURN_VALUE",
@@ -8496,6 +9360,26 @@
       "version": "1.0.0"
     },
     {
+      "test_id": "dcdca419-c1d0-5e12-8603-0fc82903176a",
+      "node_id": "a2b19993-d47b-59a9-8048-56a79286a32c",
+      "kind": "RETURN_VALUE",
+      "input": "",
+      "expected": "A",
+      "hidden": false,
+      "timeout_ms": 1000,
+      "version": "1.0.0"
+    },
+    {
+      "test_id": "10959f02-1d3e-5d81-a4d9-33952ddca11a",
+      "node_id": "a2b19993-d47b-59a9-8048-56a79286a32c",
+      "kind": "STDOUT",
+      "input": "",
+      "expected": "完成：虚拟环境与依赖隔离\n",
+      "hidden": true,
+      "timeout_ms": 1000,
+      "version": "1.0.0"
+    },
+    {
       "test_id": "8e4a6dde-6ad6-5fa7-9919-2af0e3c8ef9b",
       "node_id": "6fa32f59-eacf-5d56-a22e-49107d496671",
       "kind": "RETURN_VALUE",
@@ -8616,6 +9500,26 @@
       "version": "1.0.0"
     },
     {
+      "test_id": "e295c60f-0a23-522e-a8d5-d71b517daed9",
+      "node_id": "2078bf0c-953d-57b8-b521-ff304ef4ec57",
+      "kind": "RETURN_VALUE",
+      "input": "",
+      "expected": "A",
+      "hidden": false,
+      "timeout_ms": 1000,
+      "version": "1.0.0"
+    },
+    {
+      "test_id": "fbefa85a-1c07-527e-b908-16cd31f2fcd6",
+      "node_id": "2078bf0c-953d-57b8-b521-ff304ef4ec57",
+      "kind": "STDOUT",
+      "input": "",
+      "expected": "完成：SQLite 持久化入门\n",
+      "hidden": true,
+      "timeout_ms": 1000,
+      "version": "1.0.0"
+    },
+    {
       "test_id": "05f35078-836b-5b4b-99b4-c34c5ee248d5",
       "node_id": "00fcccba-16ba-5c9a-b159-f3dc60b516f6",
       "kind": "RETURN_VALUE",
@@ -8716,6 +9620,26 @@
       "version": "1.0.0"
     },
     {
+      "test_id": "f6f86463-4e4a-5d83-9489-c1e5a1cfa038",
+      "node_id": "cc274f40-ecb5-579d-a9d9-138e0ce19184",
+      "kind": "RETURN_VALUE",
+      "input": "",
+      "expected": "A",
+      "hidden": false,
+      "timeout_ms": 1000,
+      "version": "1.0.0"
+    },
+    {
+      "test_id": "374b58e5-ced5-5cf3-8429-5818bcec3e24",
+      "node_id": "cc274f40-ecb5-579d-a9d9-138e0ce19184",
+      "kind": "STDOUT",
+      "input": "",
+      "expected": "完成：assert、异常与测试职责\n",
+      "hidden": true,
+      "timeout_ms": 1000,
+      "version": "1.0.0"
+    },
+    {
       "test_id": "e707f478-0885-5a1b-a21f-56af0ce710ef",
       "node_id": "f93ba50d-6a86-5fce-b514-9f4a28ed5323",
       "kind": "RETURN_VALUE",
@@ -8731,6 +9655,26 @@
       "kind": "STDOUT",
       "input": "",
       "expected": "完成：类与实例\n",
+      "hidden": true,
+      "timeout_ms": 1000,
+      "version": "1.0.0"
+    },
+    {
+      "test_id": "8fd258a2-a19c-59b0-a5d4-5bb042ff3ec7",
+      "node_id": "e589e879-8512-5a36-addf-a8f84bb398a6",
+      "kind": "RETURN_VALUE",
+      "input": "",
+      "expected": "A",
+      "hidden": false,
+      "timeout_ms": 1000,
+      "version": "1.0.0"
+    },
+    {
+      "test_id": "91b12167-ab17-5516-8ec5-394865035536",
+      "node_id": "e589e879-8512-5a36-addf-a8f84bb398a6",
+      "kind": "STDOUT",
+      "input": "",
+      "expected": "完成：封装、私有约定与多态\n",
       "hidden": true,
       "timeout_ms": 1000,
       "version": "1.0.0"
@@ -9051,6 +9995,46 @@
       "kind": "STDOUT",
       "input": "",
       "expected": "完成：边界、异常与回归测试\n",
+      "hidden": true,
+      "timeout_ms": 1000,
+      "version": "1.0.0"
+    },
+    {
+      "test_id": "11b88fae-97eb-5acf-b9b8-99f5b3f5bcb1",
+      "node_id": "9602bc42-6529-5cda-bd04-34f39a935804",
+      "kind": "RETURN_VALUE",
+      "input": "",
+      "expected": "A",
+      "hidden": false,
+      "timeout_ms": 1000,
+      "version": "1.0.0"
+    },
+    {
+      "test_id": "f844be29-59b0-5ceb-8e28-c7976ba97f2f",
+      "node_id": "9602bc42-6529-5cda-bd04-34f39a935804",
+      "kind": "STDOUT",
+      "input": "",
+      "expected": "完成：robots 规则与负责任抓取\n",
+      "hidden": true,
+      "timeout_ms": 1000,
+      "version": "1.0.0"
+    },
+    {
+      "test_id": "6a7fc41b-8807-55d6-ae9e-d89e447e5a9f",
+      "node_id": "fb0ed463-ea95-5e10-b130-5427cb524245",
+      "kind": "RETURN_VALUE",
+      "input": "",
+      "expected": "A",
+      "hidden": false,
+      "timeout_ms": 1000,
+      "version": "1.0.0"
+    },
+    {
+      "test_id": "4394ad29-7953-54b7-9619-9da8e5bbe5dd",
+      "node_id": "fb0ed463-ea95-5e10-b130-5427cb524245",
+      "kind": "STDOUT",
+      "input": "",
+      "expected": "完成：描述性统计入门\n",
       "hidden": true,
       "timeout_ms": 1000,
       "version": "1.0.0"

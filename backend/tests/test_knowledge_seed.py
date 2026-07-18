@@ -29,19 +29,19 @@ def test_published_course_seed_is_idempotent(db_session: Session) -> None:
     assert first == second
     assert first.counts == {
         "chapters": 14,
-        "nodes": 84,
-        "sources": 16,
-        "error_patterns": 84,
-        "question_templates": 168,
-        "test_cases": 168,
+        "nodes": 93,
+        "sources": 22,
+        "error_patterns": 93,
+        "question_templates": 186,
+        "test_cases": 186,
         "mastery_policies": 2,
         "deep_units": 4,
     }
     assert _count(db_session, CourseCatalog) == 1
     assert _count(db_session, CourseChapter) == 14
-    assert _count(db_session, KnowledgeNode) == 84
-    assert _count(db_session, KnowledgeSource) == 16
-    assert _count(db_session, KnowledgeErrorPattern) == 84
-    assert _count(db_session, KnowledgeQuestionTemplate) == 168
-    assert _count(db_session, KnowledgeTestCase) == 168
+    assert _count(db_session, KnowledgeNode) == 93
+    assert _count(db_session, KnowledgeSource) == 22
+    assert _count(db_session, KnowledgeErrorPattern) == 93
+    assert _count(db_session, KnowledgeQuestionTemplate) == 186
+    assert _count(db_session, KnowledgeTestCase) == 186
     assert _count(db_session, KnowledgeMasteryPolicy) == 2
