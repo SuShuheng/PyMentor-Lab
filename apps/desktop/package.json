@@ -1,0 +1,38 @@
+{
+  "name": "@pymentor/desktop",
+  "productName": "PyMentor Lab",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Windows-first secure student desktop shell for PyMentor Lab.",
+  "author": "PyMentor Lab",
+  "license": "UNLICENSED",
+  "main": ".vite/build/main.js",
+  "scripts": {
+    "start": "electron-forge start",
+    "build": "electron-forge package --platform win32 --arch x64",
+    "package:win": "electron-forge package --platform win32 --arch x64",
+    "make:win": "electron-forge make --platform win32 --arch x64",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@pymentor/contracts": "workspace:*",
+    "electron-squirrel-startup": "1.0.1",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "7.11.2",
+    "@electron-forge/maker-squirrel": "7.11.2",
+    "@electron-forge/plugin-fuses": "7.11.2",
+    "@electron-forge/plugin-vite": "7.11.2",
+    "@electron-forge/shared-types": "7.11.2",
+    "@electron/fuses": "2.1.3",
+    "@types/electron-squirrel-startup": "1.0.2",
+    "@types/node": "22.15.3",
+    "electron": "43.1.1",
+    "typescript": "5.9.3",
+    "vite": "8.1.5",
+    "vitest": "4.1.10"
+  }
+}
