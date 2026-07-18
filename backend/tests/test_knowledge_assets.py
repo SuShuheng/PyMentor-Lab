@@ -200,6 +200,28 @@ def test_validator_reports_asset_version_conflict() -> None:
     ]
 
 
+def test_validator_rejects_source_outside_official_allowlist() -> None:
+    document = _minimal_document()
+    document["sources"][0]["url"] = "https://example.com/python-tutorial"
+
+    report = validate_course_document(document)
+
+    assert [(finding.code, finding.path) for finding in report.findings] == [
+        ("SOURCE_NOT_WHITELISTED", "sources[0].url")
+    ]
+
+
+def test_validator_rejects_duplicate_asset_identifier() -> None:
+    document = _minimal_document()
+    document["nodes"].append(deepcopy(document["nodes"][0]))
+
+    report = validate_course_document(document)
+
+    assert ("DUPLICATE_ID", "nodes[1].node_id") in {
+        (finding.code, finding.path) for finding in report.findings
+    }
+
+
 def test_validator_reports_declared_course_count_mismatch() -> None:
     document = _minimal_document()
     document["course"]["required_chapter_count"] = 2

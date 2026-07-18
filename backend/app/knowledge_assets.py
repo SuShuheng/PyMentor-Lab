@@ -228,6 +228,29 @@ def _semantic_findings(bundle: CourseAssetBundle) -> list[ValidationFinding]:
     test_ids = {test_case.test_id for test_case in bundle.test_cases}
     policy_ids = {policy.policy_id for policy in bundle.mastery_policies}
 
+    identifier_groups: tuple[tuple[str, list[StrictAssetModel], str], ...] = (
+        ("chapters", list(bundle.chapters), "chapter_id"),
+        ("nodes", list(bundle.nodes), "node_id"),
+        ("sources", list(bundle.sources), "source_id"),
+        ("error_patterns", list(bundle.error_patterns), "error_id"),
+        ("question_templates", list(bundle.question_templates), "question_id"),
+        ("test_cases", list(bundle.test_cases), "test_id"),
+        ("mastery_policies", list(bundle.mastery_policies), "policy_id"),
+    )
+    for group_name, assets, identifier_field in identifier_groups:
+        seen: set[str] = set()
+        for index, asset in enumerate(assets):
+            identifier = str(getattr(asset, identifier_field))
+            if identifier in seen:
+                findings.append(
+                    ValidationFinding(
+                        code="DUPLICATE_ID",
+                        path=f"{group_name}[{index}].{identifier_field}",
+                        message=f"duplicate asset identifier: {identifier}",
+                    )
+                )
+            seen.add(identifier)
+
     def add(code: str, path: str, target: UUID) -> None:
         findings.append(
             ValidationFinding(code=code, path=path, message=f"referenced asset not found: {target}")
@@ -343,6 +366,23 @@ def _semantic_findings(bundle: CourseAssetBundle) -> list[ValidationFinding]:
                     code="DEEP_UNIT_ERROR_PATTERN_MISSING",
                     path=f"course.deep_unit_node_ids[{index}]",
                     message=f"deep unit has no linked error pattern: {node_id}",
+                )
+            )
+
+    official_source_hosts = {
+        "Python Software Foundation": "docs.python.org",
+        "Python Enhancement Proposals": "peps.python.org",
+    }
+    for source_index, source in enumerate(bundle.sources):
+        expected_host = official_source_hosts[source.publisher]
+        if source.url.host != expected_host:
+            findings.append(
+                ValidationFinding(
+                    code="SOURCE_NOT_WHITELISTED",
+                    path=f"sources[{source_index}].url",
+                    message=(
+                        f"publisher {source.publisher} requires official host {expected_host}"
+                    ),
                 )
             )
 
