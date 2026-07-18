@@ -112,3 +112,63 @@ def test_validator_reports_missing_required_field_with_stable_path() -> None:
         ("SCHEMA_REQUIRED", "course.title")
     ]
 
+
+def test_validator_reports_missing_source_reference() -> None:
+    document = _minimal_document()
+    document["nodes"][0]["source_ids"] = ["40000000-0000-4000-8000-000000000099"]
+
+    report = validate_course_document(document)
+
+    assert ("SOURCE_MISSING", "nodes[0].source_ids[0]") in {
+        (finding.code, finding.path) for finding in report.findings
+    }
+
+
+def test_validator_reports_broken_chapter_node_reference() -> None:
+    document = _minimal_document()
+    document["chapters"][0]["node_ids"] = ["30000000-0000-4000-8000-000000000099"]
+
+    report = validate_course_document(document)
+
+    assert ("REFERENCE_MISSING", "chapters[0].node_ids[0]") in {
+        (finding.code, finding.path) for finding in report.findings
+    }
+
+
+def test_validator_reports_prerequisite_cycle() -> None:
+    document = _minimal_document()
+    document["nodes"][0]["prerequisites"] = [
+        "30000000-0000-4000-8000-000000000001"
+    ]
+
+    report = validate_course_document(document)
+
+    assert [finding.code for finding in report.findings] == ["PREREQUISITE_CYCLE"]
+
+
+def test_validator_reports_invalid_mastery_policy_and_test_links() -> None:
+    document = _minimal_document()
+    document["nodes"][0]["mastery_policy_id"] = (
+        "80000000-0000-4000-8000-000000000099"
+    )
+    document["question_templates"][0]["test_case_ids"] = [
+        "70000000-0000-4000-8000-000000000099"
+    ]
+
+    report = validate_course_document(document)
+
+    assert {(finding.code, finding.path) for finding in report.findings} == {
+        ("MASTERY_POLICY_MISSING", "nodes[0].mastery_policy_id"),
+        ("TEST_CASE_MISSING", "question_templates[0].test_case_ids[0]"),
+    }
+
+
+def test_validator_reports_asset_version_conflict() -> None:
+    document = _minimal_document()
+    document["question_templates"][0]["version"] = "1.1.0"
+
+    report = validate_course_document(document)
+
+    assert [(finding.code, finding.path) for finding in report.findings] == [
+        ("VERSION_CONFLICT", "question_templates[0].version")
+    ]

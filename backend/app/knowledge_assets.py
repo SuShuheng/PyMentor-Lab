@@ -148,11 +148,187 @@ def _format_error_path(location: tuple[int | str, ...]) -> str:
     return ".".join(parts)
 
 
+def _prerequisite_cycle_findings(bundle: CourseAssetBundle) -> list[ValidationFinding]:
+    node_ids = {node.node_id for node in bundle.nodes}
+    adjacency = {
+        node.node_id: [
+            prerequisite for prerequisite in node.prerequisites if prerequisite in node_ids
+        ]
+        for node in bundle.nodes
+    }
+    state: dict[UUID, int] = {}
+    stack: list[UUID] = []
+    cycles: set[tuple[str, ...]] = set()
+
+    def visit(node_id: UUID) -> None:
+        state[node_id] = 1
+        stack.append(node_id)
+        for prerequisite in adjacency[node_id]:
+            if state.get(prerequisite, 0) == 0:
+                visit(prerequisite)
+            elif state.get(prerequisite) == 1:
+                cycle_start = stack.index(prerequisite)
+                cycle = tuple(str(item) for item in stack[cycle_start:])
+                cycles.add(tuple(sorted(cycle)))
+        stack.pop()
+        state[node_id] = 2
+
+    for node_id in sorted(node_ids, key=str):
+        if state.get(node_id, 0) == 0:
+            visit(node_id)
+
+    return [
+        ValidationFinding(
+            code="PREREQUISITE_CYCLE",
+            path="nodes",
+            message=f"prerequisite cycle contains: {', '.join(cycle)}",
+        )
+        for cycle in sorted(cycles)
+    ]
+
+
+def _semantic_findings(bundle: CourseAssetBundle) -> list[ValidationFinding]:
+    findings: list[ValidationFinding] = []
+    chapter_ids = {chapter.chapter_id for chapter in bundle.chapters}
+    node_ids = {node.node_id for node in bundle.nodes}
+    source_ids = {source.source_id for source in bundle.sources}
+    question_ids = {question.question_id for question in bundle.question_templates}
+    test_ids = {test_case.test_id for test_case in bundle.test_cases}
+    policy_ids = {policy.policy_id for policy in bundle.mastery_policies}
+
+    def add(code: str, path: str, target: UUID) -> None:
+        findings.append(
+            ValidationFinding(code=code, path=path, message=f"referenced asset not found: {target}")
+        )
+
+    for index, chapter_id in enumerate(bundle.course.chapter_ids):
+        if chapter_id not in chapter_ids:
+            add("REFERENCE_MISSING", f"course.chapter_ids[{index}]", chapter_id)
+
+    for chapter_index, chapter in enumerate(bundle.chapters):
+        if chapter.course_id != bundle.course.course_id:
+            add("REFERENCE_MISSING", f"chapters[{chapter_index}].course_id", chapter.course_id)
+        for reference_index, node_id in enumerate(chapter.node_ids):
+            if node_id not in node_ids:
+                add(
+                    "REFERENCE_MISSING",
+                    f"chapters[{chapter_index}].node_ids[{reference_index}]",
+                    node_id,
+                )
+
+    for node_index, node in enumerate(bundle.nodes):
+        if node.chapter_id not in chapter_ids:
+            add("REFERENCE_MISSING", f"nodes[{node_index}].chapter_id", node.chapter_id)
+        for reference_index, prerequisite in enumerate(node.prerequisites):
+            if prerequisite not in node_ids:
+                add(
+                    "REFERENCE_MISSING",
+                    f"nodes[{node_index}].prerequisites[{reference_index}]",
+                    prerequisite,
+                )
+        for reference_index, source_id in enumerate(node.source_ids):
+            if source_id not in source_ids:
+                add(
+                    "SOURCE_MISSING",
+                    f"nodes[{node_index}].source_ids[{reference_index}]",
+                    source_id,
+                )
+        for field_name in ("diagnostic_items", "practice_templates"):
+            for reference_index, question_id in enumerate(getattr(node, field_name)):
+                if question_id not in question_ids:
+                    add(
+                        "QUESTION_TEMPLATE_MISSING",
+                        f"nodes[{node_index}].{field_name}[{reference_index}]",
+                        question_id,
+                    )
+        if node.mastery_policy_id not in policy_ids:
+            add(
+                "MASTERY_POLICY_MISSING",
+                f"nodes[{node_index}].mastery_policy_id",
+                node.mastery_policy_id,
+            )
+
+    for error_index, pattern in enumerate(bundle.error_patterns):
+        for reference_index, node_id in enumerate(pattern.node_ids):
+            if node_id not in node_ids:
+                add(
+                    "REFERENCE_MISSING",
+                    f"error_patterns[{error_index}].node_ids[{reference_index}]",
+                    node_id,
+                )
+        for reference_index, source_id in enumerate(pattern.source_ids):
+            if source_id not in source_ids:
+                add(
+                    "SOURCE_MISSING",
+                    f"error_patterns[{error_index}].source_ids[{reference_index}]",
+                    source_id,
+                )
+
+    for question_index, question in enumerate(bundle.question_templates):
+        if question.node_id not in node_ids:
+            add(
+                "REFERENCE_MISSING",
+                f"question_templates[{question_index}].node_id",
+                question.node_id,
+            )
+        for reference_index, test_id in enumerate(question.test_case_ids):
+            if test_id not in test_ids:
+                add(
+                    "TEST_CASE_MISSING",
+                    f"question_templates[{question_index}].test_case_ids[{reference_index}]",
+                    test_id,
+                )
+        for reference_index, source_id in enumerate(question.source_ids):
+            if source_id not in source_ids:
+                add(
+                    "SOURCE_MISSING",
+                    f"question_templates[{question_index}].source_ids[{reference_index}]",
+                    source_id,
+                )
+
+    for test_index, test_case in enumerate(bundle.test_cases):
+        if test_case.node_id not in node_ids:
+            add("REFERENCE_MISSING", f"test_cases[{test_index}].node_id", test_case.node_id)
+
+    versioned_groups: tuple[tuple[str, list[StrictAssetModel]], ...] = (
+        ("chapters", list(bundle.chapters)),
+        ("nodes", list(bundle.nodes)),
+        ("sources", list(bundle.sources)),
+        ("error_patterns", list(bundle.error_patterns)),
+        ("question_templates", list(bundle.question_templates)),
+        ("test_cases", list(bundle.test_cases)),
+        ("mastery_policies", list(bundle.mastery_policies)),
+    )
+    if bundle.course.version != bundle.content_version:
+        findings.append(
+            ValidationFinding(
+                code="VERSION_CONFLICT",
+                path="course.version",
+                message=f"expected content version {bundle.content_version}",
+            )
+        )
+    for group_name, assets in versioned_groups:
+        for index, asset in enumerate(assets):
+            version = str(asset.model_dump()["version"])
+            if version != bundle.content_version:
+                findings.append(
+                    ValidationFinding(
+                        code="VERSION_CONFLICT",
+                        path=f"{group_name}[{index}].version",
+                        message=f"expected content version {bundle.content_version}",
+                    )
+                )
+
+    findings.extend(_prerequisite_cycle_findings(bundle))
+    findings.sort(key=lambda finding: (finding.path, finding.code, finding.message))
+    return findings
+
+
 def validate_course_document(document: Mapping[str, object]) -> CourseValidationReport:
     """Validate one raw course document and return stable, machine-readable findings."""
 
     try:
-        CourseAssetBundle.model_validate(document)
+        bundle = CourseAssetBundle.model_validate(document)
     except ValidationError as error:
         findings = [
             ValidationFinding(
@@ -165,5 +341,5 @@ def validate_course_document(document: Mapping[str, object]) -> CourseValidation
         findings.sort(key=lambda finding: (finding.path, finding.code, finding.message))
         return CourseValidationReport(valid=False, findings=findings)
 
-    return CourseValidationReport(valid=True, findings=[])
-
+    findings = _semantic_findings(bundle)
+    return CourseValidationReport(valid=not findings, findings=findings)
