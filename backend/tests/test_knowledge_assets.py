@@ -16,6 +16,7 @@ PUBLISHED_CATALOG = (
 PUBLISHED_REPORT = (
     REPOSITORY_ROOT / "knowledge" / "python-general" / "v1" / "validation-report.json"
 )
+API_DOCKERFILE = REPOSITORY_ROOT / "infra" / "api.Dockerfile"
 
 
 def _minimal_document() -> dict[str, Any]:
@@ -295,3 +296,9 @@ def test_published_university_course_is_complete_and_reproducibly_valid() -> Non
         "robots 规则与负责任抓取",
         "描述性统计入门",
     } <= {node["title"] for node in document["nodes"]}
+
+
+def test_api_runtime_image_includes_published_knowledge_assets() -> None:
+    dockerfile = API_DOCKERFILE.read_text(encoding="utf-8")
+
+    assert "COPY --chown=pymentor:pymentor knowledge ./knowledge" in dockerfile

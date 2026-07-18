@@ -33,6 +33,7 @@ COPY --from=builder /opt/pymentor-venv /opt/pymentor-venv
 WORKDIR /app
 COPY --chown=pymentor:pymentor backend ./backend
 COPY --chown=pymentor:pymentor sandbox ./sandbox
+COPY --chown=pymentor:pymentor knowledge ./knowledge
 
 WORKDIR /app/backend
 USER pymentor
