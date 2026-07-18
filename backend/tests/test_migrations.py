@@ -58,6 +58,12 @@ EXPECTED_0007_TABLES = {
     "knowledge_test_cases",
     "knowledge_mastery_policies",
 }
+EXPECTED_0008_TABLES = {
+    "resource_jobs",
+    "learning_resources",
+    "resource_objects",
+    "resource_reviews",
+}
 
 
 def _skip_if_no_postgres() -> None:
@@ -301,3 +307,46 @@ def test_learning_loop_uses_governed_course_and_node_foreign_keys() -> None:
     assert "fk_assessment_results_course_node" in foreign_keys["assessment_results"]
     assert "fk_mastery_states_course_node" in foreign_keys["mastery_states"]
     assert "fk_review_schedules_course_node" in foreign_keys["review_schedules"]
+
+
+def test_migration_0008_creates_resource_publication_tables() -> None:
+    """0008 persists jobs, artifacts, objects, and both review pipelines."""
+    _skip_if_no_postgres()
+    cfg = _make_config()
+    command.upgrade(cfg, "head")
+
+    from app.db import engine
+
+    actual_tables = set(inspect(engine).get_table_names())
+    missing = EXPECTED_0008_TABLES - actual_tables
+    assert not missing, f"resource-publication tables missing: {missing}"
+
+
+def test_resource_publication_uniques_checks_and_catalog_foreign_key() -> None:
+    """Idempotency, versions, progress, and course/node binding are DB-enforced."""
+    _skip_if_no_postgres()
+    cfg = _make_config()
+    command.upgrade(cfg, "head")
+
+    from app.db import engine
+
+    inspector = inspect(engine)
+    job_uniques = {row["name"] for row in inspector.get_unique_constraints("resource_jobs")}
+    resource_uniques = {
+        row["name"] for row in inspector.get_unique_constraints("learning_resources")
+    }
+    object_uniques = {row["name"] for row in inspector.get_unique_constraints("resource_objects")}
+    review_uniques = {row["name"] for row in inspector.get_unique_constraints("resource_reviews")}
+    job_checks = {row["name"] for row in inspector.get_check_constraints("resource_jobs")}
+    resource_checks = {
+        row["name"] for row in inspector.get_check_constraints("learning_resources")
+    }
+    job_foreign_keys = {row["name"] for row in inspector.get_foreign_keys("resource_jobs")}
+
+    assert "uq_resource_jobs_tenant_idempotency" in job_uniques
+    assert "uq_learning_resources_job_type_version" in resource_uniques
+    assert "uq_resource_objects_key" in object_uniques
+    assert "uq_resource_reviews_resource_gate_version" in review_uniques
+    assert "ck_resource_jobs_progress_range" in job_checks
+    assert "ck_learning_resources_version_positive" in resource_checks
+    assert "fk_resource_jobs_course_node" in job_foreign_keys

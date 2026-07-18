@@ -61,6 +61,12 @@ from app.models.learning import (
     TaskStatusHistory,
     TaskVersion,
 )
+from app.models.resource import (
+    LearningResourceRecord,
+    ResourceJobRecord,
+    ResourceObjectRecord,
+    ResourceReviewRecord,
+)
 
 __all__ = [
     "AgentDefinition",
@@ -87,6 +93,7 @@ __all__ = [
     "LearningPath",
     "LearningPathStatus",
     "LearningPathStep",
+    "LearningResourceRecord",
     "MasteryState",
     "MasteryStateHistory",
     "MasteryStatus",
@@ -103,6 +110,9 @@ __all__ = [
     "ReviewAttemptOutcome",
     "ReviewSchedule",
     "ReviewStatus",
+    "ResourceJobRecord",
+    "ResourceObjectRecord",
+    "ResourceReviewRecord",
     "Role",
     "RoleName",
     "TaskDefinition",
