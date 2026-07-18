@@ -2,7 +2,6 @@ import react from "@vitejs/plugin-react";
 import { createRequire } from "node:module";
 import { dirname } from "node:path";
 import { defineConfig } from "vite";
-import type {} from "vitest/config";
 
 const require = createRequire(import.meta.url);
 
@@ -28,10 +27,5 @@ export default defineConfig({
   },
   server: {
     host: "0.0.0.0",
-  },
-  test: {
-    environment: "jsdom",
-    setupFiles: ["./src/test/setup.ts"],
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
   },
 });
