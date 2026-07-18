@@ -1,0 +1,52 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "source_id": {
+      "format": "uuid",
+      "title": "Source Id",
+      "type": "string"
+    },
+    "title": {
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "url": {
+      "format": "uri",
+      "maxLength": 2083,
+      "minLength": 1,
+      "title": "Url",
+      "type": "string"
+    },
+    "publisher": {
+      "enum": [
+        "Python Software Foundation",
+        "Python Enhancement Proposals"
+      ],
+      "title": "Publisher",
+      "type": "string"
+    },
+    "content_scope": {
+      "minLength": 1,
+      "title": "Content Scope",
+      "type": "string"
+    },
+    "version": {
+      "pattern": "^[1-9]\\d*\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source_id",
+    "title",
+    "url",
+    "publisher",
+    "content_scope",
+    "version"
+  ],
+  "title": "SourceAsset",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pymentor-lab.local/schemas/v1/source.schema.json"
+}

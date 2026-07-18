@@ -1,0 +1,110 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "node_id": {
+      "format": "uuid",
+      "title": "Node Id",
+      "type": "string"
+    },
+    "title": {
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "chapter_id": {
+      "format": "uuid",
+      "title": "Chapter Id",
+      "type": "string"
+    },
+    "learning_objectives": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Learning Objectives",
+      "type": "array"
+    },
+    "prerequisites": {
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Prerequisites",
+      "type": "array"
+    },
+    "misconceptions": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Misconceptions",
+      "type": "array"
+    },
+    "examples": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Examples",
+      "type": "array"
+    },
+    "diagnostic_items": {
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Diagnostic Items",
+      "type": "array"
+    },
+    "practice_templates": {
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Practice Templates",
+      "type": "array"
+    },
+    "mastery_policy_id": {
+      "format": "uuid",
+      "title": "Mastery Policy Id",
+      "type": "string"
+    },
+    "source_ids": {
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Source Ids",
+      "type": "array"
+    },
+    "version": {
+      "pattern": "^[1-9]\\d*\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "node_id",
+    "title",
+    "chapter_id",
+    "learning_objectives",
+    "prerequisites",
+    "misconceptions",
+    "examples",
+    "diagnostic_items",
+    "practice_templates",
+    "mastery_policy_id",
+    "source_ids",
+    "version"
+  ],
+  "title": "NodeAsset",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pymentor-lab.local/schemas/v1/node.schema.json"
+}

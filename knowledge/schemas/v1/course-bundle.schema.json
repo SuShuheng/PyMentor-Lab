@@ -1,0 +1,664 @@
+{
+  "$defs": {
+    "ChapterAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "chapter_id": {
+          "format": "uuid",
+          "title": "Chapter Id",
+          "type": "string"
+        },
+        "course_id": {
+          "format": "uuid",
+          "title": "Course Id",
+          "type": "string"
+        },
+        "order": {
+          "minimum": 1,
+          "title": "Order",
+          "type": "integer"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "learning_objectives": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Learning Objectives",
+          "type": "array"
+        },
+        "node_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Node Ids",
+          "type": "array"
+        },
+        "version": {
+          "pattern": "^[1-9]\\d*\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "chapter_id",
+        "course_id",
+        "order",
+        "title",
+        "learning_objectives",
+        "node_ids",
+        "version"
+      ],
+      "title": "ChapterAsset",
+      "type": "object"
+    },
+    "CourseAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "course_id": {
+          "format": "uuid",
+          "title": "Course Id",
+          "type": "string"
+        },
+        "slug": {
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Slug",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "audience": {
+          "minLength": 1,
+          "title": "Audience",
+          "type": "string"
+        },
+        "language": {
+          "const": "zh-CN",
+          "title": "Language",
+          "type": "string"
+        },
+        "chapter_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Chapter Ids",
+          "type": "array"
+        },
+        "required_chapter_count": {
+          "minimum": 1,
+          "title": "Required Chapter Count",
+          "type": "integer"
+        },
+        "minimum_node_count": {
+          "minimum": 1,
+          "title": "Minimum Node Count",
+          "type": "integer"
+        },
+        "required_deep_unit_count": {
+          "minimum": 1,
+          "title": "Required Deep Unit Count",
+          "type": "integer"
+        },
+        "deep_unit_node_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Deep Unit Node Ids",
+          "type": "array"
+        },
+        "version": {
+          "pattern": "^[1-9]\\d*\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "course_id",
+        "slug",
+        "title",
+        "audience",
+        "language",
+        "chapter_ids",
+        "required_chapter_count",
+        "minimum_node_count",
+        "required_deep_unit_count",
+        "deep_unit_node_ids",
+        "version"
+      ],
+      "title": "CourseAsset",
+      "type": "object"
+    },
+    "ErrorPatternAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "error_id": {
+          "format": "uuid",
+          "title": "Error Id",
+          "type": "string"
+        },
+        "node_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Node Ids",
+          "type": "array"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "symptom": {
+          "minLength": 1,
+          "title": "Symptom",
+          "type": "string"
+        },
+        "misconception": {
+          "minLength": 1,
+          "title": "Misconception",
+          "type": "string"
+        },
+        "diagnosis_prompts": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Diagnosis Prompts",
+          "type": "array"
+        },
+        "remediation": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Remediation",
+          "type": "array"
+        },
+        "source_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "version": {
+          "pattern": "^[1-9]\\d*\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "error_id",
+        "node_ids",
+        "title",
+        "symptom",
+        "misconception",
+        "diagnosis_prompts",
+        "remediation",
+        "source_ids",
+        "version"
+      ],
+      "title": "ErrorPatternAsset",
+      "type": "object"
+    },
+    "MasteryPolicyAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "policy_id": {
+          "format": "uuid",
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "pass_threshold": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Pass Threshold",
+          "type": "number"
+        },
+        "stable_attempts": {
+          "minimum": 1,
+          "title": "Stable Attempts",
+          "type": "integer"
+        },
+        "max_support_level": {
+          "maximum": 3,
+          "minimum": 0,
+          "title": "Max Support Level",
+          "type": "integer"
+        },
+        "min_transfer_score": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Min Transfer Score",
+          "type": "number"
+        },
+        "review_intervals_days": {
+          "items": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "minItems": 1,
+          "title": "Review Intervals Days",
+          "type": "array"
+        },
+        "version": {
+          "pattern": "^[1-9]\\d*\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy_id",
+        "name",
+        "pass_threshold",
+        "stable_attempts",
+        "max_support_level",
+        "min_transfer_score",
+        "review_intervals_days",
+        "version"
+      ],
+      "title": "MasteryPolicyAsset",
+      "type": "object"
+    },
+    "NodeAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "node_id": {
+          "format": "uuid",
+          "title": "Node Id",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "chapter_id": {
+          "format": "uuid",
+          "title": "Chapter Id",
+          "type": "string"
+        },
+        "learning_objectives": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Learning Objectives",
+          "type": "array"
+        },
+        "prerequisites": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "title": "Prerequisites",
+          "type": "array"
+        },
+        "misconceptions": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Misconceptions",
+          "type": "array"
+        },
+        "examples": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Examples",
+          "type": "array"
+        },
+        "diagnostic_items": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Diagnostic Items",
+          "type": "array"
+        },
+        "practice_templates": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Practice Templates",
+          "type": "array"
+        },
+        "mastery_policy_id": {
+          "format": "uuid",
+          "title": "Mastery Policy Id",
+          "type": "string"
+        },
+        "source_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "version": {
+          "pattern": "^[1-9]\\d*\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "node_id",
+        "title",
+        "chapter_id",
+        "learning_objectives",
+        "prerequisites",
+        "misconceptions",
+        "examples",
+        "diagnostic_items",
+        "practice_templates",
+        "mastery_policy_id",
+        "source_ids",
+        "version"
+      ],
+      "title": "NodeAsset",
+      "type": "object"
+    },
+    "QuestionTemplateAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "question_id": {
+          "format": "uuid",
+          "title": "Question Id",
+          "type": "string"
+        },
+        "node_id": {
+          "format": "uuid",
+          "title": "Node Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "MULTIPLE_CHOICE",
+            "CODE_COMPLETION",
+            "CODE_REPAIR",
+            "CODE_WRITING"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "prompt_template": {
+          "minLength": 1,
+          "title": "Prompt Template",
+          "type": "string"
+        },
+        "parameter_schema": {
+          "additionalProperties": true,
+          "title": "Parameter Schema",
+          "type": "object"
+        },
+        "answer_schema": {
+          "additionalProperties": true,
+          "title": "Answer Schema",
+          "type": "object"
+        },
+        "test_case_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Test Case Ids",
+          "type": "array"
+        },
+        "source_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "version": {
+          "pattern": "^[1-9]\\d*\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "question_id",
+        "node_id",
+        "kind",
+        "prompt_template",
+        "parameter_schema",
+        "answer_schema",
+        "test_case_ids",
+        "source_ids",
+        "version"
+      ],
+      "title": "QuestionTemplateAsset",
+      "type": "object"
+    },
+    "SourceAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "source_id": {
+          "format": "uuid",
+          "title": "Source Id",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "url": {
+          "format": "uri",
+          "maxLength": 2083,
+          "minLength": 1,
+          "title": "Url",
+          "type": "string"
+        },
+        "publisher": {
+          "enum": [
+            "Python Software Foundation",
+            "Python Enhancement Proposals"
+          ],
+          "title": "Publisher",
+          "type": "string"
+        },
+        "content_scope": {
+          "minLength": 1,
+          "title": "Content Scope",
+          "type": "string"
+        },
+        "version": {
+          "pattern": "^[1-9]\\d*\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "title",
+        "url",
+        "publisher",
+        "content_scope",
+        "version"
+      ],
+      "title": "SourceAsset",
+      "type": "object"
+    },
+    "TestCaseAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "test_id": {
+          "format": "uuid",
+          "title": "Test Id",
+          "type": "string"
+        },
+        "node_id": {
+          "format": "uuid",
+          "title": "Node Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "STDOUT",
+            "RETURN_VALUE",
+            "EXCEPTION",
+            "PROPERTY"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "input": {
+          "title": "Input",
+          "type": "string"
+        },
+        "expected": {
+          "minLength": 1,
+          "title": "Expected",
+          "type": "string"
+        },
+        "hidden": {
+          "title": "Hidden",
+          "type": "boolean"
+        },
+        "timeout_ms": {
+          "maximum": 10000,
+          "minimum": 100,
+          "title": "Timeout Ms",
+          "type": "integer"
+        },
+        "version": {
+          "pattern": "^[1-9]\\d*\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "test_id",
+        "node_id",
+        "kind",
+        "input",
+        "expected",
+        "hidden",
+        "timeout_ms",
+        "version"
+      ],
+      "title": "TestCaseAsset",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "pattern": "^[1-9]\\d*\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "content_version": {
+      "pattern": "^[1-9]\\d*\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$",
+      "title": "Content Version",
+      "type": "string"
+    },
+    "course": {
+      "$ref": "#/$defs/CourseAsset"
+    },
+    "chapters": {
+      "items": {
+        "$ref": "#/$defs/ChapterAsset"
+      },
+      "title": "Chapters",
+      "type": "array"
+    },
+    "nodes": {
+      "items": {
+        "$ref": "#/$defs/NodeAsset"
+      },
+      "title": "Nodes",
+      "type": "array"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/SourceAsset"
+      },
+      "title": "Sources",
+      "type": "array"
+    },
+    "error_patterns": {
+      "items": {
+        "$ref": "#/$defs/ErrorPatternAsset"
+      },
+      "title": "Error Patterns",
+      "type": "array"
+    },
+    "question_templates": {
+      "items": {
+        "$ref": "#/$defs/QuestionTemplateAsset"
+      },
+      "title": "Question Templates",
+      "type": "array"
+    },
+    "test_cases": {
+      "items": {
+        "$ref": "#/$defs/TestCaseAsset"
+      },
+      "title": "Test Cases",
+      "type": "array"
+    },
+    "mastery_policies": {
+      "items": {
+        "$ref": "#/$defs/MasteryPolicyAsset"
+      },
+      "title": "Mastery Policies",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "content_version",
+    "course",
+    "chapters",
+    "nodes",
+    "sources",
+    "error_patterns",
+    "question_templates",
+    "test_cases",
+    "mastery_policies"
+  ],
+  "title": "CourseAssetBundle",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pymentor-lab.local/schemas/v1/course-bundle.schema.json"
+}

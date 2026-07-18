@@ -1,0 +1,19 @@
+packages:
+  - "apps/web"
+  - "apps/admin"
+  - "apps/desktop"
+  - "workers/agent-worker"
+  - "packages/ui"
+  - "packages/charts"
+  - "packages/config"
+  - "packages/contracts"
+  - "packages/api-client"
+nodeLinker: hoisted
+allowBuilds:
+  electron: true
+  electron-winstaller: true
+  esbuild: true
+  msgpackr-extract: false
+overrides:
+  "@electron/rebuild>@electron/node-gyp": "10.2.0-electron.2"
+  "@electron-forge/plugin-fuses>@electron/fuses": "2.1.3"

@@ -1,0 +1,63 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "test_id": {
+      "format": "uuid",
+      "title": "Test Id",
+      "type": "string"
+    },
+    "node_id": {
+      "format": "uuid",
+      "title": "Node Id",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "STDOUT",
+        "RETURN_VALUE",
+        "EXCEPTION",
+        "PROPERTY"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "input": {
+      "title": "Input",
+      "type": "string"
+    },
+    "expected": {
+      "minLength": 1,
+      "title": "Expected",
+      "type": "string"
+    },
+    "hidden": {
+      "title": "Hidden",
+      "type": "boolean"
+    },
+    "timeout_ms": {
+      "maximum": 10000,
+      "minimum": 100,
+      "title": "Timeout Ms",
+      "type": "integer"
+    },
+    "version": {
+      "pattern": "^[1-9]\\d*\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "test_id",
+    "node_id",
+    "kind",
+    "input",
+    "expected",
+    "hidden",
+    "timeout_ms",
+    "version"
+  ],
+  "title": "TestCaseAsset",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pymentor-lab.local/schemas/v1/test-case.schema.json"
+}

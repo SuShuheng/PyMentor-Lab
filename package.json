@@ -1,0 +1,20 @@
+{
+  "name": "pymentor-lab",
+  "version": "0.0.0",
+  "private": true,
+  "description": "PyMentor Lab — higher-education Python learning system (competition release V1.0).",
+  "packageManager": "pnpm@11.13.1",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "lint": "pnpm -r run lint",
+    "test": "pnpm -r run test",
+    "typecheck": "pnpm -r run typecheck",
+    "contracts:check": "pnpm -r --filter @pymentor/contracts run contracts:check",
+    "contracts:gen": "pnpm -r --filter @pymentor/api-client run gen"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3"
+  }
+}
