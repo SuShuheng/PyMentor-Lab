@@ -28,6 +28,7 @@ type AuthContextValue = {
   login(input: { identifier: string; password: string }): Promise<void>;
   refresh(): Promise<void>;
   session: AuthSession | null;
+  signOut(): void;
   status: "anonymous" | "authenticated" | "checking" | "error" | "refresh-failed";
 };
 
@@ -85,6 +86,11 @@ export function AdminAuthProvider({
       },
       refresh,
       session,
+      signOut: () => {
+        api.signOut();
+        setSession(null);
+        setStatus("anonymous");
+      },
       status,
     }),
     [api, applyResult, errorMessage, refresh, session, status],

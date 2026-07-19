@@ -32,6 +32,7 @@ export type AuthResult = { session: AuthSession } | { session: null };
 export type AdminAuthApi = {
   login(input: { identifier: string; password: string }): Promise<AuthResult>;
   refresh(): Promise<AuthResult>;
+  signOut(): void;
 };
 
 let refreshToken: string | null = null;
@@ -116,5 +117,8 @@ export const browserAdminAuthApi: AdminAuthApi = {
     }
     if (!result.data) throwApiError(result.error);
     return resolveSession(result.data);
+  },
+  signOut: () => {
+    refreshToken = null;
   },
 };

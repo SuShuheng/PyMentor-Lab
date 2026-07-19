@@ -96,6 +96,60 @@ textarea {
   cursor: pointer;
 }
 
+.admin-profile-menu {
+  position: relative;
+}
+
+.admin-profile-menu__list {
+  position: absolute;
+  z-index: 20;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 220px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgb(15 23 42 / 14%);
+}
+
+.admin-profile-menu__session {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  color: #111827;
+}
+
+.admin-profile-menu__session small {
+  display: block;
+  margin-top: 2px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.admin-profile-menu__list li > button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  color: #111827;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.admin-profile-menu__list li > button:hover,
+.admin-profile-menu__list li > button:focus-visible {
+  background: #f3f4f6;
+}
+
 .admin-page {
   display: grid;
   gap: 22px;

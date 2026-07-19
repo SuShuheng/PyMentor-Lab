@@ -6,7 +6,9 @@ import {
   MagnifyingGlass,
   Pulse,
   ShieldCheck,
+  SignOut,
   Sparkle,
+  UserCircle,
   Users,
 } from "@phosphor-icons/react";
 import {
@@ -17,7 +19,7 @@ import {
 } from "@pymentor/api-client";
 import { readServerUrl } from "@pymentor/config";
 import { AppShell, StatePanel } from "@pymentor/ui";
-import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import {
   Navigate,
   Route,
@@ -46,6 +48,7 @@ import {
   StudentDetailPage,
   StudentsPage,
 } from "./features/operations/admin-operation-pages";
+import { ADMIN_APP_VERSION, SettingsPage } from "./features/operations/admin-settings-page";
 
 const navigation = [
   { href: "/admin/overview", label: "概览", icon: <Gauge size={21} /> },
@@ -65,6 +68,35 @@ const navigation = [
 ] as const;
 
 function AdminHeader() {
+  const { session, signOut } = useAdminAuth();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handlePointer(event: MouseEvent) {
+      if (!wrapperRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handlePointer);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handlePointer);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
+
+  function handleSignOut() {
+    setOpen(false);
+    signOut();
+    navigate("/login", { replace: true });
+  }
+
+  const label = session?.displayName ?? "系统管理员";
+
   return (
     <div className="admin-topbar">
       <strong>灵蟒智学 PyMentor Lab · 管理端</strong>
@@ -73,10 +105,37 @@ function AdminHeader() {
         <MagnifyingGlass size={17} />
         <input placeholder="搜索 run_id / 学生 / 任务" type="search" />
       </label>
-      <button className="admin-profile" type="button">
-        <span>系统管理员</span>
-        <CaretDown size={14} />
-      </button>
+      <div className="admin-profile-menu" ref={wrapperRef}>
+        <button
+          aria-expanded={open}
+          aria-haspopup="menu"
+          className="admin-profile"
+          onClick={() => setOpen((current) => !current)}
+          type="button"
+        >
+          <UserCircle size={18} />
+          <span>{label}</span>
+          <CaretDown size={14} />
+        </button>
+        {open ? (
+          <ul aria-label="管理员会话" className="admin-profile-menu__list" role="menu">
+            <li className="admin-profile-menu__session" role="menuiteminfo">
+              <UserCircle size={20} />
+              <div>
+                <strong>{label}</strong>
+                <small>
+                  {session?.role ? `${session.role} · ` : ""}v{ADMIN_APP_VERSION}
+                </small>
+              </div>
+            </li>
+            <li role="none">
+              <button onClick={handleSignOut} role="menuitem" type="button">
+                <SignOut size={16} /> 退出登录
+              </button>
+            </li>
+          </ul>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -295,6 +354,9 @@ function AdminLayout() {
       header={<AdminHeader />}
       navigation={navigation}
       onNavigate={navigate}
+      onToolAction={(tool) =>
+        navigate(tool === "settings" ? "/admin/settings" : "/admin/health")
+      }
       status={sidebarStatus}
       subtitle="PyMentor Lab · 管理端"
       variant="admin"
@@ -306,6 +368,7 @@ function AdminLayout() {
         <Route path="/admin/providers" element={<ProvidersPage />} />
         <Route path="/admin/logs" element={<LogsPage />} />
         <Route path="/admin/database" element={<DatabasePage />} />
+        <Route path="/admin/settings" element={<SettingsPage />} />
         <Route path="/admin/overview" element={<OverviewPage />} />
         <Route path="/admin/students/:studentId" element={<StudentDetailPage />} />
         <Route path="/admin/students" element={<StudentsPage />} />
