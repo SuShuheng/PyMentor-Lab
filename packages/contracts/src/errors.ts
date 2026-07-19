@@ -36,7 +36,7 @@ export const FieldError = z.object({
   field: z.string().min(1),
   code: z.string().min(1),
   message: z.string().min(1),
-});
+}).strict();
 export type FieldError = z.infer<typeof FieldError>;
 
 /**
@@ -50,5 +50,5 @@ export const ErrorEnvelope = z.object({
   retryable: z.boolean(),
   field_errors: z.array(FieldError).optional(),
   details: z.record(z.string(), z.unknown()).optional(),
-});
+}).strict();
 export type ErrorEnvelope = z.infer<typeof ErrorEnvelope>;

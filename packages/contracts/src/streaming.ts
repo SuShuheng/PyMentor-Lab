@@ -11,7 +11,7 @@ import { z } from "zod";
 export const ChatMessage = z.object({
   role: z.enum(["system", "user", "assistant", "tool"]),
   content: z.string().min(1).max(20_000),
-});
+}).strict();
 export type ChatMessage = z.infer<typeof ChatMessage>;
 
 export const ChatCompletionRequest = z.object({
@@ -19,7 +19,7 @@ export const ChatCompletionRequest = z.object({
   node_id: z.string().uuid(),
   messages: z.array(ChatMessage).min(1).max(64),
   stream: z.literal(true).default(true),
-});
+}).strict();
 export type ChatCompletionRequest = z.infer<typeof ChatCompletionRequest>;
 
 /** A single tool-call delta carried on the streaming response. */
@@ -29,7 +29,7 @@ export const ToolCallDelta = z.object({
   id: z.string().optional(),
   name: z.string().optional(),
   arguments: z.string().optional(),
-});
+}).strict();
 export type ToolCallDelta = z.infer<typeof ToolCallDelta>;
 
 /**
@@ -46,7 +46,7 @@ export const ChatCompletionChunk = z.object({
   model: z.string().optional(),
   /** ISO-8601 timestamp in UTC. */
   timestamp: z.string().min(1),
-});
+}).strict();
 export type ChatCompletionChunk = z.infer<typeof ChatCompletionChunk>;
 
 /**
@@ -60,23 +60,23 @@ export const StreamEvent = z.discriminatedUnion("type", [
     type: z.literal("content_delta"),
     event_id: z.string().min(1),
     chunk: ChatCompletionChunk,
-  }),
+  }).strict(),
   z.object({
     type: z.literal("reasoning_delta"),
     event_id: z.string().min(1),
     chunk: ChatCompletionChunk,
-  }),
+  }).strict(),
   z.object({
     type: z.literal("tool_call_delta"),
     event_id: z.string().min(1),
     chunk: ChatCompletionChunk,
-  }),
+  }).strict(),
   z.object({
     type: z.literal("progress"),
     event_id: z.string().min(1),
     message: z.string().optional(),
     percent: z.number().min(0).max(100).optional(),
-  }),
+  }).strict(),
   z.object({
     type: z.literal("error"),
     event_id: z.string().min(1),
@@ -86,11 +86,11 @@ export const StreamEvent = z.discriminatedUnion("type", [
       message: z.string().min(1),
       trace_id: z.string().min(1),
       retryable: z.boolean(),
-    }),
-  }),
+    }).strict(),
+  }).strict(),
   z.object({
     type: z.literal("done"),
     event_id: z.string().min(1),
-  }),
+  }).strict(),
 ]);
 export type StreamEvent = z.infer<typeof StreamEvent>;
