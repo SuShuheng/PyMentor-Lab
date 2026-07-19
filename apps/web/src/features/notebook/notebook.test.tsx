@@ -1,10 +1,27 @@
+import { saveServerUrl } from "@pymentor/config";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { StudentRoutes } from "../../student-routes";
 import { studentSession } from "../auth/auth-session";
+
+const liveStudentSession = {
+  ...studentSession,
+  accessToken: "student-access",
+};
+
+let fetchMock: ReturnType<typeof vi.fn>;
+
+beforeEach(() => {
+  window.localStorage.clear();
+  saveServerUrl("https://api.example.test");
+  fetchMock = vi.fn();
+  vi.stubGlobal("fetch", fetchMock);
+});
+
+afterEach(() => vi.unstubAllGlobals());
 
 function renderLab(route = "/lab") {
   return render(
@@ -141,5 +158,188 @@ describe("trace playback", () => {
     expect(
       screen.getByRole("status", { name: "预测证据状态" }),
     ).toHaveTextContent("预测已记录为证据 EVD-TRACE-302");
+  });
+});
+
+describe("FE-021 error-screenshot OCR upload", () => {
+  function ocrJson(body: unknown, status = 200): Response {
+    return new Response(JSON.stringify(body), {
+      headers: { "Content-Type": "application/json" },
+      status,
+    });
+  }
+
+  function pngFile(name = "error.png", bytes = 0x100): File {
+    return new File([new Uint8Array(bytes)], name, { type: "image/png" });
+  }
+
+  it("does NOT offer 上传截图报错 when the run succeeded", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/lab"]}>
+        <StudentRoutes initialSession={liveStudentSession} />
+      </MemoryRouter>,
+    );
+    await user.click(screen.getByRole("button", { name: "运行代码" }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("status", { name: "运行状态" }),
+      ).toHaveTextContent("运行完成"),
+    );
+    expect(
+      screen.queryByRole("button", { name: "上传截图报错" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("选择错误截图")).not.toBeInTheDocument();
+  });
+
+  it("renders extracted_text inline after uploading a screenshot from a failed run", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/lab?view=user-error"]}>
+        <StudentRoutes initialSession={liveStudentSession} />
+      </MemoryRouter>,
+    );
+    const uploadButton = await screen.findByRole("button", {
+      name: "上传截图报错",
+    });
+    expect(uploadButton).toBeVisible();
+
+    fetchMock.mockResolvedValueOnce(
+      ocrJson({
+        extracted_text: "IndexError: list index out of range",
+        confidence: 0.91,
+        mime: "image/png",
+        size_bytes: 0x100,
+      }),
+    );
+
+    const fileInput = (await screen.findByLabelText(
+      "选择错误截图",
+    )) as HTMLInputElement;
+    await user.upload(fileInput, pngFile());
+    await user.click(uploadButton);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("status", { name: "截图识别结果" }),
+      ).toHaveTextContent("IndexError: list index out of range"),
+    );
+    // Optional confidence is surfaced as a percentage.
+    expect(screen.getByText(/置信度 91%/)).toBeVisible();
+  });
+
+  it("rejects an oversized file client-side and surfaces the 5 MiB rule", async () => {
+    // The validator only reads `.type`/`.size`, so a lightweight stub is
+    // enough to exercise the cap without allocating a 5 MiB buffer in the
+    // test runner. `applyAccept: false` lets us push the stub past the
+    // input's accept filter (the real guard is `validateOcrFile`).
+    const user = userEvent.setup({ applyAccept: false });
+    render(
+      <MemoryRouter initialEntries={["/lab?view=user-error"]}>
+        <StudentRoutes initialSession={liveStudentSession} />
+      </MemoryRouter>,
+    );
+    const fileInput = (await screen.findByLabelText(
+      "选择错误截图",
+    )) as HTMLInputElement;
+    const oversized = {
+      type: "image/png",
+      size: 5 * 1024 * 1024 + 1,
+      name: "huge.png",
+    } as unknown as File;
+    await user.upload(fileInput, oversized);
+    await user.click(screen.getByRole("button", { name: "上传截图报错" }));
+
+    expect(
+      await screen.findByRole("alert", { name: "截图上传失败" }),
+    ).toHaveTextContent("5 MiB");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unsupported MIME type client-side", async () => {
+    // `applyAccept: false` simulates a student picking a non-allowed file via
+    // the OS "all files" picker — the real guardrail is the wrapper's
+    // `validateOcrFile`, which we exercise here.
+    const user = userEvent.setup({ applyAccept: false });
+    render(
+      <MemoryRouter initialEntries={["/lab?view=user-error"]}>
+        <StudentRoutes initialSession={liveStudentSession} />
+      </MemoryRouter>,
+    );
+    const fileInput = (await screen.findByLabelText(
+      "选择错误截图",
+    )) as HTMLInputElement;
+    await user.upload(
+      fileInput,
+      new File([new Uint8Array(8)], "err.bmp", { type: "image/bmp" }),
+    );
+    await user.click(screen.getByRole("button", { name: "上传截图报错" }));
+
+    expect(
+      await screen.findByRole("alert", { name: "截图上传失败" }),
+    ).toHaveTextContent("格式");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("degrades to a copy hint on HTTP 503", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/lab?view=user-error"]}>
+        <StudentRoutes initialSession={liveStudentSession} />
+      </MemoryRouter>,
+    );
+    fetchMock.mockResolvedValueOnce(ocrJson({ detail: "busy" }, 503));
+    const fileInput = (await screen.findByLabelText(
+      "选择错误截图",
+    )) as HTMLInputElement;
+    await user.upload(fileInput, pngFile());
+    await user.click(screen.getByRole("button", { name: "上传截图报错" }));
+
+    expect(
+      await screen.findByRole("status", { name: "截图识别不可用" }),
+    ).toHaveTextContent("请直接复制错误信息");
+  });
+
+  it("retries after a failed OCR attempt with a fresh idempotency key", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/lab?view=user-error"]}>
+        <StudentRoutes initialSession={liveStudentSession} />
+      </MemoryRouter>,
+    );
+    fetchMock
+      .mockResolvedValueOnce(ocrJson({ detail: "transient" }, 500))
+      .mockResolvedValueOnce(
+        ocrJson({
+          extracted_text: "ValueError: not enough values",
+          mime: "image/png",
+          size_bytes: 0x40,
+        }),
+      );
+    const fileInput = (await screen.findByLabelText(
+      "选择错误截图",
+    )) as HTMLInputElement;
+    const file = pngFile();
+    await user.upload(fileInput, file);
+    await user.click(screen.getByRole("button", { name: "上传截图报错" }));
+    await screen.findByRole("alert", { name: "截图上传失败" });
+
+    await user.click(screen.getByRole("button", { name: "重试识别" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("status", { name: "截图识别结果" }),
+      ).toHaveTextContent("ValueError: not enough values"),
+    );
+
+    const firstKey = (fetchMock.mock.calls[0]?.[0] as Request).headers.get(
+      "Idempotency-Key",
+    );
+    const retryKey = (fetchMock.mock.calls[1]?.[0] as Request).headers.get(
+      "Idempotency-Key",
+    );
+    expect(firstKey).toMatch(/^ocr-screenshot-/);
+    expect(retryKey).toMatch(/^ocr-screenshot-/);
+    expect(retryKey).not.toBe(firstKey);
   });
 });
