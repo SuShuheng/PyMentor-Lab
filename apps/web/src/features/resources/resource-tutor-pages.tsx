@@ -31,6 +31,8 @@ import { Link, useLocation, useSearchParams } from "react-router-dom";
 
 import { configureStudentApi, safeApiMessage, studentAuthorization } from "../../student-api";
 import { useAuth } from "../auth/auth-session";
+import { TtsNarration } from "./tts-player";
+import { VoiceQuestionRecorder } from "./voice-question-recorder";
 
 const USING_TEST_FIXTURES = import.meta.env.MODE === "test";
 
@@ -941,6 +943,12 @@ export function TutorPage() {
                   {stream.done ? (
                     <small>来源：KB-PY-04 · Python 官方课程镜像 · 审校 v3.1</small>
                   ) : null}
+                  {stream.done && session?.accessToken ? (
+                    <TtsNarration
+                      accessToken={session.accessToken}
+                      answerText={stream.content}
+                    />
+                  ) : null}
                 </div>
               </article>
             ) : streamStatus === "idle" ? (
@@ -989,6 +997,11 @@ export function TutorPage() {
               onChange={(event) => setQuestion(event.target.value)}
               rows={3}
               value={question}
+            />
+            <VoiceQuestionRecorder
+              accessToken={session?.accessToken ?? ""}
+              disabled={streamStatus === "streaming"}
+              onTranscript={setQuestion}
             />
             <div>
               <span>不会将模型回答直接计为掌握证据</span>
