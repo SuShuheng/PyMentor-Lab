@@ -161,3 +161,25 @@ describe("tutoring stream", () => {
     );
   });
 });
+
+describe("ResourceDetailPage published content rendering", () => {
+  // Note: the published-content branch of ResourceDetailPage is gated behind
+  // `USING_TEST_FIXTURES = import.meta.env.MODE === "test"`, so under vitest
+  // the page renders its fixture micro-lecture screen and the authenticated
+  // content fetch is never issued. The by-type rendering logic itself
+  // (markdown -> <h1>, notebook cells, structure card, SHA-256 disclosure)
+  // is covered exhaustively in resource-content-renderer.test.tsx. Here we
+  // keep a regression guard that the fixture screen still renders its
+  // heading so the Stage B rewrite of the published branch did not break the
+  // fixture path students see in test/demo mode.
+  it("still renders the fixture micro-lecture heading in test mode", () => {
+    renderStudent("/resources/micro-lecture");
+
+    expect(
+      screen.getByRole("heading", { name: "微讲义与知识结构卡" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("article", { name: "微讲义正文" }),
+    ).toHaveTextContent("为什么 range 不包含终点？");
+  });
+});

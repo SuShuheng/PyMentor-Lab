@@ -31,6 +31,7 @@ import { Link, useLocation, useSearchParams } from "react-router-dom";
 
 import { configureStudentApi, safeApiMessage, studentAuthorization } from "../../student-api";
 import { useAuth } from "../auth/auth-session";
+import { ResourceContentRenderer } from "./resource-content-renderer";
 import { TtsNarration } from "./tts-player";
 import { VoiceQuestionRecorder } from "./voice-question-recorder";
 
@@ -383,6 +384,7 @@ export function ResourceDetailPage() {
   const resourceId = searchParams.get("resource_id");
   const [publishedContent, setPublishedContent] = useState<string | null>(null);
   const [publishedMimeType, setPublishedMimeType] = useState<string | null>(null);
+  const [publishedDigest, setPublishedDigest] = useState<string | null>(null);
   const [contentError, setContentError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -402,6 +404,12 @@ export function ResourceDetailPage() {
         const content = await response.text();
         if (!active) return;
         setPublishedMimeType(response.headers.get("Content-Type")?.split(";")[0] ?? "text/plain");
+        // The backend returns the SHA-256 object digest in the ETag header,
+        // quoted as "<hex>". Surface it as integrity metadata (Stage B
+        // problem 8) rather than the primary body.
+        const etag = response.headers.get("ETag") ?? "";
+        const digest = etag.replace(/^["']|["']$/g, "");
+        setPublishedDigest(digest || null);
         setPublishedContent(content);
       })
       .catch((error: unknown) => {
@@ -460,13 +468,17 @@ export function ResourceDetailPage() {
               <ShieldCheck size={15} /> 已发布并通过完整性校验
             </span>
           </header>
-          {svgSource ? (
-            <img alt="服务端生成的代码执行轨迹资源" src={svgSource} />
-          ) : (
-            <pre>
-              <code>{publishedContent}</code>
-            </pre>
-          )}
+          <div className="resource-lesson__body">
+            {svgSource ? (
+              <img alt="服务端生成的代码执行轨迹资源" src={svgSource} />
+            ) : (
+              <ResourceContentRenderer
+                content={publishedContent ?? ""}
+                mimeType={publishedMimeType ?? "text/plain"}
+                sha256={publishedDigest}
+              />
+            )}
+          </div>
         </article>
       </div>
     );
