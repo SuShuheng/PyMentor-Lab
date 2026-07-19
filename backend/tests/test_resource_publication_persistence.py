@@ -56,9 +56,7 @@ def _job(db: Session) -> ResourceJobRecord:
         tenant_id=tenant.id,
         student_id=student.id,
         idempotency_key=f"publish-{uuid4().hex}",
-        request_digest=resource_request_digest(
-            body, tenant_id=tenant.id, student_id=student.id
-        ),
+        request_digest=resource_request_digest(body, tenant_id=tenant.id, student_id=student.id),
     )
 
 
@@ -168,6 +166,15 @@ def test_failed_compliance_review_is_durable_and_cannot_publish(db_session: Sess
     assert review.passed is False
     assert review.findings == ["CONTENT_REJECTED"]
 
+    with pytest.raises(ResourceGateError, match="terminal"):
+        service.stage(
+            job_id=job.id,
+            resource_type=ResourceType.STRUCTURE_CARD,
+            content=b"must not stage after a final rejection",
+            mime_type="application/json",
+            source_ids=tuple(UUID(item) for item in job.source_ids),
+        )
+
 
 def test_digest_mismatch_fails_retryably_before_review_is_written(db_session: Session) -> None:
     store = InMemoryObjectStore()
@@ -197,8 +204,11 @@ def test_digest_mismatch_fails_retryably_before_review_is_written(db_session: Se
 
     assert resource.status is ResourceArtifactStatus.REJECTED
     assert job.status is ResourceJobStatus.FAILED_RETRYABLE
-    assert db_session.scalar(
-        select(func.count())
-        .select_from(ResourceReviewRecord)
-        .where(ResourceReviewRecord.resource_id == resource.id)
-    ) == 0
+    assert (
+        db_session.scalar(
+            select(func.count())
+            .select_from(ResourceReviewRecord)
+            .where(ResourceReviewRecord.resource_id == resource.id)
+        )
+        == 0
+    )

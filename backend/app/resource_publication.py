@@ -47,9 +47,7 @@ class SqlResourcePublicationService:
 
     def _job(self, job_id: UUID) -> ResourceJobRecord:
         job = self.db.scalar(
-            select(ResourceJobRecord)
-            .where(ResourceJobRecord.id == job_id)
-            .with_for_update()
+            select(ResourceJobRecord).where(ResourceJobRecord.id == job_id).with_for_update()
         )
         if job is None:
             raise LookupError("resource job not found")
@@ -83,6 +81,12 @@ class SqlResourcePublicationService:
         source_ids: tuple[UUID, ...],
     ) -> LearningResourceRecord:
         job = self._job(job_id)
+        if job.status in {
+            ResourceJobStatus.FAILED_FINAL,
+            ResourceJobStatus.CANCELLED,
+            ResourceJobStatus.READY,
+        }:
+            raise ResourceGateError("terminal resource job cannot accept new artifacts")
         if resource_type.value not in job.requested_types:
             raise ResourceGateError("resource type was not requested by this job")
         if not source_ids or not {str(item) for item in source_ids}.issubset(set(job.source_ids)):
@@ -237,12 +241,15 @@ class SqlResourcePublicationService:
         resource.published_at = datetime.now(UTC)
         self.db.flush()
 
-        published_count = self.db.scalar(
-            select(func.count(func.distinct(LearningResourceRecord.resource_type))).where(
-                LearningResourceRecord.job_id == job.id,
-                LearningResourceRecord.status == ResourceArtifactStatus.PUBLISHED,
+        published_count = (
+            self.db.scalar(
+                select(func.count(func.distinct(LearningResourceRecord.resource_type))).where(
+                    LearningResourceRecord.job_id == job.id,
+                    LearningResourceRecord.status == ResourceArtifactStatus.PUBLISHED,
+                )
             )
-        ) or 0
+            or 0
+        )
         job.progress_percent = published_count * 100 // len(job.requested_types)
         job.status = (
             ResourceJobStatus.READY
