@@ -20,6 +20,7 @@ import {
   Trash,
   WarningCircle,
   X,
+  Lightning,
 } from "@phosphor-icons/react";
 import {
   AgentTimelineChart,
@@ -77,6 +78,11 @@ import {
   testProviderConnectivity,
   updateProvider,
 } from "./admin-provider-api";
+import {
+  type ProviderPreset,
+  findPresetsForVendor,
+  pickPresetForVendor,
+} from "./admin-provider-presets";
 import {
   RESOURCE_TYPES,
   fetchAdminMetrics,
@@ -1473,6 +1479,36 @@ function ProviderFormDialog({
   // representation that ever persists in the DOM.
   const maskedHint =
     mode === "edit" ? "留空则保留已加密保存的原密钥" : "至少 8 个字符，提交后由后端加密保存";
+
+  // FE-016 presets: known-good starting points for recognized vendors. The
+  // apply button fills product/model/endpoint (and provider_type when needed)
+  // but NEVER touches api_key or enabled — admin stays in control and can
+  // freely override every field after the preset is applied.
+  const presetsForVendor = findPresetsForVendor(form.vendor);
+  const hasPresets = presetsForVendor.length > 0;
+  // When a vendor exposes multiple presets, the dialog renders a dropdown so
+  // the admin can choose which capability (LLM/TTS/...) to apply. The default
+  // tracks the preset that matches the form's current provider_type.
+  const defaultPresetLabel = pickPresetForVendor(form.vendor, form.provider_type)?.label ?? "";
+  const [selectedPresetLabel, setSelectedPresetLabel] = useState(defaultPresetLabel);
+  // If the vendor changes (e.g. xfyun -> openai), re-sync the local dropdown
+  // value to the new vendor's default preset. useEffect keeps this resilient
+  // to type changes too.
+  useEffect(() => {
+    setSelectedPresetLabel(defaultPresetLabel);
+  }, [defaultPresetLabel]);
+  function applyPreset(preset: ProviderPreset): void {
+    onFormChange({
+      ...form,
+      provider_type: preset.provider_type,
+      // `product` is advisory metadata for the preset; the form has no
+      // separate product field, so we keep `vendor` as the user typed it
+      // (the preset does not rename their vendor identifier).
+      model: preset.model,
+      endpoint: preset.endpoint,
+      // api_key + enabled intentionally NOT touched.
+    });
+  }
   return (
     <div className="admin-dialog-backdrop">
       <section
@@ -1495,6 +1531,56 @@ function ProviderFormDialog({
             required
             value={form.vendor}
           />
+          {hasPresets ? (
+            <div className="admin-provider-presets">
+              {presetsForVendor.length === 1 ? (
+                <button
+                  aria-label="应用预设"
+                  className="admin-provider-preset-apply"
+                  onClick={() => {
+                    const preset = presetsForVendor[0];
+                    if (preset) applyPreset(preset);
+                  }}
+                  type="button"
+                >
+                  <Lightning size={14} /> 应用预设
+                </button>
+              ) : (
+                <div className="admin-provider-preset-row">
+                  <label className="admin-provider-preset-select-label" htmlFor="provider-preset">
+                    预设
+                  </label>
+                  <select
+                    id="provider-preset"
+                    onChange={(event) => setSelectedPresetLabel(event.target.value)}
+                    value={selectedPresetLabel}
+                  >
+                    {presetsForVendor.map((preset) => (
+                      <option key={preset.label} value={preset.label}>
+                        {preset.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    aria-label="应用预设"
+                    className="admin-provider-preset-apply"
+                    onClick={() => {
+                      const chosen =
+                        presetsForVendor.find((p) => p.label === selectedPresetLabel) ??
+                        presetsForVendor[0];
+                      if (chosen) applyPreset(chosen);
+                    }}
+                    type="button"
+                  >
+                    <Lightning size={14} /> 应用预设
+                  </button>
+                </div>
+              )}
+              <small className="admin-provider-field-hint">
+                预设值可编辑（仅起始值，并非官方验证；端点/模型可能随供应商更新而变化）。
+              </small>
+            </div>
+          ) : null}
           <label htmlFor="provider-model">模型</label>
           <input
             id="provider-model"
