@@ -1,8 +1,10 @@
 import {
   Bell,
+  BookBookmark,
   CaretDown,
   ChartBar,
   Code,
+  Graph,
   House,
   MagnifyingGlass,
   MapTrifold,
@@ -51,6 +53,16 @@ const navigation = [
   },
   { href: "/lab", label: "代码实验", icon: <Code size={22} /> },
   { href: "/map", label: "学习地图", icon: <MapTrifold size={22} /> },
+  // Stage C1 (problem 6 + 7): 知识图谱 and 个性化资源 get their own sidebar
+  // entries. Previously they were only reachable via small buttons inside
+  // sibling pages, so students had no primary path to them. `/map/graph` is
+  // listed before `/resources` simply for visual grouping after the map.
+  { href: "/map/graph", label: "知识图谱", icon: <Graph size={22} /> },
+  {
+    href: "/resources",
+    label: "个性化资源",
+    icon: <BookBookmark size={22} />,
+  },
   {
     href: "/growth",
     label: "我的成长",
@@ -333,8 +345,12 @@ function StudentHeader() {
 function StudentLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  // Pick the longest matching prefix so `/map/graph` wins over `/map` (both
+  // are now in the sidebar). Falls back to `/today` when nothing matches.
   const activeHref =
-    navigation.find((item) => location.pathname.startsWith(item.href))?.href ?? "/today";
+    [...navigation]
+      .filter((item) => location.pathname.startsWith(item.href))
+      .sort((a, b) => b.href.length - a.href.length)[0]?.href ?? "/today";
 
   return (
     <AppShell

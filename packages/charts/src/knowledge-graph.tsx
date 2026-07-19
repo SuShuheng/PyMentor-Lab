@@ -1,6 +1,6 @@
 import ReactECharts from "echarts-for-react";
 import type { EChartsOption } from "echarts-for-react";
-import { useCallback, useId, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useId, useMemo, useState } from "react";
 
 /**
  * FE-018 — Knowledge graph renderer (NON-radial).
@@ -67,6 +67,11 @@ export interface KnowledgeGraphProps {
   edgeCountLabel?: string;
   /** Height of the chart canvas in px. Default 520. */
   height?: number;
+  /** Optional renderer for per-node action UI (e.g. links to resources or
+   * practice). The chart package stays router-agnostic; the host page owns
+   * navigation by supplying this callback. Returns null/undefined when no
+   * node is selected. */
+  renderNodeActions?: (node: KnowledgeGraphNode) => ReactNode;
 }
 
 /** Ordered legend list. Order is fixed so the legend is stable across renders. */
@@ -174,6 +179,7 @@ export function KnowledgeGraph({
   nodeCountLabel,
   edgeCountLabel,
   height = 520,
+  renderNodeActions,
 }: KnowledgeGraphProps) {
   const figureTitleId = useId();
   const figureDescriptionId = useId();
@@ -318,25 +324,32 @@ export function KnowledgeGraph({
           {selectedNode ? selectedNode.title : "点击节点查看详情"}
         </h3>
         {selectedNode ? (
-          <dl>
-            <div>
-              <dt>掌握状态</dt>
-              <dd data-status={selectedNode.mastery_status}>
-                {MASTERY_LABEL.get(selectedNode.mastery_status) ??
-                  selectedNode.mastery_status}
-              </dd>
-            </div>
-            <div>
-              <dt>所属章节</dt>
-              <dd>{selectedNode.chapter_id}</dd>
-            </div>
-            <div>
-              <dt>节点 ID</dt>
-              <dd>
-                <code>{selectedNode.node_id}</code>
-              </dd>
-            </div>
-          </dl>
+          <>
+            <dl>
+              <div>
+                <dt>掌握状态</dt>
+                <dd data-status={selectedNode.mastery_status}>
+                  {MASTERY_LABEL.get(selectedNode.mastery_status) ??
+                    selectedNode.mastery_status}
+                </dd>
+              </div>
+              <div>
+                <dt>所属章节</dt>
+                <dd>{selectedNode.chapter_id}</dd>
+              </div>
+              <div>
+                <dt>节点 ID</dt>
+                <dd>
+                  <code>{selectedNode.node_id}</code>
+                </dd>
+              </div>
+            </dl>
+            {renderNodeActions ? (
+              <div className="py-knowledge-graph__actions">
+                {renderNodeActions(selectedNode)}
+              </div>
+            ) : null}
+          </>
         ) : (
           <p>
             颜色由服务端掌握状态决定（BE-021），浏览器不会修改节点状态。

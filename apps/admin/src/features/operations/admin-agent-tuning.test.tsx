@@ -299,3 +299,61 @@ describe("admin agent tuning UI (FE-017)", () => {
     expect(screen.getByRole("alert", { name: "无权访问管理端" })).toBeVisible();
   });
 });
+
+describe("admin agent tuning UI — null published prompt (Stage D)", () => {
+  /**
+   * A fresh install has no published prompt for any node; BE-020 returns 200
+   * with a `null` body. That is a SUCCESSFUL empty state, not a fetch error.
+   * The page must distinguish:
+   *   - 200 + null body  → "尚未发布" empty state, draft editor still usable
+   *   - non-200 / throw  → "加载失败" error state (existing behaviour)
+   */
+  function emptyInstallFetchMock(node = "coach") {
+    return vi.fn(async (input: RequestInfo | URL) => {
+      const request = input as Request;
+      const url = request.url;
+      // GET current published — 200 with JSON null (fresh install).
+      if (
+        request.method === "GET" &&
+        new RegExp(`/api/v1/admin/agent-prompts/${node}$`).test(url)
+      ) {
+        return new Response("null", {
+          headers: { "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      // GET history — 200 with an empty items list.
+      if (
+        request.method === "GET" &&
+        new RegExp(`/api/v1/admin/agent-prompts/${node}/history$`).test(url)
+      ) {
+        return new Response(JSON.stringify({ items: [] }), {
+          headers: { "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      throw new Error(`Unexpected request: ${request.method} ${url}`);
+    });
+  }
+
+  it("renders the '尚未发布' empty state (not '加载失败') when the API returns null", async () => {
+    saveServerUrl("https://api.example.test");
+    vi.stubGlobal("fetch", emptyInstallFetchMock("coach"));
+    renderAdmin("/admin/agent-tuning");
+
+    // The page must reach the 'ready' state and surface the empty-prompt copy.
+    await waitFor(() => {
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    expect(await screen.findByText(/尚未发布任何版本/)).toBeVisible();
+    // The error string must NEVER appear for a 200 + null response.
+    expect(screen.queryByText(/加载失败/)).not.toBeInTheDocument();
+
+    // Draft editor is still usable so the admin can write the first version.
+    expect(screen.getByRole("textbox", { name: "提示词草稿" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "版本历史" })).toHaveTextContent(
+      /该节点暂无历史版本/,
+    );
+  });
+});

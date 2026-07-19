@@ -81,11 +81,15 @@ export function AgentTuningPage() {
         if (!active) return;
         setCurrent(currentPrompt);
         setHistory(historyResult.items);
-        // Seed the draft from the published prompt so the admin edits a known baseline.
+        // Seed the draft from the published prompt so the admin edits a known
+        // baseline. A fresh install has no published prompt (BE-020 returns
+        // 200 + null); in that case seed an empty draft the admin can write
+        // the first version into. `fetchCurrentAgentPrompt` only throws on a
+        // real HTTP error, so reaching this branch means the load succeeded.
         setDraft({
-          version: currentPrompt.version,
-          promptText: currentPrompt.prompt_text,
-          savedText: currentPrompt.prompt_text,
+          version: currentPrompt?.version ?? null,
+          promptText: currentPrompt?.prompt_text ?? "",
+          savedText: currentPrompt?.prompt_text ?? "",
         });
         setLoadState("ready");
       })
@@ -290,7 +294,7 @@ export function AgentTuningPage() {
                 <pre className="agent-tuning-published-text">{current.prompt_text}</pre>
               </>
             ) : (
-              <p className="admin-empty-row">该节点暂无已发布版本</p>
+              <p className="admin-empty-row">尚未发布任何版本。请在下方编辑并保存草稿，然后发布。</p>
             )}
             <p className="admin-authority-note">
               <Sparkle size={15} /> 仅 System Admin 可调优；发布由后端审计并立刻生效。

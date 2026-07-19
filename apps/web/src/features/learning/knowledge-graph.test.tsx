@@ -81,10 +81,13 @@ describe("/map/graph route", () => {
 
   it("links from /map to the graph view", () => {
     renderRoute("/map");
-    expect(screen.getByRole("link", { name: "知识图谱" })).toHaveAttribute(
-      "href",
-      "/map/graph",
-    );
+    // The sidebar also exposes a 知识图谱 entry now (Stage C1), so scope the
+    // assertion to the in-page heading action that lives inside the map page.
+    const headingActions = document.querySelector(".map-heading-actions");
+    const graphLink = within(headingActions as HTMLElement).getByRole("link", {
+      name: "知识图谱",
+    });
+    expect(graphLink).toHaveAttribute("href", "/map/graph");
   });
 
   it("opens the node detail panel on a chart click", async () => {

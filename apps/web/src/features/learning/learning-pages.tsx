@@ -875,6 +875,26 @@ export function LearningGraphPage() {
         edges={edges}
         nodes={nodes}
         title="知识依赖图谱"
+        // Stage C2 (problem 6): from a selected node, jump straight to the
+        // personalized resources page (filtered to this node) or to a
+        // self-test. Links live in the page so the chart package stays
+        // router-agnostic; the host owns navigation.
+        renderNodeActions={(node) => (
+          <>
+            <Link
+              className="profile-secondary-button"
+              to={`/resources?node=${encodeURIComponent(node.node_id)}`}
+            >
+              <BookOpenText size={16} /> 查看该节点资源
+            </Link>
+            <Link
+              className="profile-secondary-button"
+              to={`/practice/${node.node_id}`}
+            >
+              <ArrowRight size={16} /> 该节点自测
+            </Link>
+          </>
+        )}
       />
     </div>
   );

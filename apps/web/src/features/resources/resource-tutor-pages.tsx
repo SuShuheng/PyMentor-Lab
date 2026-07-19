@@ -113,6 +113,12 @@ export function ResourcesPage() {
   const { session } = useAuth();
   const [searchParams] = useSearchParams();
   const view = searchParams.get("view");
+  // Stage C2 (problem 6): the knowledge graph side panel links here with
+  // ?node=<id> so students land on a resource pack scoped to the node they
+  // just inspected. We surface it in the heading region; the production
+  // resource job still keys off the server path, but the param tells the
+  // student (and future filtering) which node they came from.
+  const nodeFilter = searchParams.get("node");
   const [job, setJob] = useState<ResourceJobView | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -250,6 +256,11 @@ export function ResourcesPage() {
           <p className="eyebrow">RESOURCE PACK · PROGRESSIVE RELEASE</p>
           <h1>{USING_TEST_FIXTURES ? "循环边界学习资源" : "服务端学习资源"}</h1>
           <p>资源完成一项发布一项，不让仍在生成的内容阻断今天的学习。</p>
+          {nodeFilter ? (
+            <p aria-label={`当前节点 ${nodeFilter}`} className="resource-node-filter">
+              当前节点：<code>{nodeFilter}</code>
+            </p>
+          ) : null}
         </div>
         <Link className="py-button resource-tutor-link" to="/tutor">
           <ChatCircleDots size={17} /> 向智能辅导提问
