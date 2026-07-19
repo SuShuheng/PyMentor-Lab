@@ -1,0 +1,386 @@
+{
+  "schema_cases": [
+    {
+      "id": "chat-request-valid",
+      "schema": "ChatCompletionRequest",
+      "expected": "accept",
+      "payload": {
+        "course_id": "10000000-0000-4000-8000-000000000001",
+        "node_id": "10000000-0000-4000-8000-000000000002",
+        "messages": [{ "role": "user", "content": "Explain recursion." }],
+        "stream": true
+      }
+    },
+    {
+      "id": "chat-request-missing-messages",
+      "schema": "ChatCompletionRequest",
+      "expected": "reject",
+      "payload": {
+        "course_id": "10000000-0000-4000-8000-000000000001",
+        "node_id": "10000000-0000-4000-8000-000000000002",
+        "stream": true
+      }
+    },
+    {
+      "id": "chat-request-unknown-field",
+      "schema": "ChatCompletionRequest",
+      "expected": "reject",
+      "payload": {
+        "course_id": "10000000-0000-4000-8000-000000000001",
+        "node_id": "10000000-0000-4000-8000-000000000002",
+        "messages": [{ "role": "user", "content": "Explain recursion." }],
+        "stream": true,
+        "raw_prompt": "must not cross the contract boundary"
+      }
+    },
+    {
+      "id": "error-envelope-valid",
+      "schema": "ErrorEnvelope",
+      "expected": "accept",
+      "payload": {
+        "code": "VALIDATION_ERROR",
+        "message": "The request is invalid.",
+        "trace_id": "trace-error-1",
+        "retryable": false
+      }
+    },
+    {
+      "id": "error-envelope-unstable-code",
+      "schema": "ErrorEnvelope",
+      "expected": "reject",
+      "payload": {
+        "code": "SOMETHING_NEW",
+        "message": "The request is invalid.",
+        "trace_id": "trace-error-1",
+        "retryable": false
+      }
+    },
+    {
+      "id": "error-envelope-missing-trace",
+      "schema": "ErrorEnvelope",
+      "expected": "reject",
+      "payload": {
+        "code": "VALIDATION_ERROR",
+        "message": "The request is invalid.",
+        "retryable": false
+      }
+    },
+    {
+      "id": "error-envelope-unknown-field",
+      "schema": "ErrorEnvelope",
+      "expected": "reject",
+      "payload": {
+        "code": "VALIDATION_ERROR",
+        "message": "The request is invalid.",
+        "trace_id": "trace-error-1",
+        "retryable": false,
+        "stack": "must not cross the contract boundary"
+      }
+    },
+    {
+      "id": "worker-envelope-valid",
+      "schema": "WorkerJobEnvelope",
+      "expected": "accept",
+      "payload": {
+        "schema_version": 1,
+        "event_id": "event-worker-1",
+        "trace_id": "trace-worker-1",
+        "tenant_id": "tenant-1",
+        "student_id": "student-1",
+        "kind": "coding_coach",
+        "payload": { "attempt": 1 },
+        "enqueued_at": "2026-07-19T00:00:00Z"
+      }
+    },
+    {
+      "id": "worker-envelope-version-2",
+      "schema": "WorkerJobEnvelope",
+      "expected": "reject",
+      "payload": {
+        "schema_version": 2,
+        "event_id": "event-worker-1",
+        "trace_id": "trace-worker-1",
+        "tenant_id": "tenant-1",
+        "student_id": "student-1",
+        "kind": "coding_coach",
+        "payload": {},
+        "enqueued_at": "2026-07-19T00:00:00Z"
+      }
+    },
+    {
+      "id": "worker-envelope-missing-event-id",
+      "schema": "WorkerJobEnvelope",
+      "expected": "reject",
+      "payload": {
+        "schema_version": 1,
+        "trace_id": "trace-worker-1",
+        "tenant_id": "tenant-1",
+        "student_id": "student-1",
+        "kind": "coding_coach",
+        "payload": {},
+        "enqueued_at": "2026-07-19T00:00:00Z"
+      }
+    },
+    {
+      "id": "worker-envelope-unknown-field",
+      "schema": "WorkerJobEnvelope",
+      "expected": "reject",
+      "payload": {
+        "schema_version": 1,
+        "event_id": "event-worker-1",
+        "trace_id": "trace-worker-1",
+        "tenant_id": "tenant-1",
+        "student_id": "student-1",
+        "kind": "coding_coach",
+        "payload": {},
+        "enqueued_at": "2026-07-19T00:00:00Z",
+        "provider_key": "must not cross the contract boundary"
+      }
+    },
+    {
+      "id": "agent-proposal-valid",
+      "schema": "AgentProposalEnvelope",
+      "expected": "accept",
+      "payload": {
+        "schema_version": 1,
+        "agent_run_id": "agent-run-1",
+        "event_id": "event-agent-1",
+        "trace_id": "trace-agent-1",
+        "tenant_id": "tenant-1",
+        "student_id": "student-1",
+        "node": "coach",
+        "status": "SUCCEEDED",
+        "proposal": {
+          "kind": "coaching_feedback",
+          "diagnosis": "The base case is missing.",
+          "hints": ["Add a base case before the recursive call."],
+          "next_test": "Call the function with zero."
+        },
+        "fallback_used": false,
+        "completed_at": "2026-07-19T00:00:01Z"
+      }
+    },
+    {
+      "id": "agent-proposal-node-kind-mismatch",
+      "schema": "AgentProposalEnvelope",
+      "expected": "reject",
+      "payload": {
+        "schema_version": 1,
+        "agent_run_id": "agent-run-1",
+        "event_id": "event-agent-1",
+        "trace_id": "trace-agent-1",
+        "tenant_id": "tenant-1",
+        "student_id": "student-1",
+        "node": "path",
+        "status": "SUCCEEDED",
+        "proposal": {
+          "kind": "coaching_feedback",
+          "diagnosis": "The base case is missing.",
+          "hints": ["Add a base case."],
+          "next_test": "Call the function with zero."
+        },
+        "fallback_used": false,
+        "completed_at": "2026-07-19T00:00:01Z"
+      }
+    },
+    {
+      "id": "agent-proposal-failure-missing-error-code",
+      "schema": "AgentProposalEnvelope",
+      "expected": "reject",
+      "payload": {
+        "schema_version": 1,
+        "agent_run_id": "agent-run-1",
+        "event_id": "event-agent-1",
+        "trace_id": "trace-agent-1",
+        "tenant_id": "tenant-1",
+        "student_id": "student-1",
+        "node": "coach",
+        "status": "FAILED_FINAL",
+        "proposal": null,
+        "fallback_used": false,
+        "completed_at": "2026-07-19T00:00:01Z"
+      }
+    },
+    {
+      "id": "sandbox-response-valid",
+      "schema": "SandboxExecutionResponse",
+      "expected": "accept",
+      "payload": {
+        "protocol_version": "1",
+        "request_id": "sandbox-request-1",
+        "run_id": "sandbox-run-1",
+        "result": {
+          "run_id": "sandbox-run-1",
+          "status": "PASSED",
+          "passed": true,
+          "stdout": "",
+          "stderr": "",
+          "tests": [],
+          "trace_frames": null,
+          "resource_usage": {
+            "cpu_ms": 0,
+            "wall_ms": 1,
+            "peak_memory_kb": 1024,
+            "exit_code": 0
+          },
+          "stdout_truncated": false,
+          "stderr_truncated": false,
+          "trace_truncated": false,
+          "user_error": null,
+          "platform_error": null
+        }
+      }
+    },
+    {
+      "id": "sandbox-response-version-2",
+      "schema": "SandboxExecutionResponse",
+      "expected": "reject",
+      "payload": {
+        "protocol_version": "2",
+        "request_id": "sandbox-request-1",
+        "run_id": "sandbox-run-1",
+        "result": {
+          "run_id": "sandbox-run-1",
+          "status": "PASSED",
+          "passed": true,
+          "stdout": "",
+          "stderr": "",
+          "tests": [],
+          "trace_frames": null,
+          "resource_usage": {
+            "cpu_ms": 0,
+            "wall_ms": 1,
+            "peak_memory_kb": 1024,
+            "exit_code": 0
+          },
+          "stdout_truncated": false,
+          "stderr_truncated": false,
+          "trace_truncated": false,
+          "user_error": null,
+          "platform_error": null
+        }
+      }
+    },
+    {
+      "id": "sandbox-response-unknown-field",
+      "schema": "SandboxExecutionResponse",
+      "expected": "reject",
+      "payload": {
+        "protocol_version": "1",
+        "request_id": "sandbox-request-1",
+        "run_id": "sandbox-run-1",
+        "result": {
+          "run_id": "sandbox-run-1",
+          "status": "PASSED",
+          "passed": true,
+          "stdout": "",
+          "stderr": "",
+          "tests": [],
+          "trace_frames": null,
+          "resource_usage": {
+            "cpu_ms": 0,
+            "wall_ms": 1,
+            "peak_memory_kb": 1024,
+            "exit_code": 0
+          },
+          "stdout_truncated": false,
+          "stderr_truncated": false,
+          "trace_truncated": false,
+          "user_error": null,
+          "platform_error": null
+        },
+        "host_path": "must not cross the contract boundary"
+      }
+    },
+    {
+      "id": "stream-event-valid",
+      "schema": "StreamEvent",
+      "expected": "accept",
+      "payload": {
+        "type": "content_delta",
+        "event_id": "event-stream-1",
+        "chunk": {
+          "id": "chat-stream-1",
+          "chunk_index": 0,
+          "delta_content": "hello",
+          "timestamp": "2026-07-19T00:00:00Z"
+        }
+      }
+    },
+    {
+      "id": "stream-event-invalid-discriminant",
+      "schema": "StreamEvent",
+      "expected": "reject",
+      "payload": {
+        "type": "token",
+        "event_id": "event-stream-1"
+      }
+    },
+    {
+      "id": "stream-event-missing-event-id",
+      "schema": "StreamEvent",
+      "expected": "reject",
+      "payload": { "type": "done" }
+    },
+    {
+      "id": "stream-event-unknown-field",
+      "schema": "StreamEvent",
+      "expected": "reject",
+      "payload": {
+        "type": "done",
+        "event_id": "event-stream-1",
+        "raw_reasoning": "must not cross the contract boundary"
+      }
+    }
+  ],
+  "stream_sequences": [
+    {
+      "id": "stream-chunks-monotonic",
+      "expected": "accept",
+      "chunks": [
+        {
+          "id": "chat-stream-1",
+          "chunk_index": 0,
+          "delta_content": "a",
+          "timestamp": "2026-07-19T00:00:00Z"
+        },
+        {
+          "id": "chat-stream-1",
+          "chunk_index": 1,
+          "delta_content": "b",
+          "timestamp": "2026-07-19T00:00:01Z"
+        },
+        {
+          "id": "chat-stream-1",
+          "chunk_index": 2,
+          "delta_content": "c",
+          "timestamp": "2026-07-19T00:00:02Z"
+        }
+      ]
+    },
+    {
+      "id": "stream-chunks-out-of-order",
+      "expected": "reject",
+      "chunks": [
+        {
+          "id": "chat-stream-1",
+          "chunk_index": 0,
+          "delta_content": "a",
+          "timestamp": "2026-07-19T00:00:00Z"
+        },
+        {
+          "id": "chat-stream-1",
+          "chunk_index": 2,
+          "delta_content": "c",
+          "timestamp": "2026-07-19T00:00:02Z"
+        },
+        {
+          "id": "chat-stream-1",
+          "chunk_index": 1,
+          "delta_content": "b",
+          "timestamp": "2026-07-19T00:00:01Z"
+        }
+      ]
+    }
+  ]
+}
