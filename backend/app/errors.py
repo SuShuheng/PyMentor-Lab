@@ -221,10 +221,19 @@ def _map_http_status(status_code: int) -> tuple[ErrorCode, bool]:
         return ErrorCode.NOT_FOUND, False
     if status_code == 409:
         return ErrorCode.CONFLICT, False
+    if status_code == 413 or status_code == 415:
+        # Boundary validation of an upload (size/type); retrying with a
+        # corrected payload is a valid client action, but the failure itself
+        # is not transient — keep it non-retryable so clients don't loop.
+        return ErrorCode.VALIDATION_ERROR, False
+    if status_code == 422:
+        return ErrorCode.VALIDATION_ERROR, False
     if status_code == 429:
         return ErrorCode.RATE_LIMITED, True
-    if status_code in (400, 422):
-        return ErrorCode.VALIDATION_ERROR, False
+    if status_code == 503:
+        # Provider unavailable (BE-024 OCR, BE-025 ASR, BE-022 TTS). Retryable
+        # so the notebook can fall back gracefully and a refresh may succeed.
+        return ErrorCode.PROVIDER_UNAVAILABLE, True
     return ErrorCode.INTERNAL_ERROR, False
 
 
