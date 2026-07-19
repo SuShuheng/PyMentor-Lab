@@ -22,6 +22,9 @@ from app.main import create_app
 from app.models import (
     AuditEvent,
     EvidenceEvent,
+    LearningPath,
+    LearningPathStatus,
+    LearningPathStep,
     OutboxEvent,
     ProfileDimension,
     ProfileDimensionScore,
@@ -30,8 +33,16 @@ from app.models import (
     UserStatus,
 )
 from app.models.base import RoleName
+from app.pathing import (
+    PathProposal,
+    StepProposal,
+    ValidationContext,
+    persist_validated_path,
+    validate_path,
+)
 from app.security import hash_password
 from app.services import assign_role, create_student_user, get_or_create_tenant
+from tests.conftest import COURSE_ID, NODE_ID
 
 
 @pytest.fixture()
@@ -196,3 +207,165 @@ class TestOnboardingSubmit:
             headers={"Authorization": f"Bearer {token}"},
         )
         assert response.status_code == 422, response.text
+
+    def test_onboarding_compiles_initial_path(
+        self, client: TestClient, db_session: Session, student_auth
+    ) -> None:
+        """BE-018 fix: onboarding must synchronously compile a first LearningPath.
+
+        Before the fix, only a PATH_REPLAN_REQUESTED Outbox event was emitted
+        with no consumer, leaving the student on an empty 'waiting for path
+        compilation' state. Now the endpoint calls validate_path +
+        persist_validated_path inline, so today/path/code-lab/KG/chat unblock
+        immediately without relying on a worker that does not exist yet.
+        """
+
+        student, token = student_auth
+        body = {"answers": _answers(), "expected_profile_version": 0}
+        response = client.post(
+            "/api/v1/profiles/onboarding",
+            json=body,
+            headers=_headers(token, "onboarding-compile", "trc_onboarding_compile"),
+        )
+        assert response.status_code == 201, response.text
+        payload = response.json()
+        assert payload["path_compiled"] is True
+
+        path = db_session.scalar(
+            select(LearningPath).where(
+                LearningPath.student_id == student.id,
+                LearningPath.status == LearningPathStatus.CURRENT,
+            )
+        )
+        assert path is not None
+        assert path.version == 1
+        steps = list(
+            db_session.scalars(
+                select(LearningPathStep)
+                .where(LearningPathStep.path_id == path.id)
+                .order_by(LearningPathStep.position)
+            )
+        )
+        assert len(steps) >= 1
+        # First step is a 20-minute LEARN node seeded from the first course node.
+        assert steps[0].position == 1
+        assert steps[0].estimated_minutes == 20
+
+    def test_onboarding_idempotent_does_not_recompile_path(
+        self, client: TestClient, db_session: Session, student_auth
+    ) -> None:
+        """Retrying onboarding with the same Idempotency-Key must not recompile.
+
+        The cached response is replayed and the already-persisted CURRENT path
+        is left untouched (same version, no duplicate steps). This protects the
+        optimistic-concurrency contract of persist_validated_path (expected
+        version 0) against accidental replays.
+        """
+
+        student, token = student_auth
+        body = {"answers": _answers(), "expected_profile_version": 0}
+        headers = _headers(token, "onboarding-idem-recompile", "trc_onboarding_idem_recompile")
+        first = client.post("/api/v1/profiles/onboarding", json=body, headers=headers)
+        assert first.status_code == 201, first.text
+        assert first.json()["path_compiled"] is True
+
+        path = db_session.scalar(
+            select(LearningPath).where(
+                LearningPath.student_id == student.id,
+                LearningPath.status == LearningPathStatus.CURRENT,
+            )
+        )
+        assert path is not None
+        first_version = path.version
+        first_path_id = path.id
+        first_step_count = db_session.scalar(
+            select(LearningPathStep.path_id).where(LearningPathStep.path_id == path.id)
+        )
+
+        second = client.post("/api/v1/profiles/onboarding", json=body, headers=headers)
+        assert second.status_code == 201, second.text
+        # Cached response is replayed verbatim.
+        assert second.json() == first.json()
+
+        # Path row untouched: same id, same version, no extra steps, no new rows.
+        db_session.expire_all()
+        refreshed = db_session.get(LearningPath, first_path_id)
+        assert refreshed is not None
+        assert refreshed.version == first_version
+        assert refreshed.status == LearningPathStatus.CURRENT
+        all_paths = list(
+            db_session.scalars(select(LearningPath).where(LearningPath.student_id == student.id))
+        )
+        assert len(all_paths) == 1
+        assert first_step_count is not None  # sanity: at least one step existed
+
+    def test_onboarding_without_existing_path_compile_idempotent(
+        self, client: TestClient, db_session: Session, student_auth
+    ) -> None:
+        """Onboarding must NOT overwrite a CURRENT path that pre-existed it.
+
+        Edge case: a student already had a LearningPath (from a prior flow or
+        manual seeding) before submitting onboarding. The endpoint's
+        _has_current_path guard must skip re-compilation so the existing path
+        version/steps are preserved, and path_compiled reflects 'nothing new
+        compiled here'.
+        """
+
+        student, token = student_auth
+        # Seed a pre-existing CURRENT path for the canonical course (version 1,
+        # so persist_validated_path's expected_version=0 would conflict if the
+        # endpoint ignored the guard).
+        course_id = COURSE_ID
+        first_node_id = NODE_ID
+        validated = validate_path(
+            PathProposal(steps=[StepProposal(node_id=first_node_id, estimated_minutes=15)]),
+            ValidationContext(
+                daily_minutes=30,
+                prerequisites={},
+                completed_nodes=set(),
+                due_reviews=[],
+                mastery_policy_nodes={first_node_id},
+                resource_ready_nodes={first_node_id},
+                active_node_ids=set(),
+                template_fallback_nodes=set(),
+                forbidden_node_ids=set(),
+            ),
+        )
+        persist_validated_path(
+            db_session,
+            tenant_id=student.tenant_id,
+            student_id=student.id,
+            course_id=course_id,
+            expected_version=0,
+            validated=validated,
+        )
+        db_session.flush()
+        pre_path = db_session.scalar(
+            select(LearningPath).where(
+                LearningPath.student_id == student.id,
+                LearningPath.status == LearningPathStatus.CURRENT,
+            )
+        )
+        assert pre_path is not None
+        pre_version = pre_path.version
+        pre_path_id = pre_path.id
+
+        body = {"answers": _answers(), "expected_profile_version": 0}
+        response = client.post(
+            "/api/v1/profiles/onboarding",
+            json=body,
+            headers=_headers(token, "onboarding-preexisting", "trc_onboarding_preexisting"),
+        )
+        assert response.status_code == 201, response.text
+        # No new path compiled: the pre-existing one was left in place.
+        assert response.json()["path_compiled"] is False
+
+        db_session.expire_all()
+        untouched = db_session.get(LearningPath, pre_path_id)
+        assert untouched is not None
+        assert untouched.version == pre_version
+        assert untouched.status == LearningPathStatus.CURRENT
+        all_paths = list(
+            db_session.scalars(select(LearningPath).where(LearningPath.student_id == student.id))
+        )
+        assert len(all_paths) == 1

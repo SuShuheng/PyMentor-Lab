@@ -238,7 +238,10 @@ class TestDemoLogin:
         response = client.post("/api/v1/auth/demo")
 
         assert response.status_code == 503
-        assert response.json()["code"] == "INTERNAL_ERROR"
+        # BE-024 errors.py maps 503 -> PROVIDER_UNAVAILABLE (retryable) for all
+        # provider-unavailable paths; demo login without seeded guest falls in
+        # this category. Previously unmapped 503 fell through to INTERNAL_ERROR.
+        assert response.json()["code"] == "PROVIDER_UNAVAILABLE"
 
 
 # --------------------------------------------------------------------------- #
