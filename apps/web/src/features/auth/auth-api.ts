@@ -59,15 +59,26 @@ function errorDetail(error: unknown): string | undefined {
   if (!error || typeof error !== "object") return undefined;
   const detail = Reflect.get(error, "detail");
   if (typeof detail === "string") return detail;
-  if (!Array.isArray(detail)) return undefined;
-  const messages = detail
-    .map((entry) =>
-      entry && typeof entry === "object" && typeof Reflect.get(entry, "msg") === "string"
-        ? String(Reflect.get(entry, "msg"))
-        : null,
-    )
-    .filter((message): message is string => message !== null);
-  return messages.length > 0 ? messages.join("；") : undefined;
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((entry) =>
+        entry && typeof entry === "object" && typeof Reflect.get(entry, "msg") === "string"
+          ? String(Reflect.get(entry, "msg"))
+          : null,
+      )
+      .filter((message): message is string => message !== null);
+    if (messages.length > 0) return messages.join("；");
+  }
+  const message = Reflect.get(error, "message");
+  return typeof message === "string" ? message : undefined;
+}
+
+function deniedAccountStatus(error: unknown): "PENDING" | "REJECTED" | undefined {
+  if (!error || typeof error !== "object") return undefined;
+  const details = Reflect.get(error, "details");
+  if (!details || typeof details !== "object") return undefined;
+  const accountStatus = Reflect.get(details, "account_status");
+  return accountStatus === "PENDING" || accountStatus === "REJECTED" ? accountStatus : undefined;
 }
 
 function throwApiError(error: unknown): never {
@@ -122,6 +133,7 @@ export const browserAuthApi: AuthApi = {
     });
     if (result.response.status === 401) return { outcome: "unauthenticated" };
     if (result.response.status === 403) {
+      if (deniedAccountStatus(result.error) === "PENDING") return { outcome: "pending" };
       return { outcome: "rejected", reason: errorDetail(result.error) };
     }
     if (!result.data) throwApiError(result.error);
