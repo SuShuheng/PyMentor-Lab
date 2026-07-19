@@ -131,6 +131,11 @@ class OnboardingSubmissionView(BaseModel):
     profile_version_id: str = Field(min_length=1)
     profile_version: int = Field(ge=1)
     replan_requested: bool
+    # BE-018 fix: true once a synchronous first LearningPath has been compiled
+    # for this student/course. False means the course had no nodes to seed
+    # (student will see an empty state until the catalogue is populated) or a
+    # CURRENT path already existed before onboarding and was left untouched.
+    path_compiled: bool = False
 
 
 class PathStepView(BaseModel):

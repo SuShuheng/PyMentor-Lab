@@ -67,3 +67,5 @@ dist/backend-deploy/*.zip
 dist/installer/
 dist/installer-source/installer-assets/
 dist/installer-source/tools/
+# Versioned build artifacts output (compose_mee.bat target):
+dist/V1.1/

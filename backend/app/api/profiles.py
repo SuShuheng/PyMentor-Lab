@@ -21,8 +21,25 @@ from app.contracts.learning import (
 from app.db import get_db
 from app.evidence import record_audit, record_evidence
 from app.idempotency import save_response
-from app.models import ProfileDimensionScore, ProfileVersion, User
+from app.models import (
+    CourseCatalog,
+    CourseChapter,
+    KnowledgeNode,
+    LearningPath,
+    LearningPathStatus,
+    ProfileDimensionScore,
+    ProfileVersion,
+    User,
+)
 from app.models.base import RoleName
+from app.pathing import (
+    PathProposal,
+    StepProposal,
+    ValidatedPath,
+    ValidationContext,
+    persist_validated_path,
+    validate_path,
+)
 from app.profile_projection import create_profile_dispute, project_onboarding
 from app.rbac import get_current_user
 from app.services import get_user_roles
@@ -149,6 +166,132 @@ def _require_student_role(db: Session, user: User) -> None:
         )
 
 
+def _resolve_published_course_id(db: Session) -> UUID | None:
+    """Return the first published course id, or None if none exists.
+
+    Mirrors ``app.api.knowledge._resolve_course_id`` but returns None instead
+    of raising 404 — onboarding should not hard-fail on an empty catalogue,
+    it should just skip path compilation (``path_compiled=False``) so the rest
+    of the projection/evidence flow still completes.
+    """
+
+    return db.scalar(
+        select(CourseCatalog.id)
+        .where(CourseCatalog.published.is_(True))
+        .order_by(CourseCatalog.created_at, CourseCatalog.id)
+        .limit(1)
+    )
+
+
+# Map the self-reported weekly time-band to a daily-minutes budget used to
+# validate the student's first learning path. Values are deliberately modest
+# (single-step initial path) so the first day is always achievable; the
+# planner-driven replan worker (PATH_REPLAN_REQUESTED) can expand later. The
+# band labels mirror the V1.0 frontend onboarding options.
+_WEEKLY_BAND_DAILY_MINUTES: dict[str, int] = {
+    "4 hours+": 30,  # ~4-5h/week → ~30 focused minutes/day
+    "2-4 hours": 25,  # ~2-4h/week → ~25 focused minutes/day
+    "<2 hours": 15,  # <2h/week → ~15 focused minutes/day
+}
+_DEFAULT_DAILY_MINUTES = 25  # fallback for unknown/unmapped bands (2-4h band)
+
+
+def _daily_minutes_for_band(weekly_band: str) -> int:
+    """Resolve a weekly time-band to a daily-minutes planning budget.
+
+    Returns the documented mapping, falling back to the 2-4h default if the
+    band is unknown (new option, typo, i18n drift) rather than refusing to
+    onboard the student.
+    """
+
+    return _WEEKLY_BAND_DAILY_MINUTES.get(weekly_band.strip(), _DEFAULT_DAILY_MINUTES)
+
+
+def _first_node_of_course(db: Session, course_id: UUID) -> KnowledgeNode | None:
+    """Return the earliest node of a course for seeding the first path.
+
+    Nodes are ordered by chapter ``sequence`` (the only governed ordering
+    column) then by ``KnowledgeNode.id`` as a deterministic tiebreak within a
+    chapter — the catalogue has no per-node ordering field, so the UUID
+    tiebreak keeps the pick stable across runs. ``bootstrap.seed_demo_learning_
+    data`` hardcodes this node; here we resolve it generically per course.
+    """
+
+    return db.scalar(
+        select(KnowledgeNode)
+        .where(KnowledgeNode.course_id == course_id)
+        .join(CourseChapter, CourseChapter.id == KnowledgeNode.chapter_id)
+        .order_by(CourseChapter.sequence, KnowledgeNode.id)
+        .limit(1)
+    )
+
+
+def _has_current_path(db: Session, *, tenant_id: UUID, student_id: UUID, course_id: UUID) -> bool:
+    """True if the student already owns a CURRENT path for this course."""
+
+    return (
+        db.scalar(
+            select(LearningPath.id).where(
+                LearningPath.tenant_id == tenant_id,
+                LearningPath.student_id == student_id,
+                LearningPath.course_id == course_id,
+                LearningPath.status == LearningPathStatus.CURRENT,
+            )
+        )
+        is not None
+    )
+
+
+def _compile_initial_path_for_student(
+    db: Session,
+    *,
+    tenant_id: UUID,
+    student_id: UUID,
+    course_id: UUID,
+    daily_minutes: int,
+) -> ValidatedPath | None:
+    """Compile the student's first learning path after onboarding (BE-018 fix).
+
+    Mirrors ``bootstrap.seed_demo_learning_data``: pick the first node of the
+    course (earliest chapter sequence, then node id), validate a single-step
+    proposal, and persist it as version 1. Returns None if the course has no
+    nodes (caller reports ``path_compiled=False`` without failing onboarding).
+
+    Idempotency is enforced by ``persist_validated_path`` via the
+    ``uq_learning_path_current`` partial unique index and the ``expected_version
+    =0`` optimistic-concurrency check: if a CURRENT path already exists the
+    persist call raises ``PathVersionConflict``, which callers are expected to
+    have pre-empted with ``_has_current_path``.
+    """
+
+    first_node = _first_node_of_course(db, course_id)
+    if first_node is None:
+        return None
+    validated = validate_path(
+        PathProposal(steps=[StepProposal(node_id=first_node.id, estimated_minutes=20)]),
+        ValidationContext(
+            daily_minutes=max(1, daily_minutes),
+            prerequisites={},
+            completed_nodes=set(),
+            due_reviews=[],
+            mastery_policy_nodes={first_node.id},
+            resource_ready_nodes={first_node.id},
+            active_node_ids=set(),
+            template_fallback_nodes=set(),
+            forbidden_node_ids=set(),
+        ),
+    )
+    persist_validated_path(
+        db,
+        tenant_id=tenant_id,
+        student_id=student_id,
+        course_id=course_id,
+        expected_version=0,
+        validated=validated,
+    )
+    return validated
+
+
 @router.post(
     "/onboarding",
     status_code=status.HTTP_201_CREATED,
@@ -165,8 +308,16 @@ async def submit_onboarding(
     The answers flow through the deterministic profile projection as a
     low-confidence INDEPENDENCE_SUPPORT baseline (never auto-advancing
     mastery). A path-replan request is emitted via the Outbox so the existing
-    compilation pipeline can re-evaluate eligibility without this endpoint
-    touching ``persist_validated_path`` directly.
+    worker-driven compilation pipeline can re-evaluate eligibility later.
+
+    V1.1 fix: that Outbox event currently has no consumer, so students would
+    land on a "waiting for path compilation" empty state. To unblock them
+    immediately we *also* synchronously compile the first single-step
+    ``LearningPath`` right here (mirroring ``bootstrap.seed_demo_learning_
+    data``), seeded from the first node of the canonical published course and
+    budgeted from the self-reported ``weekly_band``. The replan event stays in
+    place for future worker-driven expansion; the synchronous compile is what
+    actually unblocks today/path/code-lab/KG/chat today.
     """
 
     _require_student_role(db, user)
@@ -207,11 +358,33 @@ async def submit_onboarding(
             expected_version=body.expected_profile_version,
             answers=answers_payload,
         )
+        # Synchronously seed the student's first learning path so today/path/
+        # code-lab/KG/chat are not blocked on a worker that doesn't exist yet.
+        # Idempotent: skip if the student already owns a CURRENT path (onboarding
+        # retried, or a path pre-existed from another flow) — never overwrite.
+        course_id = _resolve_published_course_id(db)
+        path_compiled = False
+        if course_id is not None and not _has_current_path(
+            db,
+            tenant_id=user.tenant_id,
+            student_id=user.id,
+            course_id=course_id,
+        ):
+            daily_minutes = _daily_minutes_for_band(body.answers.weekly_band)
+            compiled = _compile_initial_path_for_student(
+                db,
+                tenant_id=user.tenant_id,
+                student_id=user.id,
+                course_id=course_id,
+                daily_minutes=daily_minutes,
+            )
+            path_compiled = compiled is not None
         view = OnboardingSubmissionView(
             evidence_event_id=evidence_event_id,
             profile_version_id=str(profile.id),
             profile_version=profile.version,
             replan_requested=True,
+            path_compiled=path_compiled,
         )
         response_body = view.model_dump(mode="json")
         record_audit(
