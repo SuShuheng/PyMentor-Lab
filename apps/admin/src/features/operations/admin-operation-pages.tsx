@@ -48,10 +48,12 @@ import {
 } from "@pymentor/api-client";
 import { readServerUrl } from "@pymentor/config";
 import { StatePanel } from "@pymentor/ui";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 
 import { useAdminAuth } from "../auth/auth-session";
+import { fetchAdminOverview } from "./admin-overview-api";
 
 function AdminPageHeading({
   action,
@@ -140,6 +142,18 @@ export function OverviewPage() {
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [reviewStatus, setReviewStatus] = useState<string | null>(null);
 
+  const overviewQuery = useQuery({
+    queryKey: ["admin", "overview", accessToken ?? "anonymous"],
+    queryFn: () => fetchAdminOverview({ accessToken: accessToken ?? "" }),
+    enabled: Boolean(accessToken),
+    // Overview counts change slowly; a 60s TTL keeps the work台 responsive
+    // without hammering the aggregate endpoint on every navigation. Automatic
+    // retries inherit the QueryClient default (1 in production, disabled in
+    // tests); the manual "重试概览" button covers interactive recovery.
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+  });
+
   useEffect(() => {
     let active = true;
     setQueueState("loading");
@@ -220,20 +234,53 @@ export function OverviewPage() {
         </p>
       ) : null}
       <section aria-label="平台概览指标" className="metric-grid">
-        {[
-          ["活跃学生", "248", "+12 本周"],
-          ["待审核注册", String(registrations.length), "需人工处理"],
-          ["资源审校", "7", "2 项高优先级"],
-          ["服务健康", "7 / 8", "图像服务降级"],
-        ].map(([label, value, trend]) => (
-          <article className="metric-card" key={label}>
-            <p>{label}</p>
-            <div>
-              <strong>{value}</strong>
-              <span>{trend}</span>
-            </div>
-          </article>
-        ))}
+        {overviewQuery.isLoading || overviewQuery.isPending ? (
+          <p aria-label="管理概览加载" className="admin-empty-row" role="status">
+            正在加载平台概览指标…
+          </p>
+        ) : null}
+        {overviewQuery.isError ? (
+          <div aria-label="管理概览错误" className="admin-empty-row" role="alert">
+            <p>
+              {overviewQuery.error instanceof Error
+                ? overviewQuery.error.message
+                : "管理概览数据暂时不可用，请稍后重试"}
+            </p>
+            <button
+              onClick={() => overviewQuery.refetch()}
+              type="button"
+              aria-label="重试概览"
+            >
+              重试
+            </button>
+          </div>
+        ) : null}
+        {overviewQuery.data
+          ? (
+            [
+              ["活跃学生", String(overviewQuery.data.active_students), "实时"],
+              [
+                "待审核注册",
+                String(overviewQuery.data.pending_registrations),
+                "需人工处理",
+              ],
+              ["资源审校", String(overviewQuery.data.resource_reviews), "实时"],
+              [
+                "到期复测",
+                String(overviewQuery.data.due_reviews),
+                "服务端计划",
+              ],
+            ] as const
+          ).map(([label, value, trend]) => (
+            <article className="metric-card" key={label}>
+              <p>{label}</p>
+              <div>
+                <strong>{value}</strong>
+                <span>{trend}</span>
+              </div>
+            </article>
+          ))
+          : null}
       </section>
       <div className="overview-grid">
         <section

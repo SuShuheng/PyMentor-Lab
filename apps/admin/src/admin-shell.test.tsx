@@ -1,10 +1,24 @@
 import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
+import { type ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
 import { AdminRoutes, describeAdminSystemHealth } from "./admin-routes";
 import { adminSession, studentSession } from "./features/auth/auth-session";
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { gcTime: 0, retry: false, staleTime: 0 } },
+});
+
+function withRouter(route: string, children: ReactNode) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+    </QueryClientProvider>
+  );
+}
 
 describe("admin application shell", () => {
   it("describes the real degraded health state for the shared sidebar", () => {
@@ -23,9 +37,7 @@ describe("admin application shell", () => {
   it("keeps the authenticated session while navigating inside the admin SPA", async () => {
     const user = userEvent.setup();
     render(
-      <MemoryRouter initialEntries={["/admin/overview"]}>
-        <AdminRoutes initialSession={adminSession} />
-      </MemoryRouter>,
+      withRouter("/admin/overview", <AdminRoutes initialSession={adminSession} />),
     );
 
     await user.click(screen.getByRole("link", { name: "用户与课程" }));
@@ -35,11 +47,7 @@ describe("admin application shell", () => {
   });
 
   it("routes to Agent replay and marks its navigation item as current", () => {
-    render(
-      <MemoryRouter initialEntries={["/admin/agent-runs"]}>
-        <AdminRoutes initialSession={adminSession} />
-      </MemoryRouter>,
-    );
+    render(withRouter("/admin/agent-runs", <AdminRoutes initialSession={adminSession} />));
 
     expect(screen.getByRole("heading", { name: "Agent 调用回放" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Agent 调用回放" })).toHaveAttribute(
@@ -50,9 +58,10 @@ describe("admin application shell", () => {
 
   it("announces a loading state on the health route", () => {
     render(
-      <MemoryRouter initialEntries={["/admin/health?view=loading"]}>
-        <AdminRoutes initialSession={adminSession} />
-      </MemoryRouter>,
+      withRouter(
+        "/admin/health?view=loading",
+        <AdminRoutes initialSession={adminSession} />,
+      ),
     );
 
     expect(screen.getByRole("status", { name: "加载系统健康状态" })).toHaveTextContent(
@@ -61,11 +70,7 @@ describe("admin application shell", () => {
   });
 
   it("rejects a student session at the independent admin guard", () => {
-    render(
-      <MemoryRouter initialEntries={["/admin/overview"]}>
-        <AdminRoutes initialSession={studentSession} />
-      </MemoryRouter>,
-    );
+    render(withRouter("/admin/overview", <AdminRoutes initialSession={studentSession} />));
 
     expect(screen.getByRole("alert", { name: "无权访问管理端" })).toHaveTextContent(
       "当前学生账号没有管理员权限",
@@ -73,11 +78,7 @@ describe("admin application shell", () => {
   });
 
   it("redirects an anonymous visitor to the accessible admin login", () => {
-    render(
-      <MemoryRouter initialEntries={["/admin/overview"]}>
-        <AdminRoutes initialSession={null} />
-      </MemoryRouter>,
-    );
+    render(withRouter("/admin/overview", <AdminRoutes initialSession={null} />));
 
     expect(screen.getByRole("heading", { name: "管理员登录" })).toBeVisible();
     expect(screen.getByRole("textbox", { name: "管理员账号" })).toBeVisible();

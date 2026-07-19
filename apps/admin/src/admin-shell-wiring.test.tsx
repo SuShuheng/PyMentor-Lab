@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
@@ -11,11 +12,17 @@ const liveAdminSession = {
   accessToken: "admin-access",
 };
 
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { gcTime: 0, retry: false, staleTime: 0 } },
+});
+
 function renderAdmin(route: string) {
   return render(
-    <MemoryRouter initialEntries={[route]}>
-      <AdminRoutes initialSession={liveAdminSession} />
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[route]}>
+        <AdminRoutes initialSession={liveAdminSession} />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
