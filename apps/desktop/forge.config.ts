@@ -24,6 +24,7 @@ const config: ForgeConfig = {
     executableName: "PyMentorLab",
     appBundleId: "edu.pymentor.lab",
     appCopyright: "Copyright © 2026 PyMentor Lab",
+    icon: "build/icon",
   },
   makers: [
     new MakerSquirrel({
@@ -32,6 +33,8 @@ const config: ForgeConfig = {
       description: "Secure student desktop shell for PyMentor Lab",
       setupExe: "PyMentorLab-Setup.exe",
       noMsi: true,
+      setupIcon: "build/icon.ico",
+      iconUrl: "file://build/icon.ico",
     }),
   ],
   plugins: [
