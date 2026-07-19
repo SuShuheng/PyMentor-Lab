@@ -1,9 +1,11 @@
 import {
+  BookBookmark,
   CaretDown,
   Gauge,
   GraduationCap,
   ListMagnifyingGlass,
   MagnifyingGlass,
+  Pencil,
   Pulse,
   ShieldCheck,
   SignOut,
@@ -36,6 +38,8 @@ import {
   type AuthSession,
   useAdminAuth,
 } from "./features/auth/auth-session";
+import { AgentTuningPage } from "./features/operations/admin-agent-tuning-page";
+import { CmsPage } from "./features/operations/admin-cms-page";
 import {
   AuditPage,
   DatabasePage,
@@ -45,6 +49,7 @@ import {
   OverviewPage,
   ProvidersPage,
   ResourceReviewPage,
+  ResourceStatsPage,
   StudentDetailPage,
   StudentsPage,
 } from "./features/operations/admin-operation-pages";
@@ -59,9 +64,19 @@ const navigation = [
     icon: <GraduationCap size={21} />,
   },
   {
+    href: "/admin/cms",
+    label: "课程内容管理",
+    icon: <BookBookmark size={21} />,
+  },
+  {
     href: "/admin/agent-runs",
     label: "Agent 调用回放",
     icon: <Sparkle size={21} />,
+  },
+  {
+    href: "/admin/agent-tuning",
+    label: "Agent 提示词调优",
+    icon: <Pencil size={21} />,
   },
   { href: "/admin/audit", label: "系统审计", icon: <ShieldCheck size={21} /> },
   { href: "/admin/health", label: "运行监控", icon: <Pulse size={21} /> },
@@ -363,6 +378,7 @@ function AdminLayout() {
     >
       <Routes>
         <Route path="/admin/agent-runs" element={<AgentRunsPage />} />
+        <Route path="/admin/agent-tuning" element={<AgentTuningPage />} />
         <Route path="/admin/health" element={<HealthPage onHealthChange={setSystemHealth} />} />
         <Route path="/admin/metrics" element={<MetricsPage />} />
         <Route path="/admin/providers" element={<ProvidersPage />} />
@@ -372,7 +388,10 @@ function AdminLayout() {
         <Route path="/admin/overview" element={<OverviewPage />} />
         <Route path="/admin/students/:studentId" element={<StudentDetailPage />} />
         <Route path="/admin/students" element={<StudentsPage />} />
+        <Route path="/admin/resources/stats" element={<ResourceStatsPage />} />
         <Route path="/admin/resources/*" element={<ResourceReviewPage />} />
+        <Route path="/admin/cms/question_templates/:templateId" element={<CmsPage />} />
+        <Route path="/admin/cms" element={<CmsPage />} />
         <Route path="/admin/audit/*" element={<AuditPage />} />
         <Route
           path="*"
