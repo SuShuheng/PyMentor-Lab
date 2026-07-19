@@ -35,6 +35,13 @@ const liveStudentSession = {
   accessToken: "student-access",
 };
 
+const onboardingResponse = {
+  evidence_event_id: "EVD-ONBOARD-1",
+  profile_version_id: "00000000-0000-0000-0000-000000000040",
+  profile_version: 1,
+  replan_requested: false,
+};
+
 let fetchMock = vi.fn();
 
 beforeEach(() => {
@@ -94,6 +101,95 @@ describe("conversational onboarding", () => {
     expect(screen.getByRole("alert", { name: "诊断尚未完成" })).toHaveTextContent(
       "不会生成正式画像版本",
     );
+  });
+
+  it("submits mapped answers to the onboarding endpoint and clears saved progress on success", async () => {
+    fetchMock
+      .mockReset()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(onboardingResponse), {
+          headers: { "Content-Type": "application/json" },
+          status: 200,
+        }),
+      )
+      .mockResolvedValue(
+        new Response(JSON.stringify(profileSnapshot), {
+          headers: { "Content-Type": "application/json" },
+          status: 200,
+        }),
+      );
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/onboarding"]}>
+        <StudentRoutes initialSession={liveStudentSession} />
+      </MemoryRouter>,
+    );
+
+    // Answer all 5 questions in order. The choice labels mirror the question
+    // array in onboarding-pages.tsx.
+    await user.click(screen.getByRole("button", { name: "做过完整项目" }));
+    await user.click(screen.getByRole("button", { name: "准备竞赛或项目" }));
+    await user.click(screen.getByRole("button", { name: "阅读错误信息" }));
+    await user.click(screen.getByRole("button", { name: "可运行代码" }));
+    await user.click(screen.getByRole("button", { name: "4 小时以上" }));
+
+    // Final step exposes the submit control. Trigger the backend submission.
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "提交并生成初始画像" })).toBeVisible(),
+    );
+    await user.click(screen.getByRole("button", { name: "提交并生成初始画像" }));
+
+    await waitFor(() => {
+      const request = fetchMock.mock.calls[0]?.[0] as Request;
+      expect(request).toBeDefined();
+      expect(request.url).toBe("https://api.example.test/api/v1/profiles/onboarding");
+      expect(request.method).toBe("POST");
+      expect(request.headers.get("Authorization")).toBe("Bearer student-access");
+      expect(request.headers.get("Idempotency-Key")).toMatch(/^onboarding-/);
+    });
+    const request = fetchMock.mock.calls[0]?.[0] as Request;
+    await expect(request.clone().json()).resolves.toEqual({
+      answers: {
+        prior_experience: "做过完整项目",
+        primary_goal: "准备竞赛或项目",
+        error_strategy: "阅读错误信息",
+        preferred_exercise: "可运行代码",
+        weekly_band: "4 小时以上",
+      },
+      expected_profile_version: 0,
+    });
+
+    // On success the saved step must be cleared and the user routed onward.
+    await waitFor(() => expect(window.localStorage.getItem("pymentor.onboardingStep")).toBeNull());
+  });
+
+  it("surfaces a visible error and keeps progress when the onboarding submission fails", async () => {
+    fetchMock.mockReset().mockResolvedValue(
+      new Response(JSON.stringify({ detail: "画像服务暂时不可用" }), {
+        headers: { "Content-Type": "application/json" },
+        status: 500,
+      }),
+    );
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/onboarding"]}>
+        <StudentRoutes initialSession={liveStudentSession} />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "有一点基础" }));
+    await user.click(screen.getByRole("button", { name: "跟上课堂进度" }));
+    await user.click(screen.getByRole("button", { name: "逐行检查代码" }));
+    await user.click(screen.getByRole("button", { name: "短小例题" }));
+    await user.click(screen.getByRole("button", { name: "2–4 小时" }));
+
+    await user.click(screen.getByRole("button", { name: "提交并生成初始画像" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert", { name: "提交错误" })).toBeVisible(),
+    );
+    // Progress is preserved so the student can retry without re-answering.
+    expect(window.localStorage.getItem("pymentor.onboardingStep")).not.toBeNull();
   });
 });
 
