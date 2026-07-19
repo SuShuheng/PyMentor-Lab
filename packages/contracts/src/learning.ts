@@ -42,6 +42,7 @@ export const ProfileDimensionView = z.object({
 export type ProfileDimensionView = z.infer<typeof ProfileDimensionView>;
 
 export const ProfileSnapshot = z.object({
+  id: z.string().min(1),
   student_id: z.string().min(1),
   version: z.number().int().min(1),
   source_event_id: z.string().min(1),

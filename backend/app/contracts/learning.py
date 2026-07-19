@@ -78,6 +78,7 @@ class ProfileDimensionView(BaseModel):
 class ProfileSnapshot(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    id: str = Field(min_length=1)
     student_id: str = Field(min_length=1)
     version: int = Field(ge=1)
     source_event_id: str = Field(min_length=1)

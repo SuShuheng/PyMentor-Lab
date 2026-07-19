@@ -428,6 +428,7 @@ export type ProfileDisputeView = {
 
 export type ProfileSnapshot = {
     dimensions: Array<ProfileDimensionView>;
+    id: string;
     source_event_id: string;
     student_id: string;
     version: number;
@@ -1329,6 +1330,22 @@ export type ResetDemoTenantApiV1AdminTenantsTenantIdResetPostResponses = {
 };
 
 export type ResetDemoTenantApiV1AdminTenantsTenantIdResetPostResponse = ResetDemoTenantApiV1AdminTenantsTenantIdResetPostResponses[keyof ResetDemoTenantApiV1AdminTenantsTenantIdResetPostResponses];
+
+export type DemoLoginApiV1AuthDemoPostData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/auth/demo';
+};
+
+export type DemoLoginApiV1AuthDemoPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: AuthTokens;
+};
+
+export type DemoLoginApiV1AuthDemoPostResponse = DemoLoginApiV1AuthDemoPostResponses[keyof DemoLoginApiV1AuthDemoPostResponses];
 
 export type LoginApiV1AuthLoginPostData = {
     body: LoginRequest;

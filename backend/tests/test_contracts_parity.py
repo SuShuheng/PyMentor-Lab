@@ -920,6 +920,7 @@ FIXTURES: dict[str, list[dict[str, Any]]] = {
     ],
     "ProfileSnapshot": [
         {
+            "id": "00000000-0000-0000-0000-000000000031",
             "student_id": "00000000-0000-0000-0000-000000000030",
             "version": 2,
             "source_event_id": "evt_profile_2",

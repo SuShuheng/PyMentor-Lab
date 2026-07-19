@@ -50,6 +50,7 @@ async def get_current_profile(
         )
     )
     return ProfileSnapshot(
+        id=str(profile.id),
         student_id=str(profile.student_id),
         version=profile.version,
         source_event_id=profile.source_event_id,

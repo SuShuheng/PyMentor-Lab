@@ -17,9 +17,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.bootstrap import DEMO_GUEST_EMAIL, DEMO_TENANT_SLUG
 from app.config import get_settings
 from app.contracts.auth import (
     AuthTokens,
@@ -30,8 +32,8 @@ from app.contracts.auth import (
     UserProfile,
 )
 from app.db import get_db
-from app.models.base import TokenType, UserStatus
-from app.models.identity import User
+from app.models.base import RoleName, TenantType, TokenType, UserStatus
+from app.models.identity import Tenant, User
 from app.rbac import get_current_user
 from app.security import (
     TokenError,
@@ -152,6 +154,36 @@ async def login(body: LoginRequest, db: Session = Depends(get_db)) -> AuthTokens
 
     roles = get_user_roles(db, user.id)
     return _issue_token_pair(db, user, roles)
+
+
+@router.post("/demo", response_model=AuthTokens)
+async def demo_login(db: Session = Depends(get_db)) -> AuthTokens:
+    """Issue a session for the isolated, reset-safe demo guest."""
+
+    tenant = db.scalar(
+        select(Tenant).where(
+            Tenant.slug == DEMO_TENANT_SLUG,
+            Tenant.type == TenantType.DEMO,
+        )
+    )
+    if tenant is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="demo environment unavailable",
+        )
+    guest = get_user_by_email(db, tenant_id=tenant.id, email=DEMO_GUEST_EMAIL)
+    if guest is None or guest.status != UserStatus.ACTIVE:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="demo environment unavailable",
+        )
+    roles = get_user_roles(db, guest.id)
+    if set(roles) != {RoleName.DEMO_GUEST.value}:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="demo environment unavailable",
+        )
+    return _issue_token_pair(db, guest, roles)
 
 
 # --------------------------------------------------------------------------- #

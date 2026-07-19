@@ -15,6 +15,25 @@ def _env(name: str, default: str) -> str:
     return os.environ.get(name, default)
 
 
+def _csv_env(name: str, default: tuple[str, ...]) -> tuple[str, ...]:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return tuple(value.strip() for value in raw.split(",") if value.strip())
+
+
+_LOCAL_RENDERER_ORIGINS = (
+    "http://127.0.0.1:4173",
+    "http://127.0.0.1:4174",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "http://localhost:4173",
+    "http://localhost:4174",
+    "http://localhost:5173",
+    "http://localhost:5174",
+)
+
+
 @dataclass(frozen=True)
 class Settings:
     """Immutable runtime settings for the FastAPI service."""
@@ -23,6 +42,15 @@ class Settings:
     service_name: str = _env("PYMENTOR_SERVICE_NAME", "api")
     version: str = _env("PYMENTOR_SERVICE_VERSION", "0.0.0")
     log_level: str = _env("PYMENTOR_LOG_LEVEL", "INFO")
+
+    # Browser renderer origins. Credentials require an explicit allowlist;
+    # wildcard origins are deliberately unsupported.
+    cors_allowed_origins: tuple[str, ...] = field(
+        default_factory=lambda: _csv_env(
+            "PYMENTOR_CORS_ALLOWED_ORIGINS",
+            _LOCAL_RENDERER_ORIGINS,
+        )
+    )
 
     # Database (set by docker-compose / tests via PYMENTOR_DATABASE_URL)
     database_url: str = _env(

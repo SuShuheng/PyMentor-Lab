@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.knowledge_seed import seed_published_course
 from app.models.base import RoleName, TenantType, UserStatus
-from app.models.identity import User
+from app.models.identity import Tenant, User
 from app.security import hash_password
 from app.services import (
     assign_role,
@@ -22,6 +22,43 @@ from app.services import (
     get_user_by_email,
     has_any_admin,
 )
+
+DEMO_TENANT_SLUG = "demo"
+DEMO_GUEST_EMAIL = "guest@demo.pymentor.dev"
+_LEGACY_DEMO_GUEST_EMAIL = "guest@demo.local"
+
+
+def ensure_demo_guest(db: Session, tenant: Tenant) -> User:
+    """Ensure the reset-safe, endpoint-only guest identity exists."""
+
+    guest = get_user_by_email(db, tenant_id=tenant.id, email=DEMO_GUEST_EMAIL)
+    if guest is None:
+        guest = get_user_by_email(
+            db,
+            tenant_id=tenant.id,
+            email=_LEGACY_DEMO_GUEST_EMAIL,
+        )
+        if guest is not None:
+            guest.email = DEMO_GUEST_EMAIL
+    if guest is None:
+        guest = User(
+            tenant_id=tenant.id,
+            email=DEMO_GUEST_EMAIL,
+            # Demo access is issued only by POST /auth/demo. This intentionally
+            # is not a valid password hash and cannot authenticate via /login.
+            password_hash="demo-endpoint-only",
+            status=UserStatus.ACTIVE,
+            display_name="Demo Guest",
+        )
+        db.add(guest)
+        db.flush()
+    else:
+        guest.status = UserStatus.ACTIVE
+        guest.display_name = "Demo Guest"
+        db.flush()
+    assign_role(db, user_id=guest.id, role_name=RoleName.DEMO_GUEST.value)
+    return guest
+
 
 _settings = get_settings()
 
@@ -70,24 +107,15 @@ def seed_demo_tenant(db: Session) -> None:
     幂等：demo 租户与 guest 用户已存在时不重复创建。
     """
     ensure_roles_seeded(db)
-    demo = get_or_create_tenant(db, slug="demo", name="Demo Tenant", tenant_type=TenantType.DEMO)
+    demo = get_or_create_tenant(
+        db,
+        slug=DEMO_TENANT_SLUG,
+        name="Demo Tenant",
+        tenant_type=TenantType.DEMO,
+    )
+    demo.type = TenantType.DEMO
     db.flush()
-
-    # Demo Guest 用户（DEMO_GUEST 角色，ACTIVE 可直接登录体验）。
-    guest_email = "guest@demo.local"
-    guest = get_user_by_email(db, tenant_id=demo.id, email=guest_email)
-    if guest is None:
-        guest = User(
-            tenant_id=demo.id,
-            email=guest_email,
-            password_hash=hash_password("demo-guest-pwd"),
-            status=UserStatus.ACTIVE,
-            display_name="Demo Guest",
-        )
-        db.add(guest)
-        db.flush()
-        assign_role(db, user_id=guest.id, role_name=RoleName.DEMO_GUEST.value)
-
+    ensure_demo_guest(db, demo)
     db.commit()
 
 

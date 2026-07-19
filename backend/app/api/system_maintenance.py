@@ -13,6 +13,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
+from app.bootstrap import ensure_demo_guest
 from app.command_idempotency import CommandScope, begin_command, scope_for_request
 from app.contracts.errors import ErrorCode, ErrorEnvelope
 from app.contracts.maintenance import (
@@ -539,6 +540,7 @@ async def reset_demo_tenant(
         for user in users:
             db.delete(user)
         db.flush()
+        ensure_demo_guest(db, tenant)
         record_audit(
             db,
             tenant_id=tenant_id,
