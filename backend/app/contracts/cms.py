@@ -120,3 +120,39 @@ class CmsPublishView(_StrictCmsModel):
     published: bool
     content_version: SemanticVersion
     actor_user_id: UUID
+
+
+# --------------------------------------------------------------------------- #
+# Node list (BE-027 V1.1: CMS browser needs a paginated search surface)
+# --------------------------------------------------------------------------- #
+class CmsNodeListItem(_StrictCmsModel):
+    """Compact node row returned by the list endpoint.
+
+    The full editable shape lives in :class:`CmsNodeView`; the list only needs
+    identity + the fields an editor scans to locate a node (title, ordering,
+    content version). ``chapter_title`` is denormalized so the browser can show
+    the chapter context without a second round-trip per row.
+    """
+
+    node_id: UUID
+    course_id: UUID
+    chapter_id: UUID
+    chapter_title: str
+    title: str
+    content_version: SemanticVersion
+
+
+class CmsPageMetadata(_StrictCmsModel):
+    """Pagination metadata shared by CMS list responses."""
+
+    page: int = Field(ge=1)
+    page_size: int = Field(ge=1, le=100)
+    total_items: int = Field(ge=0)
+    total_pages: int = Field(ge=0)
+
+
+class CmsNodePage(_StrictCmsModel):
+    """Paginated list of nodes returned by ``GET /api/v1/admin/cms/nodes``."""
+
+    items: list[CmsNodeListItem]
+    page: CmsPageMetadata

@@ -33,7 +33,7 @@ echo ========================================
 echo.
 
 REM 0. Clean + create output dir
-echo [0/5] Preparing output directory...
+echo [0/6] Preparing output directory...
 if exist "%DIST_DIR%" rmdir /s /q "%DIST_DIR%"
 mkdir "%DIST_DIR%" 2>nul
 if errorlevel 1 (
@@ -42,8 +42,30 @@ if errorlevel 1 (
     goto :end
 )
 
-REM 1. Build student EXE (Electron Forge make:win)
-echo [1/5] Building student EXE (Electron Forge)...
+REM 1. Generate icon FIRST (required by make:win + Inno Setup)
+echo [1/6] Generating brand icon (required before EXE build)...
+if not exist "%ROOT%%PYTHON%" (
+    echo ERROR: %PYTHON% not found. Install Python 3.13 + Pillow first:
+    echo        %PYTHON% -m pip install Pillow
+    set "EXITCODE=1"
+    goto :end
+)
+"%ROOT%%PYTHON%" "%ROOT%infra\icons\generate-icons.py"
+if errorlevel 1 (
+    echo ERROR: icon generation failed
+    set "EXITCODE=1"
+    goto :end
+)
+if not exist "%ROOT%apps\desktop\build\icon.ico" (
+    echo ERROR: apps\desktop\build\icon.ico not generated
+    set "EXITCODE=1"
+    goto :end
+)
+echo     -^> apps\desktop\build\icon.ico
+echo.
+
+REM 2. Build student EXE (Electron Forge make:win)
+echo [2/6] Building student EXE (Electron Forge)...
 pushd "%ROOT%apps\desktop"
 call pnpm install --frozen-lockfile
 if errorlevel 1 (
@@ -69,20 +91,8 @@ copy /y "%ROOT%apps\desktop\out\make\squirrel.windows\x64\PyMentorLab-Setup.exe"
 echo     -^> %DIST_DIR%\PyMentorLab-Setup.exe
 echo.
 
-REM 2. Generate icon (ensure fresh)
-echo [2/5] Generating brand icon...
-if not exist "%ROOT%%PYTHON%" (
-    echo WARNING: %PYTHON% not found; skipping icon regen (using committed build/icon.ico if present)
-) else (
-    "%ROOT%%PYTHON%" "%ROOT%infra\icons\generate-icons.py"
-    if errorlevel 1 (
-        echo WARNING: icon generation failed; continuing with existing icon
-    )
-)
-echo.
-
 REM 3. Build backend deploy zip (self-contained full source)
-echo [3/5] Building backend deployment zip...
+echo [3/6] Building backend deployment zip...
 node "%ROOT%dist\build-dist.mjs"
 if errorlevel 1 (
     echo ERROR: build-dist.mjs failed
@@ -99,7 +109,7 @@ echo     -^> %DIST_DIR%\pymentor-backend-v1.1.zip
 echo.
 
 REM 4. Copy assets for Inno Setup embedding
-echo [4/5] Preparing Inno Setup assets...
+echo [4/6] Preparing Inno Setup assets...
 if not exist "%ROOT%dist\installer-source\installer-assets" mkdir "%ROOT%dist\installer-source\installer-assets"
 copy /y "%ROOT%apps\desktop\out\make\squirrel.windows\x64\PyMentorLab-Setup.exe" "%ROOT%dist\installer-source\installer-assets\PyMentorLab-Setup.exe" >nul
 copy /y "%ROOT%dist\backend-deploy\pymentor-backend-v1.1.zip" "%ROOT%dist\installer-source\installer-assets\backend-deploy.zip" >nul
@@ -108,7 +118,7 @@ if exist "%ROOT%apps\desktop\build\icon.ico" copy /y "%ROOT%apps\desktop\build\i
 echo.
 
 REM 5. Build bootstrapper EXE (Inno Setup)
-echo [5/5] Building bootstrapper EXE (Inno Setup)...
+echo [5/6] Building bootstrapper EXE (Inno Setup)...
 if not exist "%ISCC%" (
     echo ERROR: ISCC.exe not found at %ISCC%
     echo        Install Inno Setup 6 or update the ISCC variable in this script.
@@ -131,8 +141,9 @@ echo     -^> %DIST_DIR%\PyMentorLab-Bootstrapper.exe
 echo.
 
 REM Done
+echo [6/6] Build complete.
 echo ========================================
-echo Build complete. Artifacts in %DIST_DIR%:
+echo Artifacts in %DIST_DIR%:
 dir /b "%DIST_DIR%"
 echo ========================================
 

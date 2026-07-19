@@ -16,7 +16,13 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.knowledge_seed import seed_published_course
-from app.models import LearningPath, LearningPathStatus, TaskDefinition
+from app.models import (
+    CourseCatalog,
+    KnowledgeNode,
+    LearningPath,
+    LearningPathStatus,
+    TaskDefinition,
+)
 from app.models.base import RoleName, TenantType, UserStatus
 from app.models.identity import Tenant, User
 from app.pathing import (
@@ -278,11 +284,120 @@ def seed_demo_learning_data(db: Session) -> None:
     db.commit()
 
 
+def seed_course_tasks(db: Session) -> int:
+    """Compile a TaskDefinition + published TaskVersion for every course node.
+
+    This is SEED/TEACHING data (not competition-grade problems). Each node gets
+    a basic Python task generated from its learning objectives + examples; the
+    prompt asks the student to demonstrate the concept via a simple runnable
+    script. Without this, students compiling a path via onboarding get
+    ``today`` items with ``task_version_id=None`` ("缺少任务实例") because the
+    demo guest's single ``TaskDefinition`` was the only one seeded.
+
+    Test policy: ``entrypoint.kind = "SCRIPT"`` with one visible case whose
+    ``expected_stdout = ".*"`` and ``comparison = "MATCHES"``. The sandbox
+    harness evaluates ``re.fullmatch(".*", stdout)`` which matches any output
+    (including empty), so the case passes iff the script runs without a runtime
+    error. This is the minimum viable practice task and avoids per-node
+    function-name contracts.
+
+    Idempotent: nodes that already have a ``TaskDefinition`` are skipped.
+    Returns the number of new definitions created in this run.
+    """
+
+    course = db.scalar(
+        select(CourseCatalog)
+        .where(CourseCatalog.published.is_(True))
+        .order_by(CourseCatalog.created_at, CourseCatalog.id)
+    )
+    if course is None:
+        return 0
+    nodes = list(
+        db.scalars(select(KnowledgeNode).where(KnowledgeNode.course_id == course.id))
+    )
+    tenant = get_or_create_tenant(db, slug="default", name="Default Tenant")
+    created = 0
+    for node in nodes:
+        existing = db.scalar(
+            select(TaskDefinition).where(TaskDefinition.node_id == node.id)
+        )
+        if existing is not None:
+            continue
+        title = node.title or f"练习：{node.id}"
+        objectives = list(node.learning_objectives or [])
+        examples = list(node.examples or [])
+        prompt_parts = [f"# {title}\n"]
+        if objectives:
+            prompt_parts.append(
+                "学习目标：\n" + "\n".join(f"- {o}" for o in objectives)
+            )
+        if examples:
+            prompt_parts.append(
+                "示例：\n" + "\n".join(f">>> {e}" for e in examples)
+            )
+        prompt_parts.append(
+            "请在下方编写一段 Python 代码，演示本节点的核心概念并打印结果。"
+        )
+        prompt = "\n\n".join(prompt_parts)
+        definition = TaskDefinition(
+            tenant_id=tenant.id,
+            course_id=course.id,
+            node_id=node.id,
+            key=f"node-{node.id}",
+            title=title,
+        )
+        db.add(definition)
+        db.flush()
+        compile_task_version(
+            db,
+            definition,
+            CompileInput(
+                prompt=prompt,
+                tests_policy={
+                    "entrypoint": {"kind": "SCRIPT"},
+                    "allowed_imports": ["math", "random", "string"],
+                    "visible": [
+                        {
+                            "id": "runs-without-error",
+                            "expected_stdout": ".*",
+                            "comparison": "MATCHES",
+                            "transfer": False,
+                        }
+                    ],
+                    "hidden": [],
+                },
+                hint_policy={
+                    "max_level": 1,
+                    "hints": [
+                        {
+                            "key": "starter",
+                            "level": 1,
+                            "content": "从一个最简单的 print() 语句开始演示概念。",
+                            "independence_cost": 10,
+                        }
+                    ],
+                },
+                mastery_policy={
+                    "independence_min": 0.6,
+                    "transfer_min": 0.5,
+                    "max_hints_for_mastery": 1,
+                    "review_delay_days": 7,
+                },
+                resource_versions={},
+                scenario_key=f"node-{node.id}-v1",
+            ),
+        )
+        created += 1
+    db.commit()
+    return created
+
+
 def run_bootstrap(db: Session) -> None:
     """执行全部引导步骤（启动时调用）。"""
     seed_published_course(db)
     ensure_roles_seeded(db)
     db.commit()
+    seed_course_tasks(db)
     bootstrap_initial_admin(db)
     seed_demo_tenant(db)
     seed_demo_learning_data(db)
