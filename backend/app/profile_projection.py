@@ -8,6 +8,7 @@ explicit conflict instead of silently overwriting formal state.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
@@ -239,3 +240,74 @@ def create_profile_dispute(
     db.add(dispute)
     db.flush()
     return dispute
+
+
+# Onboarding answers are self-reported, so they feed the projection with low
+# confidence and only as an INDEPENDENCE_SUPPORT baseline. They never advance
+# mastery (mastery lives in a separate table and is decided by assessment
+# evidence only) — they merely give the deterministic pipeline a starting
+# hint about the student's preferred support level.
+_ONBOARDING_SUPPORT_LEVELS = {
+    "first-touch": 3,
+    "some-baseline": 2,
+    "full-project": 1,
+}
+
+
+def _onboarding_support_level(prior_experience: str) -> int:
+    """Map a self-reported prior-experience answer to a support_level hint.
+
+    Higher support_level means the student expects more scaffolding; the
+    mapping is deliberately conservative and only affects the initial
+    INDEPENDENCE_SUPPORT baseline. Real code/assessment evidence overrides it.
+    """
+
+    key = prior_experience.strip().lower()
+    if "first" in key or "never" in key or "new" in key:
+        return _ONBOARDING_SUPPORT_LEVELS["first-touch"]
+    if "full" in key or "project" in key or "complete" in key:
+        return _ONBOARDING_SUPPORT_LEVELS["full-project"]
+    return _ONBOARDING_SUPPORT_LEVELS["some-baseline"]
+
+
+def project_onboarding(
+    db: Session,
+    *,
+    tenant_id: UUID,
+    student_id: UUID,
+    source_event_id: str,
+    expected_version: int,
+    answers: dict[str, Any],
+) -> ProfileVersion:
+    """Project self-reported onboarding answers as profile evidence (BE-018).
+
+    The answers flow through the existing ``project_profile`` machinery so the
+    snapshot stays deterministic, optimistic-concurrency-controlled, and
+    immutable. Self-reported data is recorded with low confidence (0.3) and
+    only as an INDEPENDENCE_SUPPORT baseline; it never auto-advances mastery,
+    which is owned by the assessment pipeline.
+    """
+
+    prior = str(answers.get("prior_experience", "")).strip()
+    if not prior:
+        raise InvalidProfileUpdate("answers.prior_experience is required")
+    support_level = _onboarding_support_level(prior)
+    # Higher support_level → lower initial independence score (more scaffolding
+    # expected). Anchored to 0.5 midpoint with a small adjustment so subsequent
+    # real evidence easily overrides it.
+    score = max(0.2, min(0.8, 0.6 - 0.1 * (support_level - 1)))
+    update = DimensionUpdate(
+        dimension=ProfileDimension.INDEPENDENCE_SUPPORT.value,
+        scope_key="onboarding",
+        score=score,
+        confidence=0.3,
+        support_level=support_level,
+    )
+    return project_profile(
+        db,
+        tenant_id=tenant_id,
+        student_id=student_id,
+        source_event_id=source_event_id,
+        expected_version=expected_version,
+        updates=[update],
+    )

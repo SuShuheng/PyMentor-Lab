@@ -34,11 +34,19 @@ from app.contracts.consistency import (
 )
 from app.contracts.errors import ErrorCode, ErrorEnvelope, FieldError
 from app.contracts.health import HealthResponse, HealthStatus, SystemPingResponse
+from app.contracts.knowledge import (
+    KnowledgeGraph,
+    KnowledgeGraphEdge,
+    KnowledgeGraphNode,
+)
 from app.contracts.learning import (
     AssessmentSubmission,
     LearningPathStatusContract,
     MasteryStatusContract,
     MasteryView,
+    OnboardingAnswers,
+    OnboardingSubmissionRequest,
+    OnboardingSubmissionView,
     PathSnapshot,
     PathStepKindContract,
     PathStepView,
@@ -204,6 +212,9 @@ __all__ = [
     "HintRequest",
     "HintUsageView",
     "IdempotencyRecord",
+    "KnowledgeGraph",
+    "KnowledgeGraphEdge",
+    "KnowledgeGraphNode",
     "LearningPathStatusContract",
     "LearningResourceType",
     "LoginRequest",
@@ -211,6 +222,9 @@ __all__ = [
     "MaintenanceOperationView",
     "MasteryStatusContract",
     "MasteryView",
+    "OnboardingAnswers",
+    "OnboardingSubmissionRequest",
+    "OnboardingSubmissionView",
     "OrchestratorAgentInput",
     "OrchestratorAgentOutput",
     "OutboxEventModel",

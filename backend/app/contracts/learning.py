@@ -100,6 +100,39 @@ class ProfileDisputeView(BaseModel):
     reason: str = Field(min_length=1, max_length=2000)
 
 
+class OnboardingAnswers(BaseModel):
+    """Self-reported onboarding answers (BE-018).
+
+    These are recorded as evidence and feed the deterministic profile
+    projection with low confidence; they never auto-advance mastery
+    (CONTRACT rule). Field names mirror the V1.0 frontend onboarding flow.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    prior_experience: str = Field(min_length=1, max_length=128)
+    primary_goal: str = Field(min_length=1, max_length=128)
+    error_strategy: str = Field(min_length=1, max_length=128)
+    preferred_exercise: str = Field(min_length=1, max_length=128)
+    weekly_band: str = Field(min_length=1, max_length=64)
+
+
+class OnboardingSubmissionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    answers: OnboardingAnswers
+    expected_profile_version: int = Field(ge=0)
+
+
+class OnboardingSubmissionView(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    evidence_event_id: str = Field(min_length=1, max_length=128)
+    profile_version_id: str = Field(min_length=1)
+    profile_version: int = Field(ge=1)
+    replan_requested: bool
+
+
 class PathStepView(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
