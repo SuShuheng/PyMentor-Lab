@@ -236,10 +236,7 @@ textarea {
 
 .replay-grid {
   display: grid;
-  grid-template-columns: minmax(280px, 0.95fr) minmax(340px, 1fr) minmax(
-      300px,
-      0.85fr
-    );
+  grid-template-columns: minmax(280px, 0.95fr) minmax(340px, 1fr) minmax(300px, 0.85fr);
   gap: 18px;
 }
 
@@ -902,6 +899,80 @@ textarea {
   accent-color: #111;
 }
 
+/* FE-026 resource statistics panel — monochrome gauges + sparklines. */
+.admin-resource-stats {
+  margin-top: 16px;
+}
+
+.admin-resource-stats .py-chart-frame {
+  margin: 0;
+}
+
+.admin-resource-stats__rows {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-resource-stats__rows li {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.2fr) 80px minmax(120px, 1fr) minmax(120px, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 10px 4px;
+  border-top: 1px solid #e5e7eb;
+  color: #1f2937;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.admin-resource-stats__rows li:last-child {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-resource-stats__type {
+  color: #111;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.admin-resource-stats__count {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: #4b5563;
+  font-weight: 400;
+}
+
+.admin-resource-stats__count strong {
+  color: #111;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.admin-resource-stats__gauge,
+.admin-resource-stats__sparkline {
+  display: grid;
+  gap: 6px;
+  align-items: center;
+}
+
+.admin-resource-stats__gauge progress,
+.admin-resource-stats__sparkline progress {
+  width: 100%;
+  height: 8px;
+  accent-color: #111;
+}
+
+.admin-resource-stats__gauge strong,
+.admin-resource-stats__sparkline strong {
+  color: #374151;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .py-chart-frame__table {
   width: 100%;
   border-collapse: collapse;
@@ -917,6 +988,25 @@ textarea {
 
 .py-chart-frame__table thead th {
   color: #6b7280;
+}
+
+.admin-advanced-charts {
+  display: grid;
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.admin-advanced-charts .py-chart-frame {
+  margin: 0;
+}
+
+@media (min-width: 1024px) {
+  .admin-advanced-charts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-advanced-charts .py-chart-frame:first-of-type {
+    grid-column: 1 / -1;
+  }
 }
 
 .admin-table-toolbar label {
@@ -970,6 +1060,66 @@ textarea {
 .data-operations button.is-danger {
   border-color: #dc2626;
   color: #b91c1c;
+}
+
+/* FE-016 Provider CRUD form + table action refinements. */
+.admin-table-action.is-danger {
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.admin-provider-form form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-provider-form select {
+  width: 100%;
+  padding: 11px;
+  border: 1px solid #9ca3af;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.admin-provider-field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.admin-provider-reveal {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #4b5563;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.admin-provider-field-hint {
+  margin: -2px 0 8px;
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.admin-provider-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-provider-toggle input {
+  width: 16px;
+  height: 16px;
 }
 
 .admin-auth-page {
@@ -1128,6 +1278,212 @@ textarea {
   text-align: center;
 }
 
+/* FE-024 minimal CMS: node + question-template editor fields */
+.cms-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin: 0 0 16px;
+}
+
+.cms-meta div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cms-meta dt {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.cms-meta dd {
+  margin: 0;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.cms-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 14px;
+}
+
+.cms-field > span {
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.cms-field input,
+.cms-field textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font: inherit;
+  background: #fff;
+}
+
+.cms-field textarea {
+  resize: vertical;
+  min-height: 44px;
+}
+
+.cms-field input:disabled {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.cms-json {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.cms-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.cms-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid #1f2937;
+  border-radius: 6px;
+  background: #1f2937;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cms-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* FE-017 / BE-020 Agent prompt tuning UI */
+.agent-tuning-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(360px, 1.2fr) minmax(280px, 0.9fr);
+  gap: 18px;
+}
+
+.agent-tuning-grid .admin-panel {
+  min-height: 420px;
+}
+
+.agent-tuning-published dl,
+.agent-tuning-published pre {
+  margin: 0 0 12px;
+}
+
+.agent-tuning-published-text {
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #f9fafb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.agent-tuning-textarea {
+  width: 100%;
+  min-height: 280px;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  background: #fff;
+  resize: vertical;
+}
+
+.agent-tuning-textarea:disabled {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.agent-tuning-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 4px;
+}
+
+.agent-tuning-actions span[aria-live="polite"] {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.agent-tuning-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.agent-tuning-history-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.agent-tuning-history-list strong {
+  font-size: 13px;
+  color: #111827;
+}
+
+.agent-tuning-history-list small {
+  font-size: 11.5px;
+  color: #6b7280;
+}
+
+.agent-tuning-history-list code {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  color: #374151;
+  background: #f3f4f6;
+  padding: 4px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-publish-preview {
+  max-height: 200px;
+  overflow: auto;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #f9fafb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 @media (max-width: 1250px) {
   .replay-grid {
     grid-template-columns: 1fr 1fr;
@@ -1136,6 +1492,14 @@ textarea {
   .run-detail {
     grid-column: 1 / -1;
     min-height: auto;
+  }
+
+  .agent-tuning-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .agent-tuning-history {
+    grid-column: 1 / -1;
   }
 }
 
@@ -1155,7 +1519,8 @@ textarea {
   }
 
   .overview-grid,
-  .student-detail-grid {
+  .student-detail-grid,
+  .agent-tuning-grid {
     grid-template-columns: 1fr;
   }
 }

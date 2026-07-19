@@ -5,17 +5,29 @@ import {
   CheckCircle,
   Database,
   DownloadSimple,
+  Eye,
+  EyeSlash,
   Funnel,
   Gauge,
   HardDrives,
   LinkSimple,
   MagnifyingGlass,
+  PencilSimple,
+  Plus,
+  Power,
   ShieldCheck,
   Student,
+  Trash,
   WarningCircle,
   X,
 } from "@phosphor-icons/react";
-import { ChartFrame } from "@pymentor/charts";
+import {
+  AgentTimelineChart,
+  ApiUsageChart,
+  ChartFrame,
+  MasteryDistributionChart,
+  downloadCsv,
+} from "@pymentor/charts";
 import {
   adminProviderMetricsApiV1AdminSystemMetricsGet,
   adminResourceReviewsApiV1AdminResourcesReviewsGet,
@@ -37,14 +49,13 @@ import {
   type AdminStudentProgress,
   type AdminSystemHealthView,
   type DatabaseStatusView,
-  listProvidersApiV1AdminProvidersGet,
   listPendingApiV1AdminRegistrationsPendingGet,
   type ProviderMetricsView,
   rejectRegistrationApiV1AdminRegistrationsUserIdRejectPost,
   restoreDatabaseBackupApiV1AdminSystemDbRestorePost,
   type PendingRegistration,
   type ProviderConfigView,
-  testProviderConnectivityApiV1AdminProvidersProviderIdTestPost,
+  type ProviderType,
 } from "@pymentor/api-client";
 import { readServerUrl } from "@pymentor/config";
 import { StatePanel } from "@pymentor/ui";
@@ -54,6 +65,24 @@ import { Link, useLocation, useParams, useSearchParams } from "react-router-dom"
 
 import { useAdminAuth } from "../auth/auth-session";
 import { fetchAdminOverview } from "./admin-overview-api";
+import {
+  type ProviderConnectivityResult,
+  configureAdminProviderClient,
+  createProvider,
+  deleteProvider,
+  disableProvider,
+  enableProvider,
+  fetchProviders,
+  providerApiError,
+  testProviderConnectivity,
+  updateProvider,
+} from "./admin-provider-api";
+import {
+  RESOURCE_TYPES,
+  fetchAdminMetrics,
+  type AdminMetrics,
+  type ResourceStatItem,
+} from "./admin-metrics-api";
 
 function AdminPageHeading({
   action,
@@ -130,6 +159,31 @@ function formatBytes(value: number): string {
   if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
   if (value < 1024 * 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)} MB`;
   return `${(value / 1024 / 1024 / 1024).toFixed(1)} GB`;
+}
+
+function formatDuration(valueMs: number): string {
+  if (!Number.isFinite(valueMs) || valueMs <= 0) return "-";
+  if (valueMs < 1000) return `${Math.round(valueMs)}ms`;
+  const seconds = valueMs / 1000;
+  if (seconds < 60) return `${seconds.toFixed(1)}s`;
+  const minutes = seconds / 60;
+  return `${minutes.toFixed(1)}m`;
+}
+
+function formatPercent(rate: number): string {
+  if (!Number.isFinite(rate)) return "-";
+  const clamped = Math.max(0, Math.min(1, rate));
+  return `${(clamped * 100).toFixed(1)}%`;
+}
+
+function resourceStatsCsvRows(items: readonly ResourceStatItem[]) {
+  return items.map((item) => [
+    item.resource_type,
+    item.total,
+    item.succeeded,
+    item.success_rate.toFixed(3),
+    Math.round(item.avg_generation_ms),
+  ]);
 }
 
 export function OverviewPage() {
@@ -246,40 +300,28 @@ export function OverviewPage() {
                 ? overviewQuery.error.message
                 : "管理概览数据暂时不可用，请稍后重试"}
             </p>
-            <button
-              onClick={() => overviewQuery.refetch()}
-              type="button"
-              aria-label="重试概览"
-            >
+            <button onClick={() => overviewQuery.refetch()} type="button" aria-label="重试概览">
               重试
             </button>
           </div>
         ) : null}
         {overviewQuery.data
           ? (
-            [
-              ["活跃学生", String(overviewQuery.data.active_students), "实时"],
               [
-                "待审核注册",
-                String(overviewQuery.data.pending_registrations),
-                "需人工处理",
-              ],
-              ["资源审校", String(overviewQuery.data.resource_reviews), "实时"],
-              [
-                "到期复测",
-                String(overviewQuery.data.due_reviews),
-                "服务端计划",
-              ],
-            ] as const
-          ).map(([label, value, trend]) => (
-            <article className="metric-card" key={label}>
-              <p>{label}</p>
-              <div>
-                <strong>{value}</strong>
-                <span>{trend}</span>
-              </div>
-            </article>
-          ))
+                ["活跃学生", String(overviewQuery.data.active_students), "实时"],
+                ["待审核注册", String(overviewQuery.data.pending_registrations), "需人工处理"],
+                ["资源审校", String(overviewQuery.data.resource_reviews), "实时"],
+                ["到期复测", String(overviewQuery.data.due_reviews), "服务端计划"],
+              ] as const
+            ).map(([label, value, trend]) => (
+              <article className="metric-card" key={label}>
+                <p>{label}</p>
+                <div>
+                  <strong>{value}</strong>
+                  <span>{trend}</span>
+                </div>
+              </article>
+            ))
           : null}
       </section>
       <div className="overview-grid">
@@ -710,6 +752,11 @@ export function ResourceReviewPage() {
   return (
     <div className="admin-page">
       <AdminPageHeading
+        action={
+          <Link className="admin-filter-button" to="/admin/resources/stats">
+            <Gauge size={15} /> 资源统计
+          </Link>
+        }
         description="核对来源映射、事实性、合规性与版本差异后再发布"
         title="资源审核"
       />
@@ -764,12 +811,280 @@ export function ResourceReviewPage() {
   );
 }
 
+function exportResourceStatsCsv(items: readonly ResourceStatItem[]): void {
+  downloadCsv(
+    `resource-stats-${new Date().toISOString().slice(0, 10)}.csv`,
+    ["resource_type", "total", "succeeded", "success_rate", "avg_generation_ms"],
+    resourceStatsCsvRows(items),
+  );
+}
+
+export function ResourceStatsPage() {
+  const { session } = useAdminAuth();
+  const accessToken = session?.accessToken;
+  const [since, setSince] = useState("");
+  const [until, setUntil] = useState("");
+  const [courseId, setCourseId] = useState("");
+  // Draft filter values; applied on submit so the network request and URL
+  // stay in sync with what the user confirms.
+  const [draft, setDraft] = useState({ courseId: "", since: "", until: "" });
+  const [reloadAttempt, setReloadAttempt] = useState(0);
+
+  const statsQuery = useQuery({
+    queryKey: [
+      "admin",
+      "resource-stats",
+      accessToken ?? "anonymous",
+      draft.courseId,
+      draft.since,
+      draft.until,
+      reloadAttempt,
+    ],
+    queryFn: () =>
+      fetchAdminMetrics({
+        accessToken: accessToken ?? "",
+        courseId: draft.courseId,
+        since: draft.since,
+        until: draft.until,
+      }),
+    enabled: Boolean(accessToken),
+    // Per-type aggregates change slowly; a 60s TTL keeps the panel responsive
+    // without re-running the server-side grouping on every navigation.
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+  });
+
+  function applyFilters() {
+    setDraft({ courseId: courseId.trim(), since, until });
+  }
+
+  // FE-026 only consumes the `resource_stats` field of the shared BE-028
+  // `GET /api/v1/admin/metrics` payload (reusing FE-025's wrapper); the
+  // advanced-chart fields are ignored here so FE-025's pages stay the single
+  // owner of those inputs.
+  const resourceStats = statsQuery.data?.resource_stats;
+  const statsItems = resourceStats?.items ?? [];
+  const itemsByType = new Map(statsItems.map((item) => [item.resource_type, item]));
+  // Use the largest avg generation time as the relative scale for sparklines
+  // so every per-type bar is comparable in one black-white band.
+  const maxGenerationMs = Math.max(1, ...(statsItems.map((item) => item.avg_generation_ms) ?? [1]));
+
+  return (
+    <div className="admin-page">
+      <AdminPageHeading
+        action={
+          <button
+            aria-label="导出 CSV"
+            className="admin-filter-button"
+            disabled={!statsItems.length}
+            onClick={() => exportResourceStatsCsv(statsItems)}
+            type="button"
+          >
+            <DownloadSimple size={16} /> 导出 CSV
+          </button>
+        }
+        description="按资源类型聚合的生成量、成功率与平均生成耗时（来自 BE-028 resource_stats）"
+        eyebrow="RESOURCE ANALYTICS · FE-026"
+        title="资源统计"
+      />
+      <section aria-label="资源统计筛选" className="admin-panel admin-panel--compact">
+        <form
+          className="admin-table-toolbar"
+          onSubmit={(event) => {
+            event.preventDefault();
+            applyFilters();
+          }}
+        >
+          <label className="admin-filter-field">
+            <Funnel size={16} />
+            <span>起始日期</span>
+            <input
+              aria-label="起始日期"
+              onChange={(event) => setSince(event.target.value)}
+              type="date"
+              value={since}
+            />
+          </label>
+          <label className="admin-filter-field">
+            <Funnel size={16} />
+            <span>结束日期</span>
+            <input
+              aria-label="结束日期"
+              onChange={(event) => setUntil(event.target.value)}
+              type="date"
+              value={until}
+            />
+          </label>
+          <label className="admin-filter-field">
+            <Funnel size={16} />
+            <span>课程 ID</span>
+            <input
+              aria-label="课程 ID"
+              onChange={(event) => setCourseId(event.target.value)}
+              placeholder="可选，留空汇总所有课程"
+              type="text"
+              value={courseId}
+            />
+          </label>
+          <button className="admin-filter-button" type="submit">
+            <Funnel size={15} /> 应用筛选
+          </button>
+          {draft.courseId || draft.since || draft.until ? (
+            <span>
+              已筛选：{[draft.since, draft.until].filter(Boolean).join(" ~ ")}
+              {draft.courseId ? ` · 课程 ${draft.courseId}` : ""}
+            </span>
+          ) : (
+            <span>当前窗口：全租户汇总</span>
+          )}
+        </form>
+      </section>
+      {statsQuery.isLoading || statsQuery.isPending ? (
+        <p aria-label="资源统计加载" className="admin-empty-row" role="status">
+          正在加载资源统计…
+        </p>
+      ) : null}
+      {statsQuery.isError ? (
+        <div aria-label="资源统计错误" className="admin-empty-row" role="alert">
+          <p>
+            {statsQuery.error instanceof Error
+              ? statsQuery.error.message
+              : "资源统计数据暂时不可用，请稍后重试"}
+          </p>
+          <button
+            aria-label="重试统计"
+            onClick={() => setReloadAttempt((attempt) => attempt + 1)}
+            type="button"
+          >
+            重试
+          </button>
+        </div>
+      ) : null}
+      {statsQuery.data ? (
+        <section aria-label="资源统计" className="admin-resource-stats">
+          <ChartFrame
+            columns={["资源类型", "生成量", "成功率", "平均生成耗时"]}
+            description="后端聚合的资源生成量、成功率与平均耗时；课程维度由 BE-028 强制隔离"
+            rows={RESOURCE_TYPES.map((resourceType) => {
+              const item = itemsByType.get(resourceType);
+              return [
+                resourceType,
+                String(item?.total ?? 0),
+                formatPercent(item?.success_rate ?? 0),
+                formatDuration(item?.avg_generation_ms ?? 0),
+              ];
+            })}
+            title="资源生成统计"
+          >
+            <ul className="admin-resource-stats__rows">
+              {RESOURCE_TYPES.map((resourceType) => {
+                const item = itemsByType.get(resourceType);
+                const total = item?.total ?? 0;
+                const successRate = item?.success_rate ?? 0;
+                const generationMs = item?.avg_generation_ms ?? 0;
+                return (
+                  <li key={resourceType}>
+                    <span className="admin-resource-stats__type">{resourceType}</span>
+                    <span className="admin-resource-stats__count">
+                      <strong>{total}</strong>
+                      <small>成功 {item?.succeeded ?? 0}</small>
+                    </span>
+                    <span className="admin-resource-stats__gauge">
+                      <progress
+                        aria-label={`${resourceType}成功率`}
+                        max={100}
+                        value={Math.round(successRate * 100)}
+                      />
+                      <strong>{formatPercent(successRate)}</strong>
+                    </span>
+                    <span className="admin-resource-stats__sparkline">
+                      <progress
+                        aria-label={`${resourceType}平均生成耗时`}
+                        max={100}
+                        value={Math.round((generationMs / maxGenerationMs) * 100)}
+                      />
+                      <strong>{formatDuration(generationMs)}</strong>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </ChartFrame>
+          <p className="admin-authority-note">
+            <ShieldCheck size={15} /> 统计为只读聚合；课程范围与租户隔离由 BE-028 强制执行。
+          </p>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+const PROVIDER_TYPES: ProviderType[] = [
+  "LLM",
+  "TTS",
+  "ASR",
+  "IMAGE",
+  "OCR",
+  "MODERATION",
+  "EMBEDDING",
+];
+
+type ProviderFormMode = "create" | "edit";
+
+type ProviderFormState = {
+  provider_type: ProviderType;
+  vendor: string;
+  model: string;
+  api_key: string;
+  endpoint: string;
+  enabled: boolean;
+};
+
+const EMPTY_PROVIDER_FORM: ProviderFormState = {
+  provider_type: "LLM",
+  vendor: "",
+  model: "",
+  api_key: "",
+  endpoint: "",
+  enabled: false,
+};
+
+function formFromProvider(provider: ProviderConfigView): ProviderFormState {
+  return {
+    provider_type: provider.provider_type,
+    vendor: provider.vendor,
+    model: provider.model,
+    api_key: "",
+    endpoint: provider.endpoint ?? "",
+    enabled: provider.enabled,
+  };
+}
+
+function formStatusLabel(result: ProviderConnectivityResult): string {
+  const segments = [
+    result.ok ? "连接成功" : "连接失败",
+    `${result.latency_ms}ms`,
+    result.model_id ?? "",
+    result.ok ? "" : result.detail,
+    result.error_code && !result.ok ? `error_code=${result.error_code}` : "",
+  ].filter((segment) => segment.length > 0);
+  return segments.join(" · ");
+}
+
 export function ProvidersPage() {
   const { session } = useAdminAuth();
   const accessToken = session?.accessToken;
   const [providers, setProviders] = useState<ProviderConfigView[]>([]);
   const [loadState, setLoadState] = useState<"error" | "loading" | "ready">("loading");
   const [status, setStatus] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [formMode, setFormMode] = useState<ProviderFormMode | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<ProviderFormState>(EMPTY_PROVIDER_FORM);
+  const [revealKey, setRevealKey] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ProviderConfigView | null>(null);
+  const [testTarget, setTestTarget] = useState<ProviderConfigView | null>(null);
+  const [candidateKey, setCandidateKey] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -780,19 +1095,16 @@ export function ProvidersPage() {
         active = false;
       };
     }
-    configureOperationsClient();
-    void listProvidersApiV1AdminProvidersGet({
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
-      .then((result) => {
+    configureAdminProviderClient();
+    void fetchProviders({ accessToken })
+      .then((items) => {
         if (!active) return;
-        if (!result.data) throw new Error(operationsError(result.error));
-        setProviders(result.data.items);
+        setProviders(items);
         setLoadState("ready");
       })
       .catch((error: unknown) => {
         if (!active) return;
-        setStatus(error instanceof Error ? error.message : operationsError(error));
+        setStatus(error instanceof Error ? error.message : "Provider 配置加载失败");
         setLoadState("error");
       });
     return () => {
@@ -800,29 +1112,169 @@ export function ProvidersPage() {
     };
   }, [accessToken]);
 
-  async function testConnectivity(provider: ProviderConfigView) {
-    if (!accessToken) return;
-    setStatus(`正在测试 ${provider.vendor}…`);
-    configureOperationsClient();
+  function openCreate() {
+    setFormMode("create");
+    setEditingId(null);
+    setForm(EMPTY_PROVIDER_FORM);
+    setRevealKey(false);
+  }
+
+  function openEdit(provider: ProviderConfigView) {
+    setFormMode("edit");
+    setEditingId(provider.id);
+    setForm(formFromProvider(provider));
+    setRevealKey(false);
+  }
+
+  function closeForm() {
+    setFormMode(null);
+    setEditingId(null);
+    setForm(EMPTY_PROVIDER_FORM);
+    setRevealKey(false);
+  }
+
+  async function submitForm(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!accessToken || !formMode) return;
+    // API key handling: required on create, optional on edit (omit to keep the
+    // stored key — never send an empty string).
+    const endpointValue = form.endpoint.trim() || null;
+    setBusyId(editingId ?? "__new__");
     try {
-      const result = await testProviderConnectivityApiV1AdminProvidersProviderIdTestPost({
-        headers: { Authorization: `Bearer ${accessToken}` },
-        path: { provider_id: provider.id },
-      });
-      if (!result.data) throw new Error(operationsError(result.error));
-      setStatus(
-        result.data.ok
-          ? `${provider.vendor} 连接成功 · ${result.data.latency_ms}ms · 未返回任何密钥`
-          : `${provider.vendor} 连接失败 · ${result.data.detail}`,
-      );
+      if (formMode === "create") {
+        if (form.api_key.length < 8) {
+          setStatus("API Key 至少 8 个字符");
+          return;
+        }
+        const created = await createProvider(
+          {
+            provider_type: form.provider_type,
+            vendor: form.vendor.trim(),
+            model: form.model.trim(),
+            api_key: form.api_key,
+            endpoint: endpointValue,
+            params: {},
+            enabled: form.enabled,
+          },
+          {
+            accessToken,
+            idempotencyKey: commandKey("provider-create"),
+          },
+        );
+        setProviders((current) => [...current, created]);
+        setStatus(`${created.vendor} 已创建 · 密钥已加密保存`);
+      } else if (formMode === "edit" && editingId) {
+        const updated = await updateProvider(
+          editingId,
+          {
+            vendor: form.vendor.trim(),
+            model: form.model.trim(),
+            endpoint: endpointValue,
+            enabled: form.enabled,
+            ...(form.api_key.length > 0 ? { api_key: form.api_key } : {}),
+          },
+          {
+            accessToken,
+            idempotencyKey: commandKey("provider-update"),
+          },
+        );
+        setProviders((current) =>
+          current.map((provider) => (provider.id === editingId ? updated : provider)),
+        );
+        setStatus(`${updated.vendor} 已更新 · 版本 v${updated.version}`);
+      }
+      closeForm();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : operationsError(error));
+      setStatus(providerApiError(error, "Provider 保存失败，请稍后重试"));
+    } finally {
+      setBusyId(null);
     }
+  }
+
+  async function toggleProvider(provider: ProviderConfigView, action: "disable" | "enable") {
+    if (!accessToken) return;
+    setBusyId(provider.id);
+    configureAdminProviderClient();
+    try {
+      const headers = {
+        accessToken,
+        idempotencyKey: commandKey(`provider-${action}`),
+      };
+      const updated =
+        action === "enable"
+          ? await enableProvider(provider.id, headers)
+          : await disableProvider(provider.id, headers);
+      setProviders((current) =>
+        current.map((item) => (item.id === provider.id ? updated : item)),
+      );
+      setStatus(`${updated.vendor} 已${action === "enable" ? "启用" : "停用"} · 版本 v${updated.version}`);
+    } catch (error) {
+      setStatus(providerApiError(error, "Provider 状态切换失败，请稍后重试"));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!accessToken || !deleteTarget) return;
+    setBusyId(deleteTarget.id);
+    configureAdminProviderClient();
+    try {
+      await deleteProvider(deleteTarget.id, {
+        accessToken,
+        idempotencyKey: commandKey("provider-delete"),
+      });
+      setProviders((current) => current.filter((item) => item.id !== deleteTarget.id));
+      setStatus(`${deleteTarget.vendor} 已软删除 · 审计已记录`);
+      setDeleteTarget(null);
+    } catch (error) {
+      setStatus(providerApiError(error, "Provider 删除失败，请稍后重试"));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function runTest(
+    provider: ProviderConfigView,
+    candidate?: string,
+  ): Promise<void> {
+    if (!accessToken) return;
+    setBusyId(provider.id);
+    configureAdminProviderClient();
+    setStatus(`正在测试 ${provider.vendor}…`);
+    try {
+      const result = await testProviderConnectivity({
+        accessToken,
+        providerId: provider.id,
+        candidateApiKey: candidate && candidate.length > 0 ? candidate : undefined,
+      });
+      setStatus(`${provider.vendor} · ${formStatusLabel(result)}`);
+    } catch (error) {
+      setStatus(providerApiError(error, "Provider 连通性测试失败，请稍后重试"));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function runCandidateTest(): Promise<void> {
+    if (!testTarget) return;
+    await runTest(testTarget, candidateKey);
+    setTestTarget(null);
+    setCandidateKey("");
   }
 
   return (
     <div className="admin-page">
-      <AdminPageHeading description="密钥仅可替换，不从 API 返回明文" title="Provider 配置" />
+      <AdminPageHeading
+        action={
+          <button className="admin-filter-button" onClick={openCreate} type="button">
+            <Plus size={16} /> 新建 Provider
+          </button>
+        }
+        description="System Admin 可创建、编辑、启停与软删除 Provider；密钥仅可替换，从不以明文返回"
+        eyebrow="PROVIDER CRUD · BE-019"
+        title="Provider 配置"
+      />
       <OperationsNav />
       {status ? (
         <p aria-label="Provider 测试状态" className="admin-inline-status" role="status">
@@ -849,7 +1301,9 @@ export function ProvidersPage() {
               <tr key={provider.id}>
                 <th scope="row">
                   <strong>{provider.vendor}</strong>
-                  <small>{provider.model}</small>
+                  <small>
+                    {provider.model} · v{provider.version}
+                  </small>
                 </th>
                 <td>{provider.provider_type}</td>
                 <td>
@@ -861,22 +1315,313 @@ export function ProvidersPage() {
                   </span>
                 </td>
                 <td>
-                  <button
-                    aria-label={`测试${provider.vendor} 连通性`}
-                    className="admin-table-action"
-                    onClick={() => void testConnectivity(provider)}
-                    type="button"
-                  >
-                    <LinkSimple size={14} /> 测试连接
-                  </button>
+                  <div className="admin-row-actions">
+                    <button
+                      aria-label={`编辑${provider.vendor} Provider`}
+                      className="admin-table-action"
+                      disabled={busyId === provider.id}
+                      onClick={() => openEdit(provider)}
+                      type="button"
+                    >
+                      <PencilSimple size={14} /> 编辑
+                    </button>
+                    {provider.enabled ? (
+                      <button
+                        aria-label={`停用${provider.vendor} Provider`}
+                        className="admin-table-action"
+                        disabled={busyId === provider.id}
+                        onClick={() => void toggleProvider(provider, "disable")}
+                        type="button"
+                      >
+                        <Power size={14} /> 停用
+                      </button>
+                    ) : (
+                      <button
+                        aria-label={`启用${provider.vendor} Provider`}
+                        className="admin-table-action"
+                        disabled={busyId === provider.id}
+                        onClick={() => void toggleProvider(provider, "enable")}
+                        type="button"
+                      >
+                        <Power size={14} /> 启用
+                      </button>
+                    )}
+                    <button
+                      aria-label={`测试${provider.vendor} 连通性`}
+                      className="admin-table-action"
+                      disabled={busyId === provider.id}
+                      onClick={() => void runTest(provider)}
+                      type="button"
+                    >
+                      <LinkSimple size={14} /> 测试连接
+                    </button>
+                    <button
+                      aria-label={`用候选密钥测试${provider.vendor} 连通性`}
+                      className="admin-table-action"
+                      disabled={busyId === provider.id}
+                      onClick={() => {
+                        setTestTarget(provider);
+                        setCandidateKey("");
+                      }}
+                      type="button"
+                    >
+                      <LinkSimple size={14} /> 候选测试
+                    </button>
+                    <button
+                      aria-label={`删除${provider.vendor} Provider`}
+                      className="admin-table-action is-danger"
+                      disabled={busyId === provider.id}
+                      onClick={() => setDeleteTarget(provider)}
+                      type="button"
+                    >
+                      <Trash size={14} /> 删除
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
         <p className="admin-authority-note">
-          <ShieldCheck size={15} /> Provider 密钥由后端加密保存，Renderer 永不持有明文。
+          <ShieldCheck size={15} /> Provider 密钥由后端加密保存（AES-GCM），所有响应仅返回
+          mask · 每次写入携带 Idempotency-Key 并记入审计 · 仅 System Admin 可访问。
         </p>
+      </section>
+      {formMode ? (
+        <ProviderFormDialog
+          busy={busyId === "__new__"}
+          form={form}
+          mode={formMode}
+          onClose={closeForm}
+          onFormChange={setForm}
+          onSubmit={submitForm}
+          onToggleReveal={() => setRevealKey((current) => !current)}
+          revealKey={revealKey}
+        />
+      ) : null}
+      {testTarget ? (
+        <ProviderTestDialog
+          busy={busyId === testTarget.id}
+          candidateKey={candidateKey}
+          onCandidateKeyChange={setCandidateKey}
+          onClose={() => {
+            setTestTarget(null);
+            setCandidateKey("");
+          }}
+          onSubmit={() => void runCandidateTest()}
+          provider={testTarget}
+        />
+      ) : null}
+      {deleteTarget ? (
+        <div className="admin-dialog-backdrop">
+          <section
+            aria-labelledby="provider-delete-title"
+            aria-modal="true"
+            className="admin-confirm-dialog"
+            role="dialog"
+            aria-label="确认删除 Provider"
+          >
+            <p className="eyebrow">SOFT DELETE</p>
+            <h2 id="provider-delete-title">确认删除 Provider</h2>
+            <p>
+              将软删除 <strong>{deleteTarget.vendor}</strong>（{deleteTarget.model}）：行会保留以
+              维持审计与调用历史，仅 <code>enabled</code> 置为 false。此操作受审计且幂等。
+            </p>
+            <div>
+              <button onClick={() => setDeleteTarget(null)} type="button">
+                取消
+              </button>
+              <button
+                className="is-danger"
+                disabled={busyId === deleteTarget.id}
+                onClick={() => void confirmDelete()}
+                type="button"
+              >
+                确认删除
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ProviderFormDialog({
+  busy,
+  form,
+  mode,
+  onClose,
+  onFormChange,
+  onSubmit,
+  onToggleReveal,
+  revealKey,
+}: {
+  busy: boolean;
+  form: ProviderFormState;
+  mode: ProviderFormMode;
+  onClose: () => void;
+  onFormChange: (next: ProviderFormState) => void;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  onToggleReveal: () => void;
+  revealKey: boolean;
+}) {
+  // The api_key field NEVER displays a stored value. On edit it starts empty
+  // and the field label explicitly says "留空则保留原密钥". The reveal toggle
+  // only changes the input type of what the user is currently typing — the
+  // masked form from the server is shown separately and is the only key
+  // representation that ever persists in the DOM.
+  const maskedHint =
+    mode === "edit" ? "留空则保留已加密保存的原密钥" : "至少 8 个字符，提交后由后端加密保存";
+  return (
+    <div className="admin-dialog-backdrop">
+      <section
+        aria-modal="true"
+        className="admin-confirm-dialog admin-provider-form"
+        role="dialog"
+        aria-label={mode === "create" ? "新建 Provider 配置" : "编辑 Provider 配置"}
+      >
+        <p className="eyebrow">{mode === "create" ? "CREATE" : "UPDATE"}</p>
+        <h2>{mode === "create" ? "新建 Provider 配置" : "编辑 Provider 配置"}</h2>
+        <p>
+          密钥以 AES-GCM 加密存储，所有响应仅返回 mask。System Admin 写入均记入审计且幂等。
+        </p>
+        <form onSubmit={onSubmit}>
+          <label htmlFor="provider-vendor">Vendor</label>
+          <input
+            id="provider-vendor"
+            onChange={(event) => onFormChange({ ...form, vendor: event.target.value })}
+            pattern="[A-Za-z0-9._-]+"
+            required
+            value={form.vendor}
+          />
+          <label htmlFor="provider-model">模型</label>
+          <input
+            id="provider-model"
+            onChange={(event) => onFormChange({ ...form, model: event.target.value })}
+            pattern="[A-Za-z0-9._:/-]+"
+            required
+            value={form.model}
+          />
+          <label htmlFor="provider-type">类型</label>
+          <select
+            id="provider-type"
+            onChange={(event) =>
+              onFormChange({ ...form, provider_type: event.target.value as ProviderType })
+            }
+            value={form.provider_type}
+          >
+            {PROVIDER_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+          <label htmlFor="provider-endpoint">Endpoint</label>
+          <input
+            id="provider-endpoint"
+            onChange={(event) => onFormChange({ ...form, endpoint: event.target.value })}
+            placeholder="https://provider.example.test/v1"
+            value={form.endpoint}
+          />
+          <div className="admin-provider-field-row">
+            <label htmlFor="provider-api-key">API Key</label>
+            <button
+              aria-label={revealKey ? "隐藏 API Key" : "显示 API Key"}
+              className="admin-provider-reveal"
+              onClick={onToggleReveal}
+              type="button"
+            >
+              {revealKey ? <EyeSlash size={14} /> : <Eye size={14} />}
+              {revealKey ? "隐藏" : "显示"}
+            </button>
+          </div>
+          <input
+            autoComplete="off"
+            id="provider-api-key"
+            minLength={mode === "create" ? 8 : undefined}
+            onChange={(event) => onFormChange({ ...form, api_key: event.target.value })}
+            placeholder={maskedHint}
+            required={mode === "create"}
+            type={revealKey ? "text" : "password"}
+            value={form.api_key}
+          />
+          <small className="admin-provider-field-hint">{maskedHint}</small>
+          <label className="admin-provider-toggle" htmlFor="provider-enabled">
+            <input
+              checked={form.enabled}
+              id="provider-enabled"
+              onChange={(event) => onFormChange({ ...form, enabled: event.target.checked })}
+              type="checkbox"
+            />
+            启用（同类型仅一个可启用，后端按 §17.4 切换）
+          </label>
+          <div>
+            <button onClick={onClose} type="button">
+              取消
+            </button>
+            <button className="is-primary" disabled={busy} type="submit">
+              {busy ? "保存中…" : "保存 Provider"}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function ProviderTestDialog({
+  busy,
+  candidateKey,
+  onCandidateKeyChange,
+  onClose,
+  onSubmit,
+  provider,
+}: {
+  busy: boolean;
+  candidateKey: string;
+  onCandidateKeyChange: (next: string) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+  provider: ProviderConfigView;
+}) {
+  return (
+    <div className="admin-dialog-backdrop">
+      <section
+        aria-modal="true"
+        className="admin-confirm-dialog"
+        role="dialog"
+        aria-label="测试 Provider 连通性"
+      >
+        <p className="eyebrow">CONNECTIVITY TEST</p>
+        <h2>测试 Provider 连通性</h2>
+        <p>
+          对 <strong>{provider.vendor}</strong>（{provider.model}）执行一次有界的连通性探针。
+          候选密钥（如填写）仅用于本次探针，不会被持久化或回显；留空则测试当前已保存的密钥。
+        </p>
+        <label htmlFor="provider-candidate-key">候选 API Key（可选）</label>
+        <input
+          autoComplete="off"
+          id="provider-candidate-key"
+          minLength={8}
+          onChange={(event) => onCandidateKeyChange(event.target.value)}
+          placeholder="留空测试已保存密钥；填写则以候选密钥探针（不入库）"
+          type="password"
+          value={candidateKey}
+        />
+        <div>
+          <button onClick={onClose} type="button">
+            取消
+          </button>
+          <button
+            className="is-primary"
+            disabled={busy}
+            onClick={onSubmit}
+            type="button"
+          >
+            {busy ? "测试中…" : "运行测试"}
+          </button>
+        </div>
       </section>
     </div>
   );
@@ -966,17 +1711,39 @@ export function HealthPage({
 export function MetricsPage() {
   const { session } = useAdminAuth();
   const accessToken = session?.accessToken;
+
+  // In-page Course Admin guard. The route already enforces admin role via
+  // `RequireAdmin`; this defends in depth so a future route refactor or a
+  // shared embedding cannot leak advanced metrics to a non-admin session.
+  if (!accessToken || session?.role !== "admin") {
+    return (
+      <StatePanel
+        description="高级指标仅对授权管理员开放，请使用管理员账号登录"
+        state="error"
+        title="无权访问高级指标"
+      />
+    );
+  }
+
+  return <MetricsPageBody accessToken={accessToken} />;
+}
+
+function MetricsPageBody({ accessToken }: { accessToken: string }) {
   const [metrics, setMetrics] = useState<ProviderMetricsView | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Advanced-chart filters. Draft values are committed on submit so the BE-028
+  // request and the displayed "已筛选" summary stay in sync with the user's
+  // confirmed selection (mirrors FE-026's resource-stats pattern).
+  const [since, setSince] = useState("");
+  const [until, setUntil] = useState("");
+  const [nodeId, setNodeId] = useState("");
+  const [courseId, setCourseId] = useState("");
+  const [draft, setDraft] = useState({ courseId: "", nodeId: "", since: "", until: "" });
+  const [reloadAttempt, setReloadAttempt] = useState(0);
+
   useEffect(() => {
     let active = true;
-    if (!accessToken) {
-      setError("管理员会话缺少访问令牌，请重新登录");
-      return () => {
-        active = false;
-      };
-    }
     configureOperationsClient();
     void adminProviderMetricsApiV1AdminSystemMetricsGet({
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -995,14 +1762,105 @@ export function MetricsPage() {
     };
   }, [accessToken]);
 
+  const advancedQuery = useQuery({
+    queryKey: [
+      "admin",
+      "metrics",
+      "advanced",
+      accessToken,
+      draft.courseId,
+      draft.nodeId,
+      draft.since,
+      draft.until,
+      reloadAttempt,
+    ],
+    queryFn: () =>
+      fetchAdminMetrics({
+        accessToken,
+        courseId: draft.courseId,
+        nodeId: draft.nodeId,
+        since: draft.since,
+        until: draft.until,
+      }),
+    enabled: Boolean(accessToken),
+    // The window aggregates change slowly; a 60s TTL keeps the charts
+    // responsive without re-running the server-side bucketing on every
+    // navigation. The manual retry covers interactive recovery.
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    retry: false,
+  });
+
+  function applyFilters() {
+    setDraft({
+      courseId: courseId.trim(),
+      nodeId: nodeId.trim(),
+      since,
+      until,
+    });
+  }
+
   const calls = metrics?.items.reduce((total, item) => total + item.calls, 0) ?? 0;
   const errors = metrics?.items.reduce((total, item) => total + item.errors, 0) ?? 0;
   const rateLimited = metrics?.items.reduce((total, item) => total + item.rate_limited, 0) ?? 0;
   const p95 = Math.max(0, ...(metrics?.items.map((item) => item.p95_latency_ms) ?? []));
+  const advanced: AdminMetrics | undefined = advancedQuery.data ?? undefined;
+  const apiBuckets = advanced?.api_usage.buckets ?? [];
+  const masteryCounts = advanced?.mastery_distribution.counts ?? {};
+  const timelinePoints = advanced?.agent_timeline.points ?? [];
+
+  function exportAdvancedCsv() {
+    if (!advanced) return;
+    const stamp = new Date().toISOString().slice(0, 10);
+    const rows: (string | number)[][] = [];
+    rows.push(["# api_usage", "", "", "", "", ""]);
+    for (const bucket of apiBuckets) {
+      rows.push([
+        bucket.bucket_start,
+        bucket.total,
+        bucket.p50 === null ? "" : bucket.p50,
+        bucket.p95 === null ? "" : bucket.p95,
+        bucket.error_rate.toFixed(4),
+        bucket.throttle_rate.toFixed(4),
+      ]);
+    }
+    rows.push(["# mastery_distribution", "", "", "", "", ""]);
+    for (const [status, count] of Object.entries(masteryCounts)) {
+      rows.push([status, count ?? 0, "", "", "", ""]);
+    }
+    rows.push(["# agent_timeline", "", "", "", "", ""]);
+    for (const point of timelinePoints) {
+      rows.push([
+        point.run_id,
+        point.route,
+        point.status,
+        point.fallback ? "fallback" : "",
+        point.latency_ms === null ? "" : point.latency_ms,
+        point.started_at,
+      ]);
+    }
+    downloadCsv(
+      `pymentor-metrics-${stamp}.csv`,
+      ["section_or_bucket", "total_or_count", "p50", "p95", "rate_or_flag", "extra"],
+      rows,
+    );
+  }
+
   return (
     <div className="admin-page">
       <AdminPageHeading
-        description="API、沙箱与 Agent 的吞吐、错误率和延迟预算"
+        action={
+          <button
+            aria-label="导出指标 CSV"
+            className="admin-filter-button"
+            disabled={!advanced}
+            onClick={() => exportAdvancedCsv()}
+            type="button"
+          >
+            <DownloadSimple size={16} /> 导出指标 CSV
+          </button>
+        }
+        description="API、沙箱与 Agent 的吞吐、错误率、延迟预算与高级图表"
         title="API 与作业指标"
       />
       <OperationsNav />
@@ -1052,6 +1910,108 @@ export function MetricsPage() {
           ))}
         </div>
       </ChartFrame>
+      <section aria-label="高级指标筛选" className="admin-panel admin-panel--compact">
+        <div className="admin-panel__heading">
+          <div>
+            <p className="eyebrow">ADVANCED METRICS · BE-028</p>
+            <h2>高级图表筛选</h2>
+          </div>
+        </div>
+        <form
+          className="admin-table-toolbar"
+          onSubmit={(event) => {
+            event.preventDefault();
+            applyFilters();
+          }}
+        >
+          <label className="admin-filter-field">
+            <Funnel size={16} />
+            <span>起始日期</span>
+            <input
+              aria-label="起始日期"
+              onChange={(event) => setSince(event.target.value)}
+              type="date"
+              value={since}
+            />
+          </label>
+          <label className="admin-filter-field">
+            <Funnel size={16} />
+            <span>结束日期</span>
+            <input
+              aria-label="结束日期"
+              onChange={(event) => setUntil(event.target.value)}
+              type="date"
+              value={until}
+            />
+          </label>
+          <label className="admin-filter-field">
+            <Funnel size={16} />
+            <span>节点 ID</span>
+            <input
+              aria-label="节点 ID"
+              onChange={(event) => setNodeId(event.target.value)}
+              placeholder="可选，留空汇总所有节点"
+              type="text"
+              value={nodeId}
+            />
+          </label>
+          <label className="admin-filter-field">
+            <Funnel size={16} />
+            <span>课程 ID</span>
+            <input
+              aria-label="课程 ID"
+              onChange={(event) => setCourseId(event.target.value)}
+              placeholder="可选，留空汇总所有课程"
+              type="text"
+              value={courseId}
+            />
+          </label>
+          <button className="admin-filter-button" type="submit">
+            <Funnel size={15} /> 应用筛选
+          </button>
+          {draft.since || draft.until || draft.nodeId || draft.courseId ? (
+            <span>
+              已筛选：{[draft.since, draft.until].filter(Boolean).join(" ~ ")}
+              {draft.nodeId ? ` · 节点 ${draft.nodeId}` : ""}
+              {draft.courseId ? ` · 课程 ${draft.courseId}` : ""}
+            </span>
+          ) : (
+            <span>当前窗口：全租户汇总</span>
+          )}
+        </form>
+      </section>
+      {advancedQuery.isLoading || advancedQuery.isPending ? (
+        <p aria-label="高级指标加载" className="admin-empty-row" role="status">
+          正在加载高级指标…
+        </p>
+      ) : null}
+      {advancedQuery.isError ? (
+        <div aria-label="高级指标错误" className="admin-empty-row" role="alert">
+          <p>
+            {advancedQuery.error instanceof Error
+              ? advancedQuery.error.message
+              : "高级指标数据暂时不可用，请稍后重试"}
+          </p>
+          <button
+            aria-label="重试高级指标"
+            onClick={() => setReloadAttempt((attempt) => attempt + 1)}
+            type="button"
+          >
+            重试
+          </button>
+        </div>
+      ) : null}
+      {advanced ? (
+        <section aria-label="高级图表" className="admin-advanced-charts">
+          <ApiUsageChart buckets={apiBuckets} />
+          <MasteryDistributionChart counts={masteryCounts} />
+          <AgentTimelineChart points={timelinePoints} />
+          <p className="admin-authority-note">
+            <ShieldCheck size={15} /> 高级图表为只读聚合；课程与租户隔离由 BE-028
+            强制执行，空桶的延迟渲染为缺口而非零值。
+          </p>
+        </section>
+      ) : null}
     </div>
   );
 }
