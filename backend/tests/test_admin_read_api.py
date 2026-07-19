@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -17,6 +18,7 @@ from app.models import (
     AgentRun,
     AgentToolCall,
     EvidenceEvent,
+    KnowledgeNode,
     LearningPath,
     LearningPathStatus,
     LearningPathStep,
@@ -41,6 +43,8 @@ from app.models import (
     User,
     UserStatus,
 )
+from app.observability import record_provider_call
+from app.providers import ProviderType
 from app.resources import (
     ResourceArtifactStatus,
     ResourceGate,
@@ -654,3 +658,387 @@ class TestAdminOverview:
         response = client.get("/api/v1/admin/overview", headers=_headers(token))
 
         assert response.status_code == 403
+
+
+# Distinct from NODE_ID so node-scoped mastery distribution can be asserted
+# without colliding with the rows seeded by other helpers. Resolved at seed
+# time to a real knowledge node (other than NODE_ID) so the mastery FK holds.
+def _second_node_id(db: Session) -> UUID:
+    row = db.execute(
+        select(KnowledgeNode.id)
+        .where(KnowledgeNode.course_id == COURSE_ID, KnowledgeNode.id != NODE_ID)
+        .limit(1)
+    ).scalar_one_or_none()
+    assert row is not None, "seeded course must expose a second knowledge node"
+    return row
+
+
+def _seed_metrics_series(db: Session, context: ReadContext) -> UUID:
+    """BE-028 seed: provider calls, agent runs, mastery, and resources.
+
+    Places every event inside a single hour window starting at ``NOW`` so the
+    hourly bucket (window <= 36h) deterministically contains all seeded rows.
+    The foreign tenant gets mirror rows that must never leak into admin counts.
+    Returns the second node id used for the STABLE_MASTERY row so the caller can
+    assert the node-scoped distribution.
+    """
+    metrics_node_id = _second_node_id(db)
+
+    def _provider_call(
+        tenant_id: UUID,
+        *,
+        outcome: str,
+        latency_ms: int,
+        rate_limited: bool,
+        offset_seconds: int,
+    ) -> None:
+        record_provider_call(
+            db,
+            tenant_id=tenant_id,
+            provider_type=ProviderType.LLM,
+            vendor="xfyun",
+            model="spark-v4",
+            operation="CHAT",
+            outcome=outcome,
+            latency_ms=latency_ms,
+            rate_limited=rate_limited,
+            trace_id=f"trace-{tenant_id.hex}-{offset_seconds}",
+            created_at=NOW + timedelta(seconds=offset_seconds),
+        )
+
+    # Admin tenant: 3 succeeded + 1 failed + 1 throttled across the hour.
+    admin_calls = [
+        ("SUCCEEDED", 10, False, 10),
+        ("SUCCEEDED", 20, False, 20),
+        ("SUCCEEDED", 100, False, 30),
+        ("FAILED", 40, False, 40),
+        ("SUCCEEDED", 50, True, 50),
+    ]
+    for outcome, latency, rate_limited, offset in admin_calls:
+        _provider_call(
+            context.tenant.id,
+            outcome=outcome,
+            latency_ms=latency,
+            rate_limited=rate_limited,
+            offset_seconds=offset,
+        )
+    # Foreign tenant must not leak.
+    _provider_call(
+        context.foreign.tenant_id,
+        outcome="SUCCEEDED",
+        latency_ms=999,
+        rate_limited=False,
+        offset_seconds=15,
+    )
+
+    # Agent runs: 1 SUCCEEDED + 1 FAILED + 1 fallback inside the window.
+    db.add(
+        AgentRun(
+            external_run_id=f"run-ok-{uuid4().hex}",
+            event_id=f"event-ok-{uuid4().hex}",
+            trace_id=f"trace-ok-{uuid4().hex}",
+            tenant_id=context.tenant.id,
+            student_id=context.first.id,
+            status="SUCCEEDED",
+            route="resource",
+            latest_sequence=1,
+            fallback_used=False,
+            safe_input_snapshot={},
+            safe_output_snapshot={},
+            started_at=NOW,
+            completed_at=NOW + timedelta(seconds=2),
+            created_at=NOW,
+        )
+    )
+    db.add(
+        AgentRun(
+            external_run_id=f"run-fail-{uuid4().hex}",
+            event_id=f"event-fail-{uuid4().hex}",
+            trace_id=f"trace-fail-{uuid4().hex}",
+            tenant_id=context.tenant.id,
+            student_id=context.first.id,
+            status="FAILED",
+            route="coach",
+            latest_sequence=1,
+            fallback_used=False,
+            error_code="PROVIDER_UNAVAILABLE",
+            safe_input_snapshot={},
+            safe_output_snapshot={},
+            created_at=NOW + timedelta(minutes=1),
+        )
+    )
+    db.add(
+        AgentRun(
+            external_run_id=f"run-fb-{uuid4().hex}",
+            event_id=f"event-fb-{uuid4().hex}",
+            trace_id=f"trace-fb-{uuid4().hex}",
+            tenant_id=context.tenant.id,
+            student_id=context.first.id,
+            status="SUCCEEDED",
+            route="fallback",
+            latest_sequence=1,
+            fallback_used=True,
+            safe_input_snapshot={},
+            safe_output_snapshot={},
+            created_at=NOW + timedelta(minutes=2),
+        )
+    )
+    db.add(
+        AgentRun(
+            external_run_id=f"run-foreign-{uuid4().hex}",
+            event_id=f"event-foreign-{uuid4().hex}",
+            trace_id=f"trace-foreign-{uuid4().hex}",
+            tenant_id=context.foreign.tenant_id,
+            student_id=context.foreign.id,
+            status="SUCCEEDED",
+            latest_sequence=1,
+            fallback_used=False,
+            safe_input_snapshot={},
+            safe_output_snapshot={},
+        )
+    )
+
+    # Mastery: 1 LEARNING at NODE_ID, 1 STABLE_MASTERY at metrics_node_id,
+    # plus a foreign STABLE_MASTERY that must not leak.
+    db.add(
+        MasteryState(
+            tenant_id=context.tenant.id,
+            student_id=context.first.id,
+            course_id=COURSE_ID,
+            node_id=NODE_ID,
+            status=MasteryStatus.LEARNING,
+            version=1,
+        )
+    )
+    db.add(
+        MasteryState(
+            tenant_id=context.tenant.id,
+            student_id=context.first.id,
+            course_id=COURSE_ID,
+            node_id=metrics_node_id,
+            status=MasteryStatus.STABLE_MASTERY,
+            version=1,
+        )
+    )
+    db.add(
+        MasteryState(
+            tenant_id=context.foreign.tenant_id,
+            student_id=context.foreign.id,
+            course_id=COURSE_ID,
+            node_id=NODE_ID,
+            status=MasteryStatus.STABLE_MASTERY,
+            version=1,
+        )
+    )
+
+    # Resource stats: 1 PUBLISHED + 1 REVIEWING STRUCTURE_CARD, plus a foreign row.
+    published_job = ResourceJobRecord(
+        tenant_id=context.tenant.id,
+        student_id=context.first.id,
+        course_id=COURSE_ID,
+        node_id=NODE_ID,
+        idempotency_key=f"metrics-pub-{uuid4().hex}",
+        request_digest="b" * 64,
+        status=ResourceJobStatus.READY,
+        requested_types=[ResourceType.STRUCTURE_CARD.value],
+        source_ids=["40000000-0000-4000-8000-000000000001"],
+        context_digest="c" * 64,
+        progress_percent=100,
+    )
+    db.add(published_job)
+    db.flush()
+    published_resource = LearningResourceRecord(
+        tenant_id=context.tenant.id,
+        job_id=published_job.id,
+        resource_type=ResourceType.STRUCTURE_CARD,
+        version=1,
+        status=ResourceArtifactStatus.PUBLISHED,
+        source_ids=published_job.source_ids,
+        context_digest=published_job.context_digest,
+        content_digest="d" * 64,
+        metadata_json={},
+        published_at=NOW,
+    )
+    published_resource.created_at = NOW - timedelta(minutes=5)
+    published_resource.updated_at = NOW
+    db.add(published_resource)
+    reviewing_job = ResourceJobRecord(
+        tenant_id=context.tenant.id,
+        student_id=context.first.id,
+        course_id=COURSE_ID,
+        node_id=NODE_ID,
+        idempotency_key=f"metrics-rev-{uuid4().hex}",
+        request_digest="e" * 64,
+        status=ResourceJobStatus.REVIEWING,
+        requested_types=[ResourceType.STRUCTURE_CARD.value],
+        source_ids=["40000000-0000-4000-8000-000000000002"],
+        context_digest="f" * 64,
+        progress_percent=0,
+    )
+    db.add(reviewing_job)
+    db.flush()
+    db.add(
+        LearningResourceRecord(
+            tenant_id=context.tenant.id,
+            job_id=reviewing_job.id,
+            resource_type=ResourceType.STRUCTURE_CARD,
+            version=1,
+            status=ResourceArtifactStatus.REVIEWING,
+            source_ids=reviewing_job.source_ids,
+            context_digest=reviewing_job.context_digest,
+            content_digest="1" * 64,
+            metadata_json={},
+        )
+    )
+    foreign_job = ResourceJobRecord(
+        tenant_id=context.foreign.tenant_id,
+        student_id=context.foreign.id,
+        course_id=COURSE_ID,
+        node_id=NODE_ID,
+        idempotency_key=f"metrics-foreign-{uuid4().hex}",
+        request_digest="9" * 64,
+        status=ResourceJobStatus.READY,
+        requested_types=[ResourceType.STRUCTURE_CARD.value],
+        source_ids=["40000000-0000-4000-8000-000000000003"],
+        context_digest="8" * 64,
+        progress_percent=100,
+    )
+    db.add(foreign_job)
+    db.flush()
+    db.add(
+        LearningResourceRecord(
+            tenant_id=context.foreign.tenant_id,
+            job_id=foreign_job.id,
+            resource_type=ResourceType.STRUCTURE_CARD,
+            version=1,
+            status=ResourceArtifactStatus.PUBLISHED,
+            source_ids=foreign_job.source_ids,
+            context_digest=foreign_job.context_digest,
+            content_digest="7" * 64,
+            metadata_json={},
+        )
+    )
+    db.flush()
+    return metrics_node_id
+
+
+class TestAdminMetrics:
+    """BE-028: aggregate advanced metrics powering FE-025 charts and FE-026 stats."""
+
+    def test_metrics_returns_hourly_buckets_with_usage_latency_and_rates(
+        self, client: TestClient, db_session: Session, read_context: ReadContext
+    ) -> None:
+        _seed_metrics_series(db_session, read_context)
+        headers = _headers(read_context.admin_token)
+
+        response = client.get(
+            "/api/v1/admin/metrics?since=2026-07-18T05:30:00Z&until=2026-07-18T07:30:00Z",
+            headers=headers,
+        )
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["window"]["bucket"] == "hour"
+        assert body["window"]["bucket_count"] == 2
+        # API usage: all 5 admin-tenant calls land in the 06:00 bucket.
+        api_buckets = body["api_usage"]["buckets"]
+        assert len(api_buckets) == 2
+        busy = next(b for b in api_buckets if b["calls"] > 0)
+        assert busy["calls"] == 5
+        # Sorted latencies [10, 20, 40, 50, 100] -> p50 index 2 (=40), p95 index 4 (=100).
+        assert busy["p50_latency_ms"] == 40
+        assert busy["p95_latency_ms"] == 100
+        assert busy["error_rate"] == pytest.approx(1 / 5)
+        assert busy["throttle_rate"] == pytest.approx(1 / 5)
+
+    def test_metrics_mastery_distribution_is_tenant_scoped_and_filters_node(
+        self, client: TestClient, db_session: Session, read_context: ReadContext
+    ) -> None:
+        metrics_node_id = _seed_metrics_series(db_session, read_context)
+        headers = _headers(read_context.admin_token)
+
+        full = client.get(f"/api/v1/admin/metrics?course_id={COURSE_ID}", headers=headers)
+        node_filtered = client.get(
+            f"/api/v1/admin/metrics?course_id={COURSE_ID}&node_id={metrics_node_id}",
+            headers=headers,
+        )
+
+        assert full.status_code == 200, full.text
+        distribution = full.json()["mastery_distribution"]
+        assert distribution["course_id"] == str(COURSE_ID)
+        # Both admin-tenant rows counted; foreign STABLE_MASTERY excluded.
+        assert distribution["total_states"] == 2
+        assert distribution["counts"]["LEARNING"] == 1
+        assert distribution["counts"]["STABLE_MASTERY"] == 1
+        # Every MasteryStatus enum value is materialized.
+        assert set(distribution["counts"].keys()) == {status.value for status in MasteryStatus}
+
+        node_body = node_filtered.json()["mastery_distribution"]
+        assert node_body["total_states"] == 1
+        assert node_body["counts"] == {
+            "STABLE_MASTERY": 1,
+            **{
+                status.value: 0
+                for status in MasteryStatus
+                if status != MasteryStatus.STABLE_MASTERY
+            },
+        }
+
+    def test_metrics_agent_timeline_counts_outcomes_and_fallback(
+        self, client: TestClient, db_session: Session, read_context: ReadContext
+    ) -> None:
+        _seed_metrics_series(db_session, read_context)
+        headers = _headers(read_context.admin_token)
+
+        response = client.get(
+            "/api/v1/admin/metrics?since=2026-07-18T05:30:00Z&until=2026-07-18T07:30:00Z",
+            headers=headers,
+        )
+
+        assert response.status_code == 200, response.text
+        buckets = response.json()["agent_timeline"]["buckets"]
+        busy = next(b for b in buckets if b["total"] > 0)
+        # 3 admin-tenant runs in the window; foreign run excluded.
+        assert busy["total"] == 3
+        assert busy["succeeded"] == 2
+        assert busy["failed"] == 1
+        assert busy["fallback_used"] == 1
+
+    def test_metrics_resource_stats_aggregate_per_type_and_success_rate(
+        self, client: TestClient, db_session: Session, read_context: ReadContext
+    ) -> None:
+        _seed_metrics_series(db_session, read_context)
+        headers = _headers(read_context.admin_token)
+
+        response = client.get(f"/api/v1/admin/metrics?course_id={COURSE_ID}", headers=headers)
+
+        assert response.status_code == 200, response.text
+        items = response.json()["resource_stats"]["items"]
+        assert len(items) == 1
+        stat = items[0]
+        assert stat["resource_type"] == "STRUCTURE_CARD"
+        # 2 admin-tenant resources (1 PUBLISHED + 1 REVIEWING); foreign excluded.
+        assert stat["total"] == 2
+        assert stat["published"] == 1
+        assert stat["reviewing"] == 1
+        assert stat["success_rate"] == pytest.approx(0.5)
+        # The published resource spans 5 min; the reviewing resource has
+        # updated_at == created_at (0 ms), so the mean is 150_000 ms.
+        assert stat["avg_generation_ms"] is not None
+        assert stat["avg_generation_ms"] == pytest.approx(5 * 60 * 1000 / 2, rel=1e-6)
+
+    def test_metrics_rejects_student_token_and_invalid_window(
+        self, client: TestClient, db_session: Session, read_context: ReadContext
+    ) -> None:
+        _seed_metrics_series(db_session, read_context)
+        headers = _headers(read_context.admin_token)
+
+        student_token = _login(client, read_context.first.email, "StudentPass1!")
+        denied = client.get("/api/v1/admin/metrics", headers=_headers(student_token))
+        inverted = client.get(
+            "/api/v1/admin/metrics?since=2026-07-18T07:30:00Z&until=2026-07-18T05:30:00Z",
+            headers=headers,
+        )
+
+        assert denied.status_code == 403
+        assert inverted.status_code == 422

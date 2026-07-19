@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import re
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -12,15 +13,24 @@ from sqlalchemy.orm import Session
 
 from app.contracts.admin import (
     AdminAgentRunView,
+    AdminAgentTimeline,
+    AdminAgentTimelinePoint,
     AdminAgentToolCall,
+    AdminApiUsageBucket,
+    AdminApiUsageSeries,
     AdminEvidenceItem,
     AdminEvidencePage,
+    AdminMasteryDistribution,
     AdminMasterySummary,
+    AdminMetricsAggregate,
+    AdminMetricsWindow,
     AdminOverview,
     AdminProfileDimension,
     AdminResourceGateReview,
     AdminResourceReviewItem,
     AdminResourceReviewPage,
+    AdminResourceStats,
+    AdminResourceTypeStat,
     AdminStudentPage,
     AdminStudentProfile,
     AdminStudentProgress,
@@ -36,8 +46,10 @@ from app.models import (
     LearningPathStep,
     LearningResourceRecord,
     MasteryState,
+    MasteryStatus,
     ProfileDimensionScore,
     ProfileVersion,
+    ProviderCallRecord,
     ResourceJobRecord,
     ResourceReviewRecord,
     ReviewSchedule,
@@ -492,6 +504,297 @@ def get_admin_overview(db: Session, *, tenant_id: UUID) -> AdminOverview:
         pending_registrations=pending_registrations,
         resource_reviews=resource_reviews,
         due_reviews=due_reviews,
+    )
+
+
+# Hourly buckets stay readable for short windows; daily buckets keep long
+# windows chartable without leaking thousands of empty slots to the FE.
+_HOURLY_WINDOW_LIMIT = timedelta(hours=36)
+
+
+def _resolve_metrics_window(
+    since: datetime | None, until: datetime | None
+) -> tuple[datetime, datetime, str, timedelta]:
+    """Return ``(since, until, bucket_label, bucket_delta)`` for a metrics query.
+
+    Defaults to the trailing seven days and picks ``hour`` granularity for any
+    window no longer than 36 hours (so a one-day chart resolves per-hour
+    spikes); otherwise it switches to ``day`` to keep the series compact.
+    """
+    end = until or datetime.now(UTC)
+    start = since or end - timedelta(days=7)
+    if start.tzinfo is None or end.tzinfo is None:
+        raise ValueError("timezone-aware metrics window required")
+    if start >= end:
+        raise ValueError("metrics window must be positive")
+    hourly = (end - start) <= _HOURLY_WINDOW_LIMIT
+    bucket_delta = timedelta(hours=1) if hourly else timedelta(days=1)
+    bucket_label = "hour" if hourly else "day"
+    return start, end, bucket_label, bucket_delta
+
+
+def _percentile(sorted_values: list[int], q: float) -> int | None:
+    if not sorted_values:
+        return None
+    index = max(0, min(len(sorted_values) - 1, math.ceil(len(sorted_values) * q) - 1))
+    return sorted_values[index]
+
+
+def _bucket_starts(start: datetime, end: datetime, bucket_delta: timedelta) -> list[datetime]:
+    if start.tzinfo is None or end.tzinfo is None:
+        raise ValueError("timezone-aware metrics window required")
+    buckets: list[datetime] = []
+    if bucket_delta == timedelta(days=1):
+        cursor = start.astimezone(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        if cursor > start:
+            cursor -= bucket_delta
+    else:
+        cursor = start.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
+    while cursor < end:
+        if cursor >= start:
+            buckets.append(cursor)
+        cursor += bucket_delta
+    if not buckets:
+        buckets.append(start)
+    return buckets
+
+
+def _api_usage_series(
+    db: Session,
+    *,
+    tenant_id: UUID,
+    start: datetime,
+    end: datetime,
+    bucket_starts: list[datetime],
+    bucket_delta: timedelta,
+) -> AdminApiUsageSeries:
+    rows = list(
+        db.scalars(
+            select(ProviderCallRecord).where(
+                ProviderCallRecord.tenant_id == tenant_id,
+                ProviderCallRecord.created_at >= start,
+                ProviderCallRecord.created_at <= end,
+            )
+        )
+    )
+    grouped: dict[datetime, list[Any]] = {bucket: [] for bucket in bucket_starts}
+    for row in rows:
+        bucket = _bucket_for(row.created_at, bucket_starts, bucket_delta)
+        grouped.setdefault(bucket, []).append(row)
+    buckets: list[AdminApiUsageBucket] = []
+    for bucket_start in bucket_starts:
+        calls = grouped.get(bucket_start, [])
+        if not calls:
+            buckets.append(
+                AdminApiUsageBucket(
+                    bucket_start=bucket_start,
+                    calls=0,
+                    p50_latency_ms=None,
+                    p95_latency_ms=None,
+                    error_rate=0.0,
+                    throttle_rate=0.0,
+                )
+            )
+            continue
+        latencies = sorted(call.latency_ms for call in calls)
+        errors = sum(call.outcome != "SUCCEEDED" for call in calls)
+        throttled = sum(call.rate_limited for call in calls)
+        buckets.append(
+            AdminApiUsageBucket(
+                bucket_start=bucket_start,
+                calls=len(calls),
+                p50_latency_ms=_percentile(latencies, 0.5),
+                p95_latency_ms=_percentile(latencies, 0.95),
+                error_rate=errors / len(calls),
+                throttle_rate=throttled / len(calls),
+            )
+        )
+    return AdminApiUsageSeries(buckets=buckets)
+
+
+def _bucket_for(
+    timestamp: datetime,
+    bucket_starts: list[datetime],
+    bucket_delta: timedelta,
+) -> datetime:
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=UTC)
+    if bucket_delta == timedelta(days=1):
+        aligned = timestamp.astimezone(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+    else:
+        aligned = timestamp.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
+    # walk back to the most recent bucket_start <= aligned
+    candidate = aligned
+    while candidate not in bucket_starts and candidate >= bucket_starts[0]:
+        candidate -= bucket_delta
+    if candidate in bucket_starts:
+        return candidate
+    # timestamp predates the first bucket; clamp to the first bucket
+    return bucket_starts[0]
+
+
+def _mastery_distribution(
+    db: Session,
+    *,
+    tenant_id: UUID,
+    course_id: UUID | None,
+    node_id: UUID | None,
+) -> AdminMasteryDistribution:
+    predicates: list[Any] = [MasteryState.tenant_id == tenant_id]
+    if course_id is not None:
+        predicates.append(MasteryState.course_id == course_id)
+    if node_id is not None:
+        predicates.append(MasteryState.node_id == node_id)
+    rows = db.execute(
+        select(MasteryState.status, func.count()).where(*predicates).group_by(MasteryState.status)
+    ).all()
+    counts = {status.value: 0 for status in MasteryStatus}
+    for status, count in rows:
+        counts[status.value] = count
+    return AdminMasteryDistribution(
+        course_id=course_id,
+        node_id=node_id,
+        total_states=sum(counts.values()),
+        counts=counts,
+    )
+
+
+def _agent_timeline(
+    db: Session,
+    *,
+    tenant_id: UUID,
+    start: datetime,
+    end: datetime,
+    bucket_starts: list[datetime],
+    bucket_delta: timedelta,
+) -> AdminAgentTimeline:
+    rows = list(
+        db.scalars(
+            select(AgentRun).where(
+                AgentRun.tenant_id == tenant_id,
+                AgentRun.created_at >= start,
+                AgentRun.created_at <= end,
+            )
+        )
+    )
+    grouped: dict[datetime, list[Any]] = {bucket: [] for bucket in bucket_starts}
+    for row in rows:
+        bucket = _bucket_for(row.created_at, bucket_starts, bucket_delta)
+        grouped.setdefault(bucket, []).append(row)
+    buckets: list[AdminAgentTimelinePoint] = []
+    for bucket_start in bucket_starts:
+        runs = grouped.get(bucket_start, [])
+        succeeded = sum(1 for run in runs if run.status == "SUCCEEDED")
+        failed = sum(1 for run in runs if run.status not in ("SUCCEEDED", "QUEUED", "RUNNING"))
+        fallback = sum(1 for run in runs if run.fallback_used)
+        buckets.append(
+            AdminAgentTimelinePoint(
+                bucket_start=bucket_start,
+                total=len(runs),
+                succeeded=succeeded,
+                failed=failed,
+                fallback_used=fallback,
+            )
+        )
+    return AdminAgentTimeline(buckets=buckets)
+
+
+def _resource_stats(
+    db: Session,
+    *,
+    tenant_id: UUID,
+    start: datetime,
+    end: datetime,
+    course_id: UUID | None,
+) -> AdminResourceStats:
+    # LearningResourceRecord has no course_id; ResourceJobRecord does, so join
+    # when the optional course filter is set.
+    predicates: list[Any] = [LearningResourceRecord.tenant_id == tenant_id]
+    stmt = select(LearningResourceRecord)
+    if course_id is not None:
+        stmt = stmt.join(ResourceJobRecord, ResourceJobRecord.id == LearningResourceRecord.job_id)
+        predicates.append(ResourceJobRecord.course_id == course_id)
+    rows = list(db.scalars(stmt.where(*predicates)))
+    groups: dict[str, list[Any]] = {}
+    for row in rows:
+        groups.setdefault(row.resource_type.value, []).append(row)
+    items: list[AdminResourceTypeStat] = []
+    for resource_type, artifacts in sorted(groups.items()):
+        total = len(artifacts)
+        staged = sum(1 for a in artifacts if a.status == ResourceArtifactStatus.STAGED)
+        reviewing = sum(1 for a in artifacts if a.status == ResourceArtifactStatus.REVIEWING)
+        published = sum(1 for a in artifacts if a.status == ResourceArtifactStatus.PUBLISHED)
+        rejected = sum(1 for a in artifacts if a.status == ResourceArtifactStatus.REJECTED)
+        durations: list[float] = []
+        for artifact in artifacts:
+            created = artifact.created_at
+            updated = artifact.updated_at
+            if created is not None and updated is not None and updated >= created:
+                durations.append(max(0.0, (updated - created).total_seconds() * 1000.0))
+        items.append(
+            AdminResourceTypeStat(
+                resource_type=resource_type,
+                total=total,
+                staged=staged,
+                reviewing=reviewing,
+                published=published,
+                rejected=rejected,
+                success_rate=published / total if total else 0.0,
+                avg_generation_ms=sum(durations) / len(durations) if durations else None,
+            )
+        )
+    return AdminResourceStats(items=items)
+
+
+def get_admin_metrics(
+    db: Session,
+    *,
+    tenant_id: UUID,
+    since: datetime | None,
+    until: datetime | None,
+    node_id: UUID | None = None,
+    course_id: UUID | None = None,
+) -> AdminMetricsAggregate:
+    """Return the BE-028 advanced metrics aggregate for FE-025/FE-026.
+
+    Every series is scoped to ``tenant_id``. ``api_usage`` and ``agent_timeline``
+    aggregate Provider call / AgentRun records across the resolved window using
+    hourly buckets for windows up to 36h and daily buckets beyond that.
+    ``mastery_distribution`` honours optional ``course_id``/``node_id`` filters,
+    and ``resource_stats`` reports per-type publication outcomes (and the
+    optional ``course_id`` filter via the parent resource job).
+    """
+    start, end, bucket_label, bucket_delta = _resolve_metrics_window(since, until)
+    bucket_starts = _bucket_starts(start, end, bucket_delta)
+    return AdminMetricsAggregate(
+        window=AdminMetricsWindow(
+            since=start,
+            until=end,
+            bucket=bucket_label,
+            bucket_count=len(bucket_starts),
+        ),
+        api_usage=_api_usage_series(
+            db,
+            tenant_id=tenant_id,
+            start=start,
+            end=end,
+            bucket_starts=bucket_starts,
+            bucket_delta=bucket_delta,
+        ),
+        mastery_distribution=_mastery_distribution(
+            db, tenant_id=tenant_id, course_id=course_id, node_id=node_id
+        ),
+        agent_timeline=_agent_timeline(
+            db,
+            tenant_id=tenant_id,
+            start=start,
+            end=end,
+            bucket_starts=bucket_starts,
+            bucket_delta=bucket_delta,
+        ),
+        resource_stats=_resource_stats(
+            db, tenant_id=tenant_id, start=start, end=end, course_id=course_id
+        ),
     )
 
 

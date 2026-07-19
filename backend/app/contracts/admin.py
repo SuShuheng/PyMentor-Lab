@@ -160,3 +160,158 @@ class AdminAgentRunView(StrictAdminModel):
     completed_at: datetime | None
     created_at: datetime
     tool_calls: list[AdminAgentToolCall]
+
+
+class AdminMetricsWindow(StrictAdminModel):
+    """Resolved query window reported back to the renderer.
+
+    ``bucket`` is the chosen granularity (``hour`` for windows up to 36h,
+    ``day`` otherwise) and ``bucket_count`` is the number of discrete buckets
+    spanning ``[since, until)`` so FE-025 can pre-size chart axes.
+    """
+
+    since: datetime
+    until: datetime
+    bucket: str = Field(min_length=1, max_length=8)
+    bucket_count: int = Field(ge=1)
+
+
+class AdminApiUsageBucket(StrictAdminModel):
+    """One time bucket of Provider call volume / latency / error aggregates.
+
+    Percentiles are ``None`` when the bucket recorded no calls so the chart can
+    render a gap instead of a misleading zero.
+    """
+
+    bucket_start: datetime
+    calls: int = Field(ge=0)
+    p50_latency_ms: int | None = Field(default=None, ge=0)
+    p95_latency_ms: int | None = Field(default=None, ge=0)
+    error_rate: float = Field(ge=0, le=1)
+    throttle_rate: float = Field(ge=0, le=1)
+
+
+class AdminApiUsageSeries(StrictAdminModel):
+    buckets: list[AdminApiUsageBucket]
+
+
+class AdminMasteryDistribution(StrictAdminModel):
+    """Tenant-scoped MasteryState counts keyed by MasteryStatus value.
+
+    Every status enum value is materialized with a zero count when absent so
+    FE-025 can render a stable distribution regardless of tenant activity.
+    """
+
+    course_id: UUID | None
+    node_id: UUID | None
+    total_states: int = Field(ge=0)
+    counts: dict[str, int]
+
+
+class AdminAgentTimelinePoint(StrictAdminModel):
+    """One time bucket of AgentRun volume broken down by outcome.
+
+    ``fallback_used`` counts runs whose safety fallback engaged; ``failed``
+    counts runs whose terminal status was not SUCCEEDED.
+    """
+
+    bucket_start: datetime
+    total: int = Field(ge=0)
+    succeeded: int = Field(ge=0)
+    failed: int = Field(ge=0)
+    fallback_used: int = Field(ge=0)
+
+
+class AdminAgentTimeline(StrictAdminModel):
+    buckets: list[AdminAgentTimelinePoint]
+
+
+class AdminResourceTypeStat(StrictAdminModel):
+    """Per-resource-type counts, publication success rate, and generation time.
+
+    ``success_rate`` is ``PUBLISHED / total`` (0 when no resources of the type
+    exist). ``avg_generation_ms`` is the mean wall time between resource
+    ``created_at`` and ``updated_at`` and is ``None`` when no resources of the
+    type exist in the window.
+    """
+
+    resource_type: str = Field(min_length=1, max_length=32)
+    total: int = Field(ge=0)
+    staged: int = Field(ge=0)
+    reviewing: int = Field(ge=0)
+    published: int = Field(ge=0)
+    rejected: int = Field(ge=0)
+    success_rate: float = Field(ge=0, le=1)
+    avg_generation_ms: float | None = Field(default=None, ge=0)
+
+
+class AdminResourceStats(StrictAdminModel):
+    items: list[AdminResourceTypeStat]
+
+
+class AdminMetricsAggregate(StrictAdminModel):
+    """BE-028 advanced metrics aggregate powering FE-025 charts and FE-026 stats.
+
+    ``api_usage`` and ``agent_timeline`` are tenant-wide operational signals
+    (neither ProviderCallRecord nor AgentRun carry a node_id), while
+    ``mastery_distribution`` and ``resource_stats`` honour the optional
+    ``node_id`` / ``course_id`` filters. Every series is tenant-scoped.
+    """
+
+    window: AdminMetricsWindow
+    api_usage: AdminApiUsageSeries
+    mastery_distribution: AdminMasteryDistribution
+    agent_timeline: AdminAgentTimeline
+    resource_stats: AdminResourceStats
+
+
+# --- BE-020 Agent prompt template tuning -------------------------------------
+# The six LangGraph node names externalized from
+# workers/agent-worker/src/agents/nodes.ts. Kept as a literal tuple so the
+# contracts module stays dependency-free.
+AGENT_PROMPT_NODES: tuple[str, ...] = (
+    "orchestrator",
+    "profile",
+    "path",
+    "resource",
+    "coach",
+    "assessment",
+)
+
+
+class AgentPromptTemplateView(StrictAdminModel):
+    id: UUID
+    node: str = Field(min_length=1, max_length=32)
+    version: int = Field(ge=1)
+    system_prompt: str = Field(min_length=1)
+    published: bool
+    created_by: UUID | None
+    created_at: datetime
+
+
+class AgentPromptTemplateCreate(StrictAdminModel):
+    system_prompt: str = Field(min_length=1, max_length=32_000)
+
+
+class AgentPromptTemplateHistoryPage(StrictAdminModel):
+    items: list[AgentPromptTemplateView]
+    page: PageMetadata
+
+
+class AgentPromptDryRunRequest(StrictAdminModel):
+    system_prompt: str = Field(min_length=1, max_length=32_000)
+    sample_input: dict[str, Any] = Field(default_factory=dict)
+
+
+class AgentPromptDryRunView(StrictAdminModel):
+    """Result of executing a candidate prompt against a sandbox case.
+
+    For V1.1 the Worker runtime integration is intentionally stubbed: the API
+    contract is what the renderer depends on, and ``implemented=False`` plus the
+    explicit ``note`` keep the stub honest. The Worker fetches the published
+    prompt via ``GET /api/v1/admin/agent-prompts/{node}`` at runtime.
+    """
+
+    node: str = Field(min_length=1, max_length=32)
+    implemented: bool
+    note: str = Field(min_length=1, max_length=256)

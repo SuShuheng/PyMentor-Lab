@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -9,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.admin_queries import (
     AdminReadNotFound,
+    get_admin_metrics,
     get_admin_overview,
     get_agent_run,
     get_mastery_summary,
@@ -22,6 +24,7 @@ from app.contracts.admin import (
     AdminAgentRunView,
     AdminEvidencePage,
     AdminMasterySummary,
+    AdminMetricsAggregate,
     AdminOverview,
     AdminResourceReviewPage,
     AdminStudentPage,
@@ -119,6 +122,30 @@ async def admin_overview(
     admin: User = Depends(require_course_admin),
 ) -> AdminOverview:
     return get_admin_overview(db, tenant_id=admin.tenant_id)
+
+
+@router.get("/metrics", response_model=AdminMetricsAggregate)
+async def admin_metrics(
+    since: datetime | None = None,
+    until: datetime | None = None,
+    node_id: UUID | None = None,
+    course_id: UUID | None = None,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_course_admin),
+) -> AdminMetricsAggregate:
+    if since is not None and until is not None and since >= until:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="metrics window must be positive",
+        )
+    return get_admin_metrics(
+        db,
+        tenant_id=admin.tenant_id,
+        since=since,
+        until=until,
+        node_id=node_id,
+        course_id=course_id,
+    )
 
 
 @router.get("/resources/reviews", response_model=AdminResourceReviewPage)
