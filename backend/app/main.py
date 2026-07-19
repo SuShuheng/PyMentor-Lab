@@ -18,13 +18,16 @@ from app.api.admin import router as admin_router
 from app.api.admin_queries import router as admin_queries_router
 from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
+from app.api.cms import router as cms_router
 from app.api.code import router as code_router
 from app.api.evidence import router as evidence_router
 from app.api.health import router as system_router
 from app.api.hints import router as hints_router
+from app.api.knowledge import router as knowledge_router
 from app.api.learning import router as learning_router
 from app.api.mastery import router as mastery_router
 from app.api.paths import router as paths_router
+from app.api.practice import router as practice_router
 from app.api.profiles import router as profiles_router
 from app.api.providers import router as providers_router
 from app.api.resources import router as resources_router
@@ -83,8 +86,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     if "*" in settings.cors_allowed_origins:
         raise ValueError(
-            "PYMENTOR_CORS_ALLOWED_ORIGINS must list explicit origins "
-            "when credentials are enabled"
+            "PYMENTOR_CORS_ALLOWED_ORIGINS must list explicit origins when credentials are enabled"
         )
     app = FastAPI(
         title="PyMentor Lab API",
@@ -115,15 +117,18 @@ def create_app() -> FastAPI:
     app.include_router(chat_router)
     app.include_router(admin_router)
     app.include_router(admin_queries_router)
+    app.include_router(cms_router)
     app.include_router(providers_router)
     app.include_router(system_observability_router)
     app.include_router(system_maintenance_router)
     app.include_router(evidence_router)
     app.include_router(profiles_router)
+    app.include_router(knowledge_router)
     app.include_router(learning_router)
     app.include_router(paths_router)
     app.include_router(tasks_router)
     app.include_router(mastery_router)
+    app.include_router(practice_router)
     app.include_router(reviews_router)
     app.include_router(resources_router)
     app.include_router(code_router)

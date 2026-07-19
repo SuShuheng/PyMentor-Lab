@@ -11,10 +11,13 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, ValidationError
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 SemanticVersion = Annotated[str, Field(pattern=r"^[1-9]\d*\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$")]
 NonEmptyText = Annotated[str, Field(min_length=1)]
@@ -487,3 +490,105 @@ def validate_course_document(document: Mapping[str, object]) -> CourseValidation
         counts=counts,
         content_digest=content_digest,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class KnowledgeGraphEdgeRow:
+    """Directed prerequisite edge expanded from ``KnowledgeNode.prerequisites``."""
+
+    from_node_id: UUID
+    to_node_id: UUID
+
+
+@dataclass(frozen=True, slots=True)
+class KnowledgeGraphNodeRow:
+    """One node plus the requesting student's current mastery status (or None)."""
+
+    node_id: UUID
+    title: str
+    chapter_id: UUID
+    mastery_status: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class KnowledgeGraphProjection:
+    """Course-scoped node/edge projection with the caller's mastery join."""
+
+    course_id: UUID
+    nodes: list[KnowledgeGraphNodeRow]
+    edges: list[KnowledgeGraphEdgeRow]
+
+
+def load_knowledge_graph(
+    session: Session,
+    *,
+    course_id: UUID,
+    student_id: UUID,
+) -> KnowledgeGraphProjection:
+    """Read the course's knowledge graph (nodes + prerequisite edges) and
+    left-join the requesting student's mastery status onto each node.
+
+    The graph structure is static and shared across tenants in the same course;
+    only the per-node ``mastery_status`` is student-scoped. Edges are derived
+    from the ``KnowledgeNode.prerequisites`` JSONB column (BE-009 catalogue) by
+    expanding each node's prerequisite list into ``(prerequisite, node)`` pairs.
+    """
+
+    from app.models import KnowledgeNode, MasteryState
+
+    node_rows = list(
+        session.scalars(
+            select(KnowledgeNode)
+            .where(KnowledgeNode.course_id == course_id)
+            .order_by(KnowledgeNode.chapter_id, KnowledgeNode.id)
+        )
+    )
+    if not node_rows:
+        raise KnowledgeGraphNotFoundError(course_id)
+
+    node_ids = {node.id for node in node_rows}
+    status_by_node: dict[UUID, str] = dict(
+        session.execute(
+            select(MasteryState.node_id, MasteryState.status).where(
+                MasteryState.student_id == student_id,
+                MasteryState.course_id == course_id,
+                MasteryState.node_id.in_(node_ids),
+            )
+        ).all()
+    )
+
+    nodes = [
+        KnowledgeGraphNodeRow(
+            node_id=node.id,
+            title=node.title,
+            chapter_id=node.chapter_id,
+            mastery_status=status_by_node.get(node.id),
+        )
+        for node in node_rows
+    ]
+
+    edges: list[KnowledgeGraphEdgeRow] = []
+    for node in node_rows:
+        for prerequisite_id in node.prerequisites:
+            try:
+                prerequisite_uuid = UUID(str(prerequisite_id))
+            except ValueError:
+                continue
+            if prerequisite_uuid not in node_ids:
+                continue
+            edges.append(
+                KnowledgeGraphEdgeRow(
+                    from_node_id=prerequisite_uuid,
+                    to_node_id=node.id,
+                )
+            )
+    edges.sort(key=lambda edge: (edge.from_node_id, edge.to_node_id))
+
+    return KnowledgeGraphProjection(course_id=course_id, nodes=nodes, edges=edges)
+
+
+class KnowledgeGraphNotFoundError(LookupError):
+    """Raised when the requested course has no seeded knowledge nodes."""
+
+    def __init__(self, course_id: UUID) -> None:
+        super().__init__(f"knowledge graph not found for course {course_id}")
