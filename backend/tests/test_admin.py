@@ -354,14 +354,14 @@ class TestBootstrap:
         self, db_session: Session, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """配置环境变量后，bootstrap 创建初始 admin。"""
-        monkeypatch.setenv("PYMENTOR_INITIAL_ADMIN_EMAIL", "boot@admin.local")
+        monkeypatch.setenv("PYMENTOR_INITIAL_ADMIN_EMAIL", "boot@pymentor.dev")
         monkeypatch.setenv("PYMENTOR_INITIAL_ADMIN_PASSWORD", "BootPass1!")
 
         # 重新加载 settings 以读取新的环境变量。
         from app import bootstrap as bootstrap_mod
 
         bootstrap_mod._settings = type(bootstrap_mod._settings)(
-            initial_admin_email="boot@admin.local",
+            initial_admin_email="boot@pymentor.dev",
             initial_admin_password="BootPass1!",
             database_url=bootstrap_mod._settings.database_url,
             jwt_secret=bootstrap_mod._settings.jwt_secret,
@@ -377,7 +377,7 @@ class TestBootstrap:
         from app import bootstrap as bootstrap_mod
 
         bootstrap_mod._settings = type(bootstrap_mod._settings)(
-            initial_admin_email="boot2@admin.local",
+            initial_admin_email="boot2@pymentor.dev",
             initial_admin_password="BootPass1!",
             database_url=bootstrap_mod._settings.database_url,
             jwt_secret=bootstrap_mod._settings.jwt_secret,
@@ -388,6 +388,77 @@ class TestBootstrap:
         # 第二次：已有 admin，不创建。
         second = bootstrap_mod.bootstrap_initial_admin(db_session)
         assert second is None
+
+    def test_bootstrap_rejects_non_email_admin(self, db_session: Session) -> None:
+        """BE-029: 非法 email（无 @）在 bootstrap 阶段就被拒绝，不写入数据库。
+
+        V1.0 incident: ``PYMENTOR_INITIAL_ADMIN_EMAIL=admin`` 被 bootstrap 接受并
+        写入 users 表，但 ``POST /api/v1/auth/login`` 用 Pydantic EmailStr 严格
+        校验，导致该账号无法登录，需手工 SQL 更正。此测试锁住该回归。
+
+        同源校验：``EmailStr`` 还会拒绝保留 TLD（如 ``.local``），所以 v1.0 测试
+        用的 ``boot@admin.local`` 也一并改为合法的 ``@pymentor.dev``。
+        """
+        from app import bootstrap as bootstrap_mod
+
+        bootstrap_mod._settings = type(bootstrap_mod._settings)(
+            initial_admin_email="admin",  # 无 @，不是合法 email
+            initial_admin_password="BootPass1!",
+            database_url=bootstrap_mod._settings.database_url,
+            jwt_secret=bootstrap_mod._settings.jwt_secret,
+        )
+
+        # 非法 email 必须在写入前抛出明确异常，而不是静默创建无法登录的账号。
+        with pytest.raises(ValueError, match=r"(?i)initial_admin_email.*email"):
+            bootstrap_mod.bootstrap_initial_admin(db_session)
+
+        # 并且不能有 admin@ 行残留在 users 表里。
+        from sqlalchemy import select
+
+        from app.models.identity import User
+
+        leftover = db_session.scalar(select(User).where(User.email == "admin"))
+        assert leftover is None
+
+    def test_bootstrap_rejects_reserved_tld(self, db_session: Session) -> None:
+        """BE-029: EmailStr 拒绝保留 TLD（.local），bootstrap 同源拒绝。"""
+        from app import bootstrap as bootstrap_mod
+
+        bootstrap_mod._settings = type(bootstrap_mod._settings)(
+            initial_admin_email="admin@pymentor.local",  # .local 是保留 TLD
+            initial_admin_password="BootPass1!",
+            database_url=bootstrap_mod._settings.database_url,
+            jwt_secret=bootstrap_mod._settings.jwt_secret,
+        )
+        with pytest.raises(ValueError, match=r"(?i)initial_admin_email.*email"):
+            bootstrap_mod.bootstrap_initial_admin(db_session)
+
+    def test_bootstrap_accepts_valid_email_after_reject(
+        self, db_session: Session, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """BE-029: 拒绝非法 email 后，合法 email 仍能正常 bootstrap（无状态残留）。"""
+        from app import bootstrap as bootstrap_mod
+
+        # 第一次：非法 email，应抛 ValueError。
+        bootstrap_mod._settings = type(bootstrap_mod._settings)(
+            initial_admin_email="not-an-email",
+            initial_admin_password="BootPass1!",
+            database_url=bootstrap_mod._settings.database_url,
+            jwt_secret=bootstrap_mod._settings.jwt_secret,
+        )
+        with pytest.raises(ValueError):
+            bootstrap_mod.bootstrap_initial_admin(db_session)
+
+        # 第二次：合法 email，应成功创建。
+        bootstrap_mod._settings = type(bootstrap_mod._settings)(
+            initial_admin_email="valid@pymentor.dev",
+            initial_admin_password="BootPass1!",
+            database_url=bootstrap_mod._settings.database_url,
+            jwt_secret=bootstrap_mod._settings.jwt_secret,
+        )
+        created = bootstrap_mod.bootstrap_initial_admin(db_session)
+        assert created is not None
+        assert created.email == "valid@pymentor.dev"
 
     def test_seed_demo_tenant_creates_guest(self, db_session: Session) -> None:
         """seed_demo_tenant 创建 demo 租户与 Demo Guest 用户。"""

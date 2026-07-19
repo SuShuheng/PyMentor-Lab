@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from pydantic import EmailStr, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -77,14 +78,39 @@ def ensure_demo_guest(db: Session, tenant: Tenant) -> User:
 _settings = get_settings()
 
 
+def _validate_initial_admin_email(email: str) -> None:
+    """BE-029：用与 ``UserCreate.email`` 同源的 ``EmailStr`` 校验初始 admin 邮箱。
+
+    抛 ``ValueError``（消息含 ``initial_admin_email`` 与 ``email`` 关键字，便于
+    日志/启动错误定位）。复用 pydantic ``EmailStr`` 而非自写正则，避免与
+    登录端 Pydantic 校验漂移。
+    """
+    from pydantic import TypeAdapter
+
+    adapter: TypeAdapter[str] = TypeAdapter(EmailStr)
+    try:
+        adapter.validate_python(email)
+    except ValidationError as exc:
+        raise ValueError(f"initial_admin_email is not a valid email address: {email!r}") from exc
+
+
 def bootstrap_initial_admin(db: Session) -> User | None:
     """创建初始 System Admin（若环境变量配置且尚无管理员）。
 
     幂等：已存在任意管理端角色用户时不重复创建。
     返回创建的 User，或 None（未配置/已存在）。
+
+    BE-029：``PYMENTOR_INITIAL_ADMIN_EMAIL`` 必须是合法 email。V1.0 曾接受
+    ``admin``（无 @-sign）并写入 users 表，但 ``POST /api/v1/auth/login`` 的
+    Pydantic ``EmailStr`` 严格校验使该账号无法登录。这里在写入前用同一
+    ``EmailStr`` 校验，让系统在启动时明确报错，而非静默生成不可用账号。
     """
     if not _settings.initial_admin_email or not _settings.initial_admin_password:
         return None
+
+    # BE-029：与 UserCreate.email 同源的 EmailStr 校验，避免 bootstrap 写入
+    # 一个登录端永远拒绝的账号。失败时抛 ValueError，由调用方记录并中止启动。
+    _validate_initial_admin_email(_settings.initial_admin_email)
 
     # 幂等：已存在管理员则不创建。
     if has_any_admin(db):
