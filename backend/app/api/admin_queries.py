@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.admin_queries import (
     AdminReadNotFound,
+    get_admin_overview,
     get_agent_run,
     get_mastery_summary,
     get_student_profile,
@@ -21,6 +22,7 @@ from app.contracts.admin import (
     AdminAgentRunView,
     AdminEvidencePage,
     AdminMasterySummary,
+    AdminOverview,
     AdminResourceReviewPage,
     AdminStudentPage,
     AdminStudentProfile,
@@ -109,6 +111,14 @@ async def admin_mastery_summary(
     admin: User = Depends(require_course_admin),
 ) -> AdminMasterySummary:
     return get_mastery_summary(db, tenant_id=admin.tenant_id, course_id=course_id)
+
+
+@router.get("/overview", response_model=AdminOverview)
+async def admin_overview(
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_course_admin),
+) -> AdminOverview:
+    return get_admin_overview(db, tenant_id=admin.tenant_id)
 
 
 @router.get("/resources/reviews", response_model=AdminResourceReviewPage)

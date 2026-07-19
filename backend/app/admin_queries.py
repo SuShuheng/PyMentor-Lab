@@ -16,6 +16,7 @@ from app.contracts.admin import (
     AdminEvidenceItem,
     AdminEvidencePage,
     AdminMasterySummary,
+    AdminOverview,
     AdminProfileDimension,
     AdminResourceGateReview,
     AdminResourceReviewItem,
@@ -427,6 +428,71 @@ def list_resource_reviews(
             )
         )
     return AdminResourceReviewPage(items=items, page=_page(page, page_size, total))
+
+
+def get_admin_overview(db: Session, *, tenant_id: UUID) -> AdminOverview:
+    """Return live tenant-scoped aggregate counts for the admin overview.
+
+    Replaces the V1.0 frontend hardcoded values (``活跃学生 248`` /
+    ``资源审校 7``). Every count is filtered by ``tenant_id`` so cross-tenant
+    data never leaks; predicates mirror the existing detail endpoints:
+    active students follow ``_scoped_student`` (STUDENT role + ACTIVE
+    status), pending registrations mirror ``/admin/registrations/pending``,
+    resource reviews mirror ``list_resource_reviews`` (STAGED/REVIEWING),
+    and due reviews mirror ``get_mastery_summary``.
+    """
+    active_students = (
+        db.scalar(
+            select(func.count())
+            .select_from(User)
+            .join(UserRole, UserRole.user_id == User.id)
+            .join(Role, Role.id == UserRole.role_id)
+            .where(
+                User.tenant_id == tenant_id,
+                User.status == UserStatus.ACTIVE,
+                Role.name == RoleName.STUDENT.value,
+            )
+        )
+        or 0
+    )
+    pending_registrations = (
+        db.scalar(
+            select(func.count())
+            .select_from(User)
+            .where(User.tenant_id == tenant_id, User.status == UserStatus.PENDING)
+        )
+        or 0
+    )
+    resource_reviews = (
+        db.scalar(
+            select(func.count())
+            .select_from(LearningResourceRecord)
+            .where(
+                LearningResourceRecord.tenant_id == tenant_id,
+                LearningResourceRecord.status.in_(
+                    [ResourceArtifactStatus.STAGED, ResourceArtifactStatus.REVIEWING]
+                ),
+            )
+        )
+        or 0
+    )
+    due_reviews = (
+        db.scalar(
+            select(func.count())
+            .select_from(ReviewSchedule)
+            .where(
+                ReviewSchedule.tenant_id == tenant_id,
+                ReviewSchedule.status == ReviewStatus.DUE,
+            )
+        )
+        or 0
+    )
+    return AdminOverview(
+        active_students=active_students,
+        pending_registrations=pending_registrations,
+        resource_reviews=resource_reviews,
+        due_reviews=due_reviews,
+    )
 
 
 def redact_admin_snapshot(value: Any, *, depth: int = 0) -> Any:

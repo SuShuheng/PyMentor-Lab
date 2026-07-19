@@ -127,6 +127,21 @@ class AdminAgentToolCall(StrictAdminModel):
     occurred_at: datetime
 
 
+class AdminOverview(StrictAdminModel):
+    """Live tenant-scoped aggregate counts for the admin overview dashboard.
+
+    Each field is scoped to the requesting administrator's tenant; the
+    legacy V1.0 frontend hardcoded these values (e.g. ``active_students=248``,
+    ``resource_reviews=7``), so the renderer depends on every count being
+    non-negative and never leaking across tenants.
+    """
+
+    active_students: int = Field(ge=0)
+    pending_registrations: int = Field(ge=0)
+    resource_reviews: int = Field(ge=0)
+    due_reviews: int = Field(ge=0)
+
+
 class AdminAgentRunView(StrictAdminModel):
     external_run_id: str = Field(min_length=1, max_length=128)
     event_id: str = Field(min_length=1, max_length=128)

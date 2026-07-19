@@ -528,3 +528,129 @@ def test_agent_run_replay_view_is_scoped_ordered_and_redacted(
     assert body["input_snapshot"]["api_key"] == "***"
     assert "super-secret" not in response.text
     assert foreign.status_code == 404
+
+
+def _seed_overview_counts(db: Session, context: ReadContext) -> None:
+    """BE-017 seed: one of each countable entity per tenant.
+
+    ``read_context`` already provides 2 ACTIVE students in the admin tenant
+    (``first``, ``second``) and 1 ACTIVE student in a foreign tenant
+    (``foreign``). This helper adds the remaining countable rows in both
+    tenants so every overview metric can assert tenant-scoped isolation.
+    """
+
+    def _pending(tenant_id: UUID, label: str) -> User:
+        # create_student_user defaults to PENDING and assigns STUDENT role.
+        return create_student_user(
+            db,
+            tenant_id=tenant_id,
+            email=f"{label}-{uuid4().hex}@example.com",
+            password_hash=hash_password("PendingPass1!"),
+            student_no=f"{label[0].upper()}-{uuid4().hex[:10]}",
+            display_name=label,
+        )
+
+    def _reviewing_resource(tenant_id: UUID, student_id: UUID, tag: str) -> None:
+        job = ResourceJobRecord(
+            tenant_id=tenant_id,
+            student_id=student_id,
+            course_id=COURSE_ID,
+            node_id=NODE_ID,
+            idempotency_key=f"overview-{tag}-{uuid4().hex}",
+            request_digest="b" * 64,
+            status=ResourceJobStatus.REVIEWING,
+            requested_types=[ResourceType.STRUCTURE_CARD.value],
+            source_ids=["40000000-0000-8000-000000000001"],
+            context_digest="c" * 64,
+            progress_percent=0,
+        )
+        db.add(job)
+        db.flush()
+        db.add(
+            LearningResourceRecord(
+                tenant_id=tenant_id,
+                job_id=job.id,
+                resource_type=ResourceType.STRUCTURE_CARD,
+                version=1,
+                status=ResourceArtifactStatus.REVIEWING,
+                source_ids=job.source_ids,
+                context_digest=job.context_digest,
+                content_digest=f"{tag[0]}" * 64,
+                metadata_json={},
+            )
+        )
+
+    def _due_review(tenant_id: UUID, student_id: UUID, tag: str) -> None:
+        mastery = MasteryState(
+            tenant_id=tenant_id,
+            student_id=student_id,
+            course_id=COURSE_ID,
+            node_id=NODE_ID,
+            status=MasteryStatus.LEARNING,
+            version=1,
+        )
+        db.add(mastery)
+        db.flush()
+        db.add(
+            ReviewSchedule(
+                tenant_id=tenant_id,
+                student_id=student_id,
+                course_id=COURSE_ID,
+                node_id=NODE_ID,
+                mastery_state_id=mastery.id,
+                scenario_key=f"overview-{tag}",
+                due_at=NOW - timedelta(minutes=5),
+                original_due_at=NOW - timedelta(minutes=5),
+                hint_ceiling=0,
+                status=ReviewStatus.DUE,
+                version=1,
+            )
+        )
+
+    # Admin tenant: 1 PENDING user, 1 REVIEWING resource, 1 DUE review.
+    _pending(context.tenant.id, "AdminPending")
+    _reviewing_resource(context.tenant.id, context.first.id, "admin")
+    _due_review(context.tenant.id, context.first.id, "admin")
+
+    # Foreign tenant: counterpart rows that must NOT inflate admin counts.
+    _pending(context.foreign.tenant_id, "ForeignPending")
+    _reviewing_resource(context.foreign.tenant_id, context.foreign.id, "foreign")
+    _due_review(context.foreign.tenant_id, context.foreign.id, "foreign")
+    db.flush()
+
+
+class TestAdminOverview:
+    """BE-017: live tenant-scoped aggregate counts replace hardcoded V1.0 stats."""
+
+    def test_overview_returns_live_tenant_scoped_counts(
+        self, client: TestClient, db_session: Session, read_context: ReadContext
+    ) -> None:
+        _seed_overview_counts(db_session, read_context)
+        headers = _headers(read_context.admin_token)
+
+        response = client.get("/api/v1/admin/overview", headers=headers)
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert set(body.keys()) == {
+            "active_students",
+            "pending_registrations",
+            "resource_reviews",
+            "due_reviews",
+        }
+        # 2 ACTIVE students in admin tenant (first + second); admin has
+        # COURSE_ADMIN role so is excluded; foreign student must NOT leak.
+        assert body["active_students"] == 2
+        assert body["pending_registrations"] == 1
+        assert body["resource_reviews"] == 1
+        assert body["due_reviews"] == 1
+
+    def test_overview_rejects_student_token(
+        self, client: TestClient, db_session: Session, read_context: ReadContext
+    ) -> None:
+        _seed_overview_counts(db_session, read_context)
+        token = _login(client, read_context.first.email, "StudentPass1!")
+
+        response = client.get("/api/v1/admin/overview", headers=_headers(token))
+
+        assert response.status_code == 403
