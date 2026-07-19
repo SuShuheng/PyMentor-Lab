@@ -87,6 +87,92 @@ def _ensure_course_seeded(db_session: Session) -> None:
 
 
 # --------------------------------------------------------------------------- #
+# GET nodes (list)
+# --------------------------------------------------------------------------- #
+class TestListNodes:
+    def test_list_nodes_returns_paginated_chapter_ordered_rows(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        _ensure_course_seeded(db_session)
+        _make_course_admin(db_session)
+        token = _login(client, "cms-admin@uni.edu", "AdminPass1!")
+
+        resp = client.get(
+            "/api/v1/admin/cms/nodes?page=1&page_size=5",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["items"]
+        assert len(body["items"]) <= 5
+        # Every item surfaces the editable-locator fields.
+        for item in body["items"]:
+            for field in (
+                "node_id",
+                "course_id",
+                "chapter_id",
+                "chapter_title",
+                "title",
+                "content_version",
+            ):
+                assert field in item
+            assert item["chapter_title"]
+            assert item["title"]
+        # Pagination metadata reflects the full canonical course.
+        meta = body["page"]
+        assert meta["page"] == 1
+        assert meta["page_size"] == 5
+        assert meta["total_items"] == 93
+        assert meta["total_pages"] == 19  # ceil(93 / 5)
+
+    def test_list_nodes_supports_title_substring_search(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        _ensure_course_seeded(db_session)
+        _make_course_admin(db_session)
+        token = _login(client, "cms-admin@uni.edu", "AdminPass1!")
+
+        # First fetch a known title to search for, then verify the filter narrows.
+        seeded = client.get(
+            "/api/v1/admin/cms/nodes?page=1&page_size=1",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert seeded.status_code == 200, seeded.text
+        known_title = seeded.json()["items"][0]["title"]
+        # Use a unique substring unlikely to collide across all 93 nodes.
+        needle = known_title[:3]
+
+        filtered = client.get(
+            f"/api/v1/admin/cms/nodes?q={needle}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert filtered.status_code == 200, filtered.text
+        body = filtered.json()
+        assert body["page"]["total_items"] >= 1
+        assert body["page"]["total_items"] < 93
+        for item in body["items"]:
+            assert needle.lower() in item["title"].lower()
+
+    def test_list_nodes_rejects_non_admin(self, client: TestClient, db_session: Session) -> None:
+        _ensure_course_seeded(db_session)
+        # No admin user created → only the course is seeded.
+        resp = client.get("/api/v1/admin/cms/nodes")
+        assert resp.status_code == 401
+
+    def test_list_nodes_rejects_empty_query(self, client: TestClient, db_session: Session) -> None:
+        _ensure_course_seeded(db_session)
+        _make_course_admin(db_session)
+        token = _login(client, "cms-admin@uni.edu", "AdminPass1!")
+
+        resp = client.get(
+            "/api/v1/admin/cms/nodes?q=",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        # min_length=1 on the Query param makes FastAPI return 422.
+        assert resp.status_code == 422
+
+
+# --------------------------------------------------------------------------- #
 # GET node
 # --------------------------------------------------------------------------- #
 class TestGetNode:

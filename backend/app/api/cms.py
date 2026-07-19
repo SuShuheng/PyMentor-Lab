@@ -43,15 +43,18 @@ from collections.abc import Mapping
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.command_idempotency import begin_command, scope_for_request
 from app.contracts.cms import (
+    CmsNodeListItem,
+    CmsNodePage,
     CmsNodeUpdate,
     CmsNodeView,
+    CmsPageMetadata,
     CmsPublishRequest,
     CmsPublishView,
     CmsQuestionUpdate,
@@ -63,6 +66,7 @@ from app.idempotency import save_response
 from app.knowledge_assets import validate_course_document
 from app.models import (
     CourseCatalog,
+    CourseChapter,
     KnowledgeNode,
     KnowledgeQuestionTemplate,
     User,
@@ -345,6 +349,72 @@ def _load_question_or_404(db: Session, question_id: UUID) -> KnowledgeQuestionTe
             status_code=status.HTTP_404_NOT_FOUND, detail="question template not found"
         )
     return question
+
+
+# --------------------------------------------------------------------------- #
+# Node list (BE-027 V1.1: paginated browser surface)
+# --------------------------------------------------------------------------- #
+@router.get("/nodes", response_model=CmsNodePage)
+async def list_nodes(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    q: str | None = Query(default=None, min_length=1, max_length=100),
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_course_admin),
+) -> CmsNodePage:
+    """Paginated, optionally filtered list of knowledge nodes.
+
+    Nodes are ordered by chapter ``sequence`` then ``KnowledgeNode.id`` (the
+    same governed ordering used by ``profiles._first_nodes_of_course``) so the
+    CMS browser mirrors the course's pedagogical order. ``q`` is a substring
+    match on node title (case-insensitive ``ilike``); the ``min_length=1``
+    constraint on the query param rejects empty-string searches up front.
+    """
+
+    base = (
+        select(
+            KnowledgeNode,
+            CourseChapter.title.label("chapter_title"),
+        )
+        .join(CourseChapter, CourseChapter.id == KnowledgeNode.chapter_id)
+    )
+    if q:
+        base = base.where(KnowledgeNode.title.ilike(f"%{q}%"))
+
+    total_items = db.scalar(
+        select(func.count())
+        .select_from(base.subquery())
+    ) or 0
+
+    rows = list(
+        db.execute(
+            base.order_by(CourseChapter.sequence, KnowledgeNode.id)
+            .offset(max(0, (page - 1) * page_size))
+            .limit(page_size)
+        )
+    )
+
+    items = [
+        CmsNodeListItem(
+            node_id=node.id,
+            course_id=node.course_id,
+            chapter_id=node.chapter_id,
+            chapter_title=chapter_title or "",
+            title=node.title,
+            content_version=node.content_version,
+        )
+        for node, chapter_title in rows
+    ]
+    total_pages = (total_items + page_size - 1) // page_size if total_items else 0
+    return CmsNodePage(
+        items=items,
+        page=CmsPageMetadata(
+            page=page,
+            page_size=page_size,
+            total_items=total_items,
+            total_pages=total_pages,
+        ),
+    )
 
 
 # --------------------------------------------------------------------------- #

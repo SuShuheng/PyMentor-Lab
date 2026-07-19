@@ -247,9 +247,16 @@ class TestOnboardingSubmit:
             )
         )
         assert len(steps) >= 1
-        # First step is a 20-minute LEARN node seeded from the first course node.
+        # V1.1: the initial path now compiles the first 5 nodes of the course
+        # (multi-step proposal) so the student gets multiple today items to
+        # choose from rather than a single 20-minute island. Each step is a
+        # 10-minute LEARN node seeded from the first course nodes; validate_path
+        # may split a step if it exceeds the daily budget, so we only assert
+        # the first step's position and the node set covers the first nodes.
         assert steps[0].position == 1
-        assert steps[0].estimated_minutes == 20
+        assert steps[0].estimated_minutes == 10
+        # The path should cover at least the first node of the course.
+        assert any(step.node_id == NODE_ID for step in steps)
 
     def test_onboarding_idempotent_does_not_recompile_path(
         self, client: TestClient, db_session: Session, student_auth

@@ -207,22 +207,38 @@ def _daily_minutes_for_band(weekly_band: str) -> int:
     return _WEEKLY_BAND_DAILY_MINUTES.get(weekly_band.strip(), _DEFAULT_DAILY_MINUTES)
 
 
-def _first_node_of_course(db: Session, course_id: UUID) -> KnowledgeNode | None:
-    """Return the earliest node of a course for seeding the first path.
+_INITIAL_PATH_NODE_COUNT = 5
+# Per-step budget for the initial path. Deliberately modest so each step fits
+# inside the minimum 15-min daily band and validate_path keeps them as single
+# steps rather than splitting them across days — the planner-driven replan
+# worker can expand later. The original single-step compile used 20; the V1.1
+# multi-step compile drops this to 10 so 5 nodes land on today without
+# exceeding any band.
+_INITIAL_PATH_STEP_MINUTES = 10
+
+
+def _first_nodes_of_course(
+    db: Session, course_id: UUID, limit: int = _INITIAL_PATH_NODE_COUNT
+) -> list[KnowledgeNode]:
+    """Return the earliest ``limit`` nodes of a course for seeding the first path.
 
     Nodes are ordered by chapter ``sequence`` (the only governed ordering
     column) then by ``KnowledgeNode.id`` as a deterministic tiebreak within a
     chapter — the catalogue has no per-node ordering field, so the UUID
-    tiebreak keeps the pick stable across runs. ``bootstrap.seed_demo_learning_
-    data`` hardcodes this node; here we resolve it generically per course.
+    tiebreak keeps the picks stable across runs. ``bootstrap.seed_demo_learning_
+    data`` hardcodes a single node for the demo guest; here we resolve the
+    first few generically per course so a real student gets multiple today
+    items to choose from instead of exactly one.
     """
 
-    return db.scalar(
-        select(KnowledgeNode)
-        .where(KnowledgeNode.course_id == course_id)
-        .join(CourseChapter, CourseChapter.id == KnowledgeNode.chapter_id)
-        .order_by(CourseChapter.sequence, KnowledgeNode.id)
-        .limit(1)
+    return list(
+        db.scalars(
+            select(KnowledgeNode)
+            .where(KnowledgeNode.course_id == course_id)
+            .join(CourseChapter, CourseChapter.id == KnowledgeNode.chapter_id)
+            .order_by(CourseChapter.sequence, KnowledgeNode.id)
+            .limit(limit)
+        )
     )
 
 
@@ -252,10 +268,15 @@ def _compile_initial_path_for_student(
 ) -> ValidatedPath | None:
     """Compile the student's first learning path after onboarding (BE-018 fix).
 
-    Mirrors ``bootstrap.seed_demo_learning_data``: pick the first node of the
-    course (earliest chapter sequence, then node id), validate a single-step
-    proposal, and persist it as version 1. Returns None if the course has no
-    nodes (caller reports ``path_compiled=False`` without failing onboarding).
+    V1.1 enhancement: instead of a single-step proposal, the first
+    ``_INITIAL_PATH_NODE_COUNT`` nodes of the course (earliest chapter
+    sequence, then node id) are proposed. This gives students multiple today
+    items to choose from so the first day is not a single 20-minute island.
+
+    Returns None if the course has no nodes (caller reports
+    ``path_compiled=False`` without failing onboarding). If fewer than the
+    target node count exists, the proposal contains whatever is available
+    (always at least one when None is not returned).
 
     Idempotency is enforced by ``persist_validated_path`` via the
     ``uq_learning_path_current`` partial unique index and the ``expected_version
@@ -264,18 +285,23 @@ def _compile_initial_path_for_student(
     have pre-empted with ``_has_current_path``.
     """
 
-    first_node = _first_node_of_course(db, course_id)
-    if first_node is None:
+    nodes = _first_nodes_of_course(db, course_id)
+    if not nodes:
         return None
+    node_ids = [node.id for node in nodes]
+    steps = [
+        StepProposal(node_id=node_id, estimated_minutes=_INITIAL_PATH_STEP_MINUTES)
+        for node_id in node_ids
+    ]
     validated = validate_path(
-        PathProposal(steps=[StepProposal(node_id=first_node.id, estimated_minutes=20)]),
+        PathProposal(steps=steps),
         ValidationContext(
             daily_minutes=max(1, daily_minutes),
             prerequisites={},
             completed_nodes=set(),
             due_reviews=[],
-            mastery_policy_nodes={first_node.id},
-            resource_ready_nodes={first_node.id},
+            mastery_policy_nodes=set(node_ids),
+            resource_ready_nodes=set(node_ids),
             active_node_ids=set(),
             template_fallback_nodes=set(),
             forbidden_node_ids=set(),
