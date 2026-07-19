@@ -194,9 +194,7 @@ describe("admin registration and student operations", () => {
     const approveRequest = fetchMock.mock.calls
       .map(([request]) => request as Request)
       .find((request) =>
-        request.url.endsWith(
-          `/api/v1/admin/registrations/${pendingRegistration.user_id}/approve`,
-        ),
+        request.url.endsWith(`/api/v1/admin/registrations/${pendingRegistration.user_id}/approve`),
       );
     expect(approveRequest?.url).toBe(
       `https://api.example.test/api/v1/admin/registrations/${pendingRegistration.user_id}/approve`,
@@ -245,9 +243,7 @@ describe("admin registration and student operations", () => {
     const rejectRequest = fetchMock.mock.calls
       .map(([request]) => request as Request)
       .find((request) =>
-        request.url.endsWith(
-          `/api/v1/admin/registrations/${pendingRegistration.user_id}/reject`,
-        ),
+        request.url.endsWith(`/api/v1/admin/registrations/${pendingRegistration.user_id}/reject`),
       );
     expect(rejectRequest?.url).toBe(
       `https://api.example.test/api/v1/admin/registrations/${pendingRegistration.user_id}/reject`,
@@ -475,6 +471,28 @@ describe("admin safety and infrastructure operations", () => {
           { headers: { "Content-Type": "application/json" }, status: 200 },
         );
       }
+      // FE-025 advanced metrics (BE-028 `GET /api/v1/admin/metrics`). The
+      // Metrics page now consumes this alongside the provider metrics above,
+      // so this branch keeps the aggregate regression test green. The chart
+      // inputs are stubbed empty here; FE-025's dedicated suite covers the
+      // series rendering.
+      if (request.url.includes("/api/v1/admin/metrics")) {
+        return new Response(
+          JSON.stringify({
+            window: {
+              bucket: "hour",
+              bucket_count: 0,
+              since: "2026-07-18T02:30:00Z",
+              until: "2026-07-19T02:30:00Z",
+            },
+            api_usage: { buckets: [] },
+            mastery_distribution: { counts: {} },
+            agent_timeline: { points: [] },
+            resource_stats: { course_id: null, items: [] },
+          }),
+          { headers: { "Content-Type": "application/json" }, status: 200 },
+        );
+      }
       if (request.url.includes("/api/v1/admin/system/logs")) {
         return new Response(
           JSON.stringify({
@@ -530,7 +548,9 @@ describe("admin safety and infrastructure operations", () => {
     renderAdmin("/admin/database");
     expect(await screen.findByText("0011-live")).toBeVisible();
 
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    // 5 calls: health, provider metrics, BE-028 advanced metrics (FE-025),
+    // logs, and database status.
+    expect(fetchMock).toHaveBeenCalledTimes(5);
     for (const [request] of fetchMock.mock.calls) {
       expect((request as Request).headers.get("Authorization")).toBe("Bearer admin-access");
     }
