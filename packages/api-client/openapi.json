@@ -2243,6 +2243,11 @@
             "title": "Dimensions",
             "type": "array"
           },
+          "id": {
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
           "source_event_id": {
             "minLength": 1,
             "title": "Source Event Id",
@@ -2260,6 +2265,7 @@
           }
         },
         "required": [
+          "id",
           "student_id",
           "version",
           "source_event_id",
@@ -4926,6 +4932,28 @@
         "summary": "Reset Demo Tenant",
         "tags": [
           "admin-maintenance"
+        ]
+      }
+    },
+    "/api/v1/auth/demo": {
+      "post": {
+        "description": "Issue a session for the isolated, reset-safe demo guest.",
+        "operationId": "demo_login_api_v1_auth_demo_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthTokens"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Demo Login",
+        "tags": [
+          "auth"
         ]
       }
     },

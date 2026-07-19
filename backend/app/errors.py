@@ -8,6 +8,7 @@ database keys, or local paths (see CONTRACT.md "Errors").
 
 from __future__ import annotations
 
+import logging
 import uuid
 from typing import Any
 
@@ -17,6 +18,8 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.contracts.errors import ErrorCode, ErrorEnvelope, FieldError
+
+logger = logging.getLogger(__name__)
 
 
 def _new_trace_id(request: Request) -> str:
@@ -173,6 +176,7 @@ def install_error_handlers(app: FastAPI) -> None:
         """Last-resort handler: never leak the exception text to the client."""
 
         trace_id = _new_trace_id(request)
+        logger.exception("Unhandled API exception", exc_info=exc, extra={"trace_id": trace_id})
         return _envelope(
             code=ErrorCode.INTERNAL_ERROR,
             message="An unexpected error occurred.",

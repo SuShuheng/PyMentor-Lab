@@ -27,6 +27,7 @@ from app.services import (
     assign_role,
     create_student_user,
     get_or_create_tenant,
+    get_user_by_email,
     get_user_roles,
 )
 
@@ -252,7 +253,7 @@ class TestDemoTenantReset:
             db_session,
             tenant_id=demo.id,
             email="demo-user@demo.local",
-            password_hash=hash_password("ValidPass1!"),
+            password_hash="not-used",
         )
 
         # 创建标准租户 + 其下的用户（不应被重置影响）。
@@ -264,7 +265,7 @@ class TestDemoTenantReset:
             db_session,
             tenant_id=standard.id,
             email="std-user@std.local",
-            password_hash=hash_password("ValidPass1!"),
+            password_hash="not-used",
         )
         demo_users_before_reset = db_session.scalar(
             select(func.count()).select_from(User).where(User.tenant_id == demo.id)
@@ -286,6 +287,17 @@ class TestDemoTenantReset:
         from app.services import get_user_by_id
 
         assert get_user_by_id(db_session, demo_user.id) is None
+        demo_guest = get_user_by_email(
+            db_session,
+            tenant_id=demo.id,
+            email="guest@demo.pymentor.dev",
+        )
+        assert demo_guest is not None
+        assert demo_guest.status == UserStatus.ACTIVE
+        assert get_user_roles(db_session, demo_guest.id) == [RoleName.DEMO_GUEST.value]
+
+        demo_login = client.post("/api/v1/auth/demo")
+        assert demo_login.status_code == 200, demo_login.text
         # 标准租户用户不受影响。
         assert get_user_by_id(db_session, standard_user.id) is not None
 
@@ -391,7 +403,11 @@ class TestBootstrap:
         assert demo is not None
         assert demo.type == TenantType.DEMO
 
-        guest = get_user_by_email(db_session, tenant_id=demo.id, email="guest@demo.local")
+        guest = get_user_by_email(
+            db_session,
+            tenant_id=demo.id,
+            email="guest@demo.pymentor.dev",
+        )
         assert guest is not None
         roles = get_user_roles(db_session, guest.id)
         assert RoleName.DEMO_GUEST.value in roles

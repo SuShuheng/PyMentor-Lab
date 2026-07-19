@@ -20,12 +20,18 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from app.bootstrap import seed_demo_tenant
 from app.db import get_db
 from app.main import create_app
-from app.models.base import UserStatus
+from app.models.base import RoleName, TenantType, UserStatus
 from app.models.identity import User
 from app.security import hash_password
-from app.services import create_student_user, get_or_create_tenant
+from app.services import (
+    assign_role,
+    create_student_user,
+    get_or_create_tenant,
+    get_user_by_email,
+)
 
 
 @pytest.fixture()
@@ -137,6 +143,76 @@ class TestLogin:
             json={"email": "pending@example.com", "password": "ValidPass1!"},
         )
         assert response.status_code == 403
+
+
+class TestDemoLogin:
+    def test_demo_login_uses_only_the_dedicated_demo_guest(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        seed_demo_tenant(db_session)
+        demo = get_or_create_tenant(
+            db_session,
+            slug="demo",
+            name="Demo Tenant",
+            tenant_type=TenantType.DEMO,
+        )
+        default = get_or_create_tenant(db_session, slug="default", name="Default Tenant")
+        duplicate = create_student_user(
+            db_session,
+            tenant_id=default.id,
+            email="guest@demo.pymentor.dev",
+            password_hash="not-used",
+        )
+        duplicate.status = UserStatus.ACTIVE
+        assign_role(db_session, user_id=duplicate.id, role_name=RoleName.DEMO_GUEST.value)
+
+        response = client.post("/api/v1/auth/demo")
+
+        assert response.status_code == 200, response.text
+        tokens = response.json()
+        me = client.get(
+            "/api/v1/auth/me",
+            headers={"Authorization": f"Bearer {tokens['access_token']}"},
+        )
+        assert me.status_code == 200, me.text
+        assert me.json()["tenant_id"] == str(demo.id)
+        assert me.json()["email"] == "guest@demo.pymentor.dev"
+        assert me.json()["roles"] == [RoleName.DEMO_GUEST.value]
+        assert me.json()["id"] != str(duplicate.id)
+
+        refreshed = client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": tokens["refresh_token"]},
+        )
+        assert refreshed.status_code == 200, refreshed.text
+
+    def test_demo_login_is_unavailable_without_seeded_demo_identity(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        demo = get_or_create_tenant(
+            db_session,
+            slug="demo",
+            name="Demo Tenant",
+            tenant_type=TenantType.DEMO,
+        )
+        existing_guest = get_user_by_email(
+            db_session,
+            tenant_id=demo.id,
+            email="guest@demo.pymentor.dev",
+        )
+        if existing_guest is not None:
+            db_session.delete(existing_guest)
+        db_session.flush()
+        assert get_user_by_email(
+            db_session,
+            tenant_id=demo.id,
+            email="guest@demo.pymentor.dev",
+        ) is None
+
+        response = client.post("/api/v1/auth/demo")
+
+        assert response.status_code == 503
+        assert response.json()["code"] == "INTERNAL_ERROR"
 
 
 # --------------------------------------------------------------------------- #

@@ -1,6 +1,11 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
 
-import type { HealthResponse, HealthStatus, SystemPingResponse } from "./generated/types.gen";
+import type {
+  HealthResponse,
+  HealthStatus,
+  ProfileSnapshot,
+  SystemPingResponse,
+} from "./generated/types.gen";
 
 describe("generated api-client", () => {
   it("exposes the contract health types", () => {
@@ -23,5 +28,17 @@ describe("generated api-client", () => {
       timestamp: "2026-07-17T00:00:00Z",
     };
     expect(ping.ok).toBe(true);
+  });
+
+  it("exposes the immutable profile identity required by disputes", () => {
+    const profile: ProfileSnapshot = {
+      dimensions: [],
+      id: "00000000-0000-0000-0000-000000000031",
+      source_event_id: "evt-profile-1",
+      student_id: "00000000-0000-0000-0000-000000000030",
+      version: 1,
+    };
+
+    expect(profile.id).toBe("00000000-0000-0000-0000-000000000031");
   });
 });

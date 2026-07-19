@@ -12,6 +12,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
+from starlette.middleware.cors import CORSMiddleware
 
 from app.api.admin import router as admin_router
 from app.api.admin_queries import router as admin_queries_router
@@ -80,6 +81,11 @@ def create_app() -> FastAPI:
     """Build the configured FastAPI application."""
 
     settings = get_settings()
+    if "*" in settings.cors_allowed_origins:
+        raise ValueError(
+            "PYMENTOR_CORS_ALLOWED_ORIGINS must list explicit origins "
+            "when credentials are enabled"
+        )
     app = FastAPI(
         title="PyMentor Lab API",
         description="Higher-education Python learning system (competition release V1.0).",
@@ -88,6 +94,20 @@ def create_app() -> FastAPI:
     )
 
     app.add_middleware(TraceIdMiddleware)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(settings.cors_allowed_origins),
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=[
+            "Accept",
+            "Authorization",
+            "Content-Type",
+            "Idempotency-Key",
+            "x-trace-id",
+        ],
+        expose_headers=["x-trace-id"],
+    )
     install_error_handlers(app)
 
     app.include_router(system_router)

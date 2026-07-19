@@ -245,6 +245,7 @@ def test_current_profile_is_student_scoped(
 
     response = client.get("/api/v1/profiles/current", headers=_headers(token))
     assert response.status_code == 200, response.text
+    assert response.json()["id"] == str(own.id)
     assert response.json()["student_id"] == str(student.id)
     assert response.json()["version"] == own.version
 

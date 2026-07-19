@@ -1,6 +1,7 @@
 import * as publicApi from "./index";
 import {
   client,
+  demoLoginApiV1AuthDemoPost,
   loginApiV1AuthLoginPost,
   type HttpValidationError,
 } from "./index";
@@ -9,7 +10,9 @@ import { describe, expect, it, vi } from "vitest";
 describe("generated runtime client", () => {
   it("exports the fetch client and callable auth SDK operations", () => {
     expect(publicApi).toHaveProperty("client");
+    expect(publicApi).toHaveProperty("demoLoginApiV1AuthDemoPost");
     expect(publicApi).toHaveProperty("loginApiV1AuthLoginPost");
+    expect(typeof demoLoginApiV1AuthDemoPost).toBe("function");
     expect(typeof Reflect.get(publicApi, "loginApiV1AuthLoginPost")).toBe(
       "function",
     );

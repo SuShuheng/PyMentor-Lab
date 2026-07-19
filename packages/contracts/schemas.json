@@ -4543,6 +4543,10 @@
       "ProfileSnapshot": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
           "student_id": {
             "type": "string",
             "minLength": 1
@@ -4606,6 +4610,7 @@
           }
         },
         "required": [
+          "id",
           "student_id",
           "version",
           "source_event_id",
