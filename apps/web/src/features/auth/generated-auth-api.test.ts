@@ -96,6 +96,40 @@ describe("student generated auth API", () => {
     });
   });
 
+  it.each([
+    ["PENDING", { outcome: "pending" }],
+    [
+      "REJECTED",
+      {
+        outcome: "rejected",
+        reason: "Account is not eligible to login.",
+      },
+    ],
+  ] as const)("preserves %s from a password-verified login denial", async (status, expected) => {
+    saveServerUrl("https://api.example.test");
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          code: "FORBIDDEN",
+          details: { account_status: status },
+          field_errors: null,
+          message: "Account is not eligible to login.",
+          retryable: false,
+          trace_id: "trc-int002",
+        }),
+        { headers: { "Content-Type": "application/json" }, status: 403 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      browserAuthApi.login({
+        identifier: "student@example.edu",
+        password: "approved-password",
+      }),
+    ).resolves.toEqual(expected);
+  });
+
   it("starts the isolated demo session through the generated endpoint", async () => {
     saveServerUrl("https://api.example.test");
     const fetchMock = vi

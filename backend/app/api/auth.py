@@ -32,6 +32,7 @@ from app.contracts.auth import (
     UserProfile,
 )
 from app.db import get_db
+from app.errors import AccountStatusDenied
 from app.models.base import RoleName, TenantType, TokenType, UserStatus
 from app.models.identity import Tenant, User
 from app.rbac import get_current_user
@@ -147,10 +148,7 @@ async def login(body: LoginRequest, db: Session = Depends(get_db)) -> AuthTokens
 
     # 非 ACTIVE 用户不能登录。
     if user.status != UserStatus.ACTIVE:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"account is {user.status.value.lower()}, cannot login",
-        )
+        raise AccountStatusDenied(user.status.value)
 
     roles = get_user_roles(db, user.id)
     return _issue_token_pair(db, user, roles)
