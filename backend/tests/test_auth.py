@@ -143,6 +143,29 @@ class TestLogin:
             json={"email": "pending@example.com", "password": "ValidPass1!"},
         )
         assert response.status_code == 403
+        assert response.json()["details"] == {"account_status": "PENDING"}
+
+    def test_rejected_user_cannot_login_with_bounded_status_detail(
+        self, client: TestClient, db_session: Session
+    ) -> None:
+        tenant = get_or_create_tenant(db_session, slug="default", name="Default Tenant")
+        db_session.flush()
+        rejected = create_student_user(
+            db_session,
+            tenant_id=tenant.id,
+            email="rejected@example.com",
+            password_hash=hash_password("ValidPass1!"),
+        )
+        rejected.status = UserStatus.REJECTED
+        db_session.flush()
+
+        response = client.post(
+            "/api/v1/auth/login",
+            json={"email": rejected.email, "password": "ValidPass1!"},
+        )
+
+        assert response.status_code == 403
+        assert response.json()["details"] == {"account_status": "REJECTED"}
 
 
 class TestDemoLogin:
@@ -203,11 +226,14 @@ class TestDemoLogin:
         if existing_guest is not None:
             db_session.delete(existing_guest)
         db_session.flush()
-        assert get_user_by_email(
-            db_session,
-            tenant_id=demo.id,
-            email="guest@demo.pymentor.dev",
-        ) is None
+        assert (
+            get_user_by_email(
+                db_session,
+                tenant_id=demo.id,
+                email="guest@demo.pymentor.dev",
+            )
+            is None
+        )
 
         response = client.post("/api/v1/auth/demo")
 

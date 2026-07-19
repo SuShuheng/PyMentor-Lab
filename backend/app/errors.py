@@ -22,6 +22,18 @@ from app.contracts.errors import ErrorCode, ErrorEnvelope, FieldError
 logger = logging.getLogger(__name__)
 
 
+class AccountStatusDenied(Exception):
+    """A password-verified account is not eligible to receive a session."""
+
+    _ALLOWED_STATUSES = frozenset({"PENDING", "REJECTED", "SUSPENDED"})
+
+    def __init__(self, account_status: str) -> None:
+        if account_status not in self._ALLOWED_STATUSES:
+            raise ValueError("unsupported denied account status")
+        self.account_status = account_status
+        super().__init__("account is not eligible to login")
+
+
 def _new_trace_id(request: Request) -> str:
     """Use the inbound trace id if provided, else mint one."""
 
@@ -61,6 +73,19 @@ def _envelope(
 
 def install_error_handlers(app: FastAPI) -> None:
     """Register the stable error-envelope handlers on the app."""
+
+    @app.exception_handler(AccountStatusDenied)
+    async def _account_status_denied_handler(
+        request: Request, exc: AccountStatusDenied
+    ) -> JSONResponse:
+        return _envelope(
+            code=ErrorCode.FORBIDDEN,
+            message="Account is not eligible to login.",
+            trace_id=_new_trace_id(request),
+            retryable=False,
+            status_code=403,
+            details={"account_status": exc.account_status},
+        )
 
     @app.exception_handler(RequestValidationError)
     async def _validation_error_handler(
