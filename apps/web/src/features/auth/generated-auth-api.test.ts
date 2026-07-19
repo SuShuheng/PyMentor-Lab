@@ -96,6 +96,52 @@ describe("student generated auth API", () => {
     });
   });
 
+  it("starts the isolated demo session through the generated endpoint", async () => {
+    saveServerUrl("https://api.example.test");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            access_token: "demo-access",
+            expires_in: 900,
+            refresh_token: "demo-refresh",
+            token_type: "Bearer",
+          }),
+          { headers: { "Content-Type": "application/json" }, status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            display_name: "Demo Guest",
+            email: "guest@demo.pymentor.dev",
+            id: "demo-user-id",
+            roles: ["DEMO_GUEST"],
+            status: "ACTIVE",
+            tenant_id: "demo-tenant-id",
+          }),
+          { headers: { "Content-Type": "application/json" }, status: 200 },
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(browserAuthApi.startDemo()).resolves.toEqual({
+      outcome: "authenticated",
+      session: {
+        accessToken: "demo-access",
+        accountStatus: "active",
+        displayName: "Demo Guest",
+        role: "demo",
+        userId: "demo-user-id",
+      },
+    });
+
+    const demoRequest = fetchMock.mock.calls[0]?.[0] as Request;
+    expect(demoRequest.url).toBe("https://api.example.test/api/v1/auth/demo");
+    expect(demoRequest.method).toBe("POST");
+  });
+
   it("surfaces generated validation errors without inventing a session", async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(
       new Response(

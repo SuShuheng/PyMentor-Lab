@@ -20,9 +20,19 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { ChartFrame } from "@pymentor/charts";
+import {
+  approveRegistrationApiV1AdminRegistrationsUserIdApprovePost,
+  client,
+  listPendingApiV1AdminRegistrationsPendingGet,
+  rejectRegistrationApiV1AdminRegistrationsUserIdRejectPost,
+  type PendingRegistration,
+} from "@pymentor/api-client";
+import { readServerUrl } from "@pymentor/config";
 import { StatePanel } from "@pymentor/ui";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
+
+import { useAdminAuth } from "../auth/auth-session";
 
 function AdminPageHeading({
   action,
@@ -60,11 +70,7 @@ function OperationsNav() {
   return (
     <nav aria-label="运行与数据管理" className="admin-subnav">
       {operationLinks.map(([href, label]) => (
-        <Link
-          aria-current={location.pathname === href ? "page" : undefined}
-          key={href}
-          to={href}
-        >
+        <Link aria-current={location.pathname === href ? "page" : undefined} key={href} to={href}>
           {label}
         </Link>
       ))}
@@ -72,30 +78,107 @@ function OperationsNav() {
   );
 }
 
-const initialRegistrations = [
-  {
-    course: "Python 程序设计 · 1 班",
-    id: "REG-2801",
-    name: "陈雨",
-    submitted: "8 分钟前",
-  },
-  {
-    course: "Python 程序设计 · 2 班",
-    id: "REG-2800",
-    name: "郭然",
-    submitted: "21 分钟前",
-  },
-] as const;
+function configureOperationsClient(): void {
+  client.setConfig({
+    baseUrl: readServerUrl(),
+    credentials: "include",
+    fetch,
+  });
+}
+
+function operationsError(error: unknown): string {
+  if (error && typeof error === "object") {
+    const detail = Reflect.get(error, "detail");
+    if (typeof detail === "string") return detail;
+    const message = Reflect.get(error, "message");
+    if (typeof message === "string") return message;
+  }
+  return "注册审核服务暂时不可用，请稍后重试";
+}
+
+function registrationLabel(registration: PendingRegistration): string {
+  return registration.student_no || registration.email;
+}
+
+function commandKey(prefix: string): string {
+  return `${prefix}-${globalThis.crypto.randomUUID()}`;
+}
 
 export function OverviewPage() {
-  const [registrations, setRegistrations] = useState([...initialRegistrations]);
+  const { session } = useAdminAuth();
+  const accessToken = session?.accessToken;
+  const [registrations, setRegistrations] = useState<PendingRegistration[]>([]);
+  const [queueState, setQueueState] = useState<"error" | "loading" | "ready">("loading");
+  const [queueError, setQueueError] = useState<string | null>(null);
+  const [reloadAttempt, setReloadAttempt] = useState(0);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [reviewStatus, setReviewStatus] = useState<string | null>(null);
 
-  function review(name: string, result: "approved" | "rejected") {
-    setRegistrations((current) => current.filter((item) => item.name !== name));
-    setReviewStatus(
-      `${name}${result === "approved" ? "已批准" : "已拒绝"} · 审计记录已保存`,
-    );
+  useEffect(() => {
+    let active = true;
+    setQueueState("loading");
+    setQueueError(null);
+    if (!accessToken) {
+      setQueueState("error");
+      setQueueError("管理员会话缺少访问令牌，请重新登录");
+      return () => {
+        active = false;
+      };
+    }
+    configureOperationsClient();
+    void listPendingApiV1AdminRegistrationsPendingGet({
+      headers: { Authorization: `Bearer ${accessToken}` },
+      query: { limit: 50, offset: 0 },
+    })
+      .then((result) => {
+        if (!active) return;
+        if (!result.data) throw new Error(operationsError(result.error));
+        setRegistrations(result.data);
+        setQueueState("ready");
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setQueueError(error instanceof Error ? error.message : operationsError(error));
+        setQueueState("error");
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessToken, reloadAttempt]);
+
+  async function review(registration: PendingRegistration, decision: "approved" | "rejected") {
+    if (!accessToken) return;
+    const label = registrationLabel(registration);
+    setReviewingId(registration.user_id);
+    setReviewStatus(null);
+    configureOperationsClient();
+    try {
+      const headers = {
+        Authorization: `Bearer ${accessToken}`,
+        "Idempotency-Key": commandKey(`registration-${decision}`),
+      };
+      const result =
+        decision === "approved"
+          ? await approveRegistrationApiV1AdminRegistrationsUserIdApprovePost({
+              body: {},
+              headers,
+              path: { user_id: registration.user_id },
+            })
+          : await rejectRegistrationApiV1AdminRegistrationsUserIdRejectPost({
+              body: { reason: "Rejected from the registration review queue" },
+              headers,
+              path: { user_id: registration.user_id },
+            });
+      if (!result.response.ok) throw new Error(operationsError(result.error));
+      setRegistrations((current) =>
+        current.filter((item) => item.user_id !== registration.user_id),
+      );
+      setReviewStatus(`${label}${decision === "approved" ? "已批准" : "已拒绝"} · 审计记录已保存`);
+    } catch (error) {
+      setReviewStatus(error instanceof Error ? error.message : operationsError(error));
+    } finally {
+      setReviewingId(null);
+    }
   }
 
   return (
@@ -106,11 +189,7 @@ export function OverviewPage() {
         title="管理概览"
       />
       {reviewStatus ? (
-        <p
-          aria-label="注册审核状态"
-          className="admin-inline-status"
-          role="status"
-        >
+        <p aria-label="注册审核状态" className="admin-inline-status" role="status">
           {reviewStatus}
         </p>
       ) : null}
@@ -142,31 +221,47 @@ export function OverviewPage() {
             </div>
             <span>{registrations.length} 项</span>
           </div>
-          {registrations.length ? (
+          {queueState === "loading" ? (
+            <p aria-label="注册队列状态" role="status">
+              正在加载待审核注册…
+            </p>
+          ) : null}
+          {queueState === "error" ? (
+            <div aria-label="注册队列错误" role="alert">
+              <p>{queueError}</p>
+              <button onClick={() => setReloadAttempt((attempt) => attempt + 1)} type="button">
+                重试
+              </button>
+            </div>
+          ) : null}
+          {queueState === "ready" && registrations.length ? (
             <ul>
               {registrations.map((registration) => (
-                <li key={registration.id}>
+                <li key={registration.user_id}>
                   <span className="admin-avatar">
                     <Student size={18} />
                   </span>
                   <div>
-                    <strong>{registration.name}</strong>
+                    <strong>{registrationLabel(registration)}</strong>
                     <small>
-                      {registration.course} · {registration.submitted}
+                      {registration.email} ·{" "}
+                      {new Date(registration.created_at).toLocaleString("zh-CN")}
                     </small>
                   </div>
                   <div className="admin-row-actions">
                     <button
-                      aria-label={`拒绝${registration.name}的注册`}
-                      onClick={() => review(registration.name, "rejected")}
+                      aria-label={`拒绝${registrationLabel(registration)}的注册`}
+                      disabled={reviewingId === registration.user_id}
+                      onClick={() => void review(registration, "rejected")}
                       type="button"
                     >
                       <X size={15} />
                     </button>
                     <button
-                      aria-label={`批准${registration.name}的注册`}
+                      aria-label={`批准${registrationLabel(registration)}的注册`}
                       className="is-primary"
-                      onClick={() => review(registration.name, "approved")}
+                      disabled={reviewingId === registration.user_id}
+                      onClick={() => void review(registration, "approved")}
                       type="button"
                     >
                       <Check size={15} />
@@ -175,9 +270,9 @@ export function OverviewPage() {
                 </li>
               ))}
             </ul>
-          ) : (
+          ) : queueState === "ready" ? (
             <p className="admin-empty-row">当前没有待审核注册</p>
-          )}
+          ) : null}
         </section>
         <section
           className="admin-panel admin-panel--compact overview-risk"
@@ -269,9 +364,7 @@ export function StudentsPage() {
             <Funnel size={16} /> 状态：全部
           </button>
           <span>
-            {query
-              ? `筛选结果 ${filtered.length} 人`
-              : `共 ${students.length} 人 · 服务端分页`}
+            {query ? `筛选结果 ${filtered.length} 人` : `共 ${students.length} 人 · 服务端分页`}
           </span>
         </div>
         <div className="admin-table-scroll">
@@ -297,17 +390,12 @@ export function StudentsPage() {
                   </th>
                   <td>{course}</td>
                   <td>
-                    <span className={`admin-badge is-${status.toLowerCase()}`}>
-                      {status}
-                    </span>
+                    <span className={`admin-badge is-${status.toLowerCase()}`}>{status}</span>
                   </td>
                   <td>{mastery}</td>
                   <td>{activity}</td>
                   <td>
-                    <Link
-                      aria-label={`查看${name}的学习详情`}
-                      to={`/admin/students/${id}`}
-                    >
+                    <Link aria-label={`查看${name}的学习详情`} to={`/admin/students/${id}`}>
                       查看 <ArrowRight size={14} />
                     </Link>
                   </td>
@@ -331,9 +419,7 @@ export function StudentsPage() {
           <button
             aria-label="下一页"
             disabled={page === pageCount}
-            onClick={() =>
-              setPage((current) => Math.min(pageCount, current + 1))
-            }
+            onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
             type="button"
           >
             <ArrowRight size={15} />
@@ -373,10 +459,7 @@ export function StudentDetailPage() {
         ))}
       </section>
       <div className="student-detail-grid">
-        <section
-          aria-label="掌握与复测"
-          className="admin-panel admin-panel--compact"
-        >
+        <section aria-label="掌握与复测" className="admin-panel admin-panel--compact">
           <div className="admin-panel__heading">
             <div>
               <p className="eyebrow">MASTERY & REVIEW</p>
@@ -469,11 +552,7 @@ export function ResourceReviewPage() {
         title="资源审核"
       />
       {status ? (
-        <p
-          aria-label="资源审核状态"
-          className="admin-inline-status"
-          role="status"
-        >
+        <p aria-label="资源审核状态" className="admin-inline-status" role="status">
           {status}
         </p>
       ) : null}
@@ -517,9 +596,7 @@ export function ResourceReviewPage() {
                     <button
                       aria-label={`批准资源 ${id}`}
                       className="is-primary"
-                      onClick={() =>
-                        setStatus(`${id} 已批准发布 · 审计记录已保存`)
-                      }
+                      onClick={() => setStatus(`${id} 已批准发布 · 审计记录已保存`)}
                       type="button"
                     >
                       批准
@@ -577,17 +654,10 @@ export function ProvidersPage() {
   const [status, setStatus] = useState<string | null>(null);
   return (
     <div className="admin-page">
-      <AdminPageHeading
-        description="密钥仅可替换，不从 API 返回明文"
-        title="Provider 配置"
-      />
+      <AdminPageHeading description="密钥仅可替换，不从 API 返回明文" title="Provider 配置" />
       <OperationsNav />
       {status ? (
-        <p
-          aria-label="Provider 测试状态"
-          className="admin-inline-status"
-          role="status"
-        >
+        <p aria-label="Provider 测试状态" className="admin-inline-status" role="status">
           {status}
         </p>
       ) : null}
@@ -619,9 +689,7 @@ export function ProvidersPage() {
                 <button
                   aria-label="测试讯飞 LLM 连通性"
                   className="admin-table-action"
-                  onClick={() =>
-                    setStatus("讯飞 LLM 连接成功 · 428ms · 未返回任何密钥")
-                  }
+                  onClick={() => setStatus("讯飞 LLM 连接成功 · 428ms · 未返回任何密钥")}
                   type="button"
                 >
                   <LinkSimple size={14} /> 测试连接
@@ -649,8 +717,7 @@ export function ProvidersPage() {
           </tbody>
         </table>
         <p className="admin-authority-note">
-          <ShieldCheck size={15} /> Provider 密钥由后端加密保存，Renderer
-          永不持有明文。
+          <ShieldCheck size={15} /> Provider 密钥由后端加密保存，Renderer 永不持有明文。
         </p>
       </section>
     </div>
@@ -680,17 +747,10 @@ export function HealthPage() {
   const degraded = searchParams.get("view") === "degraded";
   return (
     <div className="admin-page">
-      <AdminPageHeading
-        description="查看核心服务、队列、延迟与降级边界"
-        title="运行监控"
-      />
+      <AdminPageHeading description="查看核心服务、队列、延迟与降级边界" title="运行监控" />
       <OperationsNav />
       {degraded ? (
-        <section
-          aria-label="服务降级"
-          className="admin-health-alert"
-          role="alert"
-        >
+        <section aria-label="服务降级" className="admin-health-alert" role="alert">
           <WarningCircle size={20} />
           <div>
             <strong>图像 Provider 当前降级</strong>
@@ -820,9 +880,7 @@ export function LogsPage() {
             {rows.map(([logLevel, time, event, context]) => (
               <tr key={event}>
                 <td>
-                  <span className={`admin-badge is-${logLevel.toLowerCase()}`}>
-                    {logLevel}
-                  </span>
+                  <span className={`admin-badge is-${logLevel.toLowerCase()}`}>{logLevel}</span>
                 </td>
                 <td>{time}</td>
                 <th scope="row">
@@ -844,8 +902,7 @@ export function DatabasePage() {
   const [operation, setOperation] = useState<RiskOperation | null>(null);
   const [confirmation, setConfirmation] = useState("");
   const [status, setStatus] = useState<string | null>(null);
-  const phrase =
-    operation === "cleanup" ? "DELETE DEMO DATA" : "RESTORE PYMENTOR";
+  const phrase = operation === "cleanup" ? "DELETE DEMO DATA" : "RESTORE PYMENTOR";
   return (
     <div className="admin-page">
       <AdminPageHeading
@@ -854,11 +911,7 @@ export function DatabasePage() {
       />
       <OperationsNav />
       {status ? (
-        <p
-          aria-label="数据库操作状态"
-          className="admin-inline-status"
-          role="status"
-        >
+        <p aria-label="数据库操作状态" className="admin-inline-status" role="status">
           {status}
         </p>
       ) : null}
@@ -908,10 +961,7 @@ export function DatabasePage() {
               <strong>导出审计数据</strong>
               <p>生成脱敏 CSV，不包含 Provider 密钥。</p>
             </div>
-            <button
-              onClick={() => setStatus("脱敏导出任务已创建")}
-              type="button"
-            >
+            <button onClick={() => setStatus("脱敏导出任务已创建")} type="button">
               创建导出
             </button>
           </article>
@@ -1011,10 +1061,7 @@ export function DatabasePage() {
 export function AuditPage() {
   return (
     <div className="admin-page">
-      <AdminPageHeading
-        description="检索认证、审核、Agent 与高风险数据操作"
-        title="系统审计"
-      />
+      <AdminPageHeading description="检索认证、审核、Agent 与高风险数据操作" title="系统审计" />
       <section className="admin-panel admin-table-panel">
         <div className="admin-table-toolbar">
           <strong>不可变审计记录</strong>

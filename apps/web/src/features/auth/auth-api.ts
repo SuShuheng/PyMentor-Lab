@@ -1,5 +1,6 @@
 import {
   client,
+  demoLoginApiV1AuthDemoPost,
   loginApiV1AuthLoginPost,
   meApiV1AuthMeGet,
   refreshApiV1AuthRefreshPost,
@@ -74,10 +75,14 @@ function throwApiError(error: unknown): never {
 }
 
 function roleFromProfile(profile: UserProfile): AuthRole {
-  if (profile.roles?.some((role) => ["SYSTEM_ADMIN", "TENANT_ADMIN", "admin"].includes(role))) {
+  if (
+    profile.roles?.some((role) =>
+      ["SYSTEM_ADMIN", "COURSE_ADMIN", "REVIEWER", "TENANT_ADMIN", "admin"].includes(role),
+    )
+  ) {
     return "admin";
   }
-  if (profile.roles?.some((role) => ["DEMO", "demo"].includes(role))) {
+  if (profile.roles?.some((role) => ["DEMO_GUEST", "DEMO", "demo"].includes(role))) {
     return "demo";
   }
   return "student";
@@ -148,6 +153,9 @@ export const browserAuthApi: AuthApi = {
     return { outcome: "pending" };
   },
   startDemo: async () => {
-    throw new Error("服务器尚未提供演示账号登录接口");
+    configureClient();
+    const result = await demoLoginApiV1AuthDemoPost();
+    if (!result.data) throwApiError(result.error);
+    return resolveSession(result.data);
   },
 };

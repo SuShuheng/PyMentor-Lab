@@ -7,9 +7,19 @@ import {
   ShieldCheck,
   X,
 } from "@phosphor-icons/react";
+import {
+  client,
+  disputeProfileApiV1ProfilesDisputesPost,
+  getCurrentProfileApiV1ProfilesCurrentGet,
+  type ProfileDimensionContract,
+  type ProfileSnapshot,
+} from "@pymentor/api-client";
+import { readServerUrl } from "@pymentor/config";
 import { StatePanel } from "@pymentor/ui";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+
+import { useAuth } from "../auth/auth-session";
 
 const ONBOARDING_STEP_KEY = "pymentor.onboardingStep";
 
@@ -41,62 +51,40 @@ const questions = [
   },
 ] as const;
 
-const profileDimensions = [
-  {
-    name: "概念知识掌握",
-    score: 76,
-    nodes: "函数 82 · 循环 70",
-    evidence: "EVD-2048",
-  },
-  {
-    name: "代码执行模型",
-    score: 68,
-    nodes: "作用域 64 · 控制流 72",
-    evidence: "EVD-2071",
-  },
-  {
-    name: "编程实现能力",
-    score: 73,
-    nodes: "函数封装 78 · 列表处理 68",
-    evidence: "EVD-2086",
-  },
-  {
-    name: "问题分解与算法表达能力",
-    score: 61,
-    nodes: "步骤拆分 66 · 伪代码 56",
-    evidence: "EVD-2093",
-  },
-  {
-    name: "调试与错误定位能力",
-    score: 70,
-    nodes: "异常阅读 74 · 定位 66",
-    evidence: "EVD-2104",
-  },
-  {
-    name: "测试与边界意识",
-    score: 58,
-    nodes: "边界值 54 · 自测 62",
-    evidence: "EVD-2112",
-  },
-  {
-    name: "迁移与综合应用能力",
-    score: 64,
-    nodes: "变式迁移 60 · 综合任务 68",
-    evidence: "EVD-2120",
-  },
-  {
-    name: "独立完成度与支架需求",
-    score: 72,
-    nodes: "独立运行 76 · 提示预算 68",
-    evidence: "EVD-2138",
-  },
-] as const;
+const dimensionLabels: Record<ProfileDimensionContract, string> = {
+  CONCEPT_KNOWLEDGE: "概念知识掌握",
+  DEBUGGING: "调试与错误定位能力",
+  DECOMPOSITION: "问题分解与算法表达能力",
+  EXECUTION_MODEL: "代码执行模型",
+  IMPLEMENTATION: "编程实现能力",
+  INDEPENDENCE_SUPPORT: "独立完成度与支架需求",
+  TESTING: "测试与边界意识",
+  TRANSFER: "迁移与综合应用能力",
+};
+
+function configureProfileClient(): void {
+  client.setConfig({
+    baseUrl: readServerUrl(),
+    credentials: "include",
+    fetch,
+  });
+}
+
+function profileError(error: unknown): string {
+  if (error && typeof error === "object") {
+    const message = Reflect.get(error, "message");
+    if (typeof message === "string") return message;
+  }
+  return "画像服务暂时不可用，请稍后重试";
+}
+
+function commandKey(prefix: string): string {
+  return `${prefix}-${globalThis.crypto.randomUUID()}`;
+}
 
 function loadStep(): number {
   const stored = Number(window.localStorage.getItem(ONBOARDING_STEP_KEY) ?? 0);
-  return Number.isInteger(stored) && stored >= 0 && stored < questions.length
-    ? stored
-    : 0;
+  return Number.isInteger(stored) && stored >= 0 && stored < questions.length ? stored : 0;
 }
 
 export function OnboardingPage() {
@@ -149,24 +137,15 @@ export function OnboardingPage() {
         </span>
       </div>
 
-      <section
-        className="onboarding-workspace"
-        aria-labelledby="onboarding-conversation-title"
-      >
+      <section className="onboarding-workspace" aria-labelledby="onboarding-conversation-title">
         <aside className="onboarding-summary">
           <span className="onboarding-summary__icon">
             <ChatCircleDots size={28} />
           </span>
           <h2 id="onboarding-conversation-title">初始学习访谈</h2>
           <p>约 3 分钟 · 随时可以退出，进度会保存在当前设备。</p>
-          <div
-            aria-label="对话进度"
-            className="onboarding-progress-copy"
-            role="status"
-          >
-            {complete
-              ? "对话已完成"
-              : `第 ${step + 1} 步，共 ${questions.length} 步`}
+          <div aria-label="对话进度" className="onboarding-progress-copy" role="status">
+            {complete ? "对话已完成" : `第 ${step + 1} 步，共 ${questions.length} 步`}
           </div>
           <progress
             aria-label="画像构建进度"
@@ -193,9 +172,7 @@ export function OnboardingPage() {
           <div className="conversation-history">
             <div className="conversation-message conversation-message--assistant">
               <span aria-hidden="true">PM</span>
-              <p>
-                你好，我会先了解你的目标与学习习惯。每个判断都需要后续学习证据验证。
-              </p>
+              <p>你好，我会先了解你的目标与学习习惯。每个判断都需要后续学习证据验证。</p>
             </div>
             {answers.map((answer, index) => (
               <div
@@ -250,16 +227,92 @@ export function OnboardingPage() {
 }
 
 export function ProfilePage() {
+  const { session } = useAuth();
+  const accessToken = session?.accessToken;
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [disputeOpen, setDisputeOpen] = useState(false);
-  const [disputeSubmitted, setDisputeSubmitted] = useState(false);
-  const rows = useMemo(
-    () =>
-      profileDimensions.map(
-        (item) => [item.name, `${item.score}`, item.nodes] as const,
-      ),
-    [],
+  const [disputeState, setDisputeState] = useState<"error" | "idle" | "submitted" | "submitting">(
+    "idle",
   );
+  const [disputeError, setDisputeError] = useState<string | null>(null);
+  const [profile, setProfile] = useState<ProfileSnapshot | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setProfile(null);
+    setLoadError(null);
+    if (!accessToken) {
+      setLoadError("登录会话缺少访问令牌，请重新登录");
+      return () => {
+        active = false;
+      };
+    }
+    configureProfileClient();
+    void getCurrentProfileApiV1ProfilesCurrentGet({
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then((result) => {
+        if (!active) return;
+        if (!result.data) {
+          throw new Error(
+            result.response.status === 404
+              ? "尚未生成正式画像，请先完成诊断与学习任务"
+              : profileError(result.error),
+          );
+        }
+        setProfile(result.data);
+      })
+      .catch((error: unknown) => {
+        if (active) setLoadError(profileError(error));
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessToken, loadAttempt]);
+
+  const dimensionItems = useMemo(
+    () =>
+      profile?.dimensions.map((item) => ({
+        ...item,
+        evidence: profile.source_event_id,
+        name: dimensionLabels[item.dimension],
+        nodes: item.scope_key,
+        score: Math.round(item.score * 100),
+      })) ?? [],
+    [profile],
+  );
+  const rows = useMemo(
+    () => dimensionItems.map((item) => [item.name, `${item.score}`, item.nodes] as const),
+    [dimensionItems],
+  );
+
+  if (loadError) {
+    return (
+      <div className="foundation-page profile-page">
+        <StatePanel
+          actionLabel="重新加载"
+          description={loadError}
+          onAction={() => setLoadAttempt((attempt) => attempt + 1)}
+          state="error"
+          title="无法读取学习画像"
+        />
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="foundation-page profile-page">
+        <StatePanel
+          description="正在从服务器读取正式画像版本与证据来源"
+          state="loading"
+          title="加载学习画像"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="foundation-page profile-page">
@@ -269,18 +322,18 @@ export function ProfilePage() {
           <h1>我的学习画像</h1>
           <p>每个分数都可追溯到知识节点与学习证据，浏览器不重新计算正式状态</p>
         </div>
-        <span className="status-chip">画像版本 v3</span>
+        <span className="status-chip">画像版本 v{profile.version}</span>
       </div>
 
       <div className="profile-layout">
         <ChartFrame
           columns={["能力维度", "分数", "知识节点 / 能力簇"]}
-          description="八个维度按知识节点聚合，0 到 100 分；分数来自画像版本 v3。"
+          description={`能力维度按知识节点聚合，0 到 100 分；分数来自画像版本 v${profile.version}。`}
           rows={rows}
           title="八维能力画像"
         >
           <div className="profile-bars">
-            {profileDimensions.map((item) => (
+            {dimensionItems.map((item) => (
               <div className="profile-bar" key={item.name}>
                 <span>{item.name}</span>
                 <span>
@@ -294,49 +347,46 @@ export function ProfilePage() {
 
         <aside className="profile-version-card">
           <p className="eyebrow">PROFILE VERSION</p>
-          <h2>画像版本 v3</h2>
+          <h2>画像版本 v{profile.version}</h2>
           <dl>
             <div>
-              <dt>生成时间</dt>
-              <dd>2026-07-17 10:24</dd>
+              <dt>画像 ID</dt>
+              <dd>{profile.id}</dd>
             </div>
             <div>
-              <dt>规则版本</dt>
-              <dd>profile-policy-1.2</dd>
+              <dt>来源事件</dt>
+              <dd>{profile.source_event_id}</dd>
             </div>
             <div>
-              <dt>证据范围</dt>
-              <dd>34 条已确认事件</dd>
+              <dt>能力维度</dt>
+              <dd>{profile.dimensions.length} 个服务器维度</dd>
             </div>
             <div>
               <dt>聚合方式</dt>
               <dd>按知识节点聚合</dd>
             </div>
           </dl>
-          <p className="profile-rule-note">
-            Agent 仅提出画像候选，正式版本由确定性规则组件写入。
-          </p>
+          <p className="profile-rule-note">Agent 仅提出画像候选，正式版本由确定性规则组件写入。</p>
           <button
             className="profile-secondary-button"
             onClick={() => setEvidenceOpen((open) => !open)}
             type="button"
           >
-            <FileMagnifyingGlass size={17} />{" "}
-            {evidenceOpen ? "收起画像证据" : "查看画像证据"}
+            <FileMagnifyingGlass size={17} /> {evidenceOpen ? "收起画像证据" : "查看画像证据"}
           </button>
           <button
             className="profile-secondary-button"
-            onClick={() => setDisputeOpen(true)}
+            onClick={() => {
+              setDisputeError(null);
+              setDisputeState("idle");
+              setDisputeOpen(true);
+            }}
             type="button"
           >
             对画像提出异议
           </button>
-          {disputeSubmitted ? (
-            <p
-              aria-label="异议状态"
-              className="profile-dispute-status"
-              role="status"
-            >
+          {disputeState === "submitted" ? (
+            <p aria-label="异议状态" className="profile-dispute-status" role="status">
               异议已提交 · 审核前画像版本保持不变
             </p>
           ) : null}
@@ -344,24 +394,23 @@ export function ProfilePage() {
       </div>
 
       {evidenceOpen ? (
-        <section
-          aria-label="画像证据"
-          className="profile-evidence"
-          role="region"
-        >
+        <section aria-label="画像证据" className="profile-evidence" role="region">
           <div>
             <p className="eyebrow">EVIDENCE DISCLOSURE</p>
             <h2>本版本的代表性证据</h2>
             <p>默认只展示教学摘要；证据 ID 与规则信息在此按需展开。</p>
           </div>
           <ul>
-            {profileDimensions.slice(0, 4).map((item) => (
-              <li id={`evidence-${item.evidence}`} key={item.evidence}>
+            {dimensionItems.slice(0, 4).map((item, index) => (
+              <li
+                id={`evidence-${index}-${item.dimension}`}
+                key={`${item.dimension}-${item.nodes}`}
+              >
                 <span>
                   <strong>{item.name}</strong>
                   <small>{item.nodes}</small>
                 </span>
-                <a href={`#evidence-${item.evidence}`}>{item.evidence}</a>
+                <a href={`#evidence-${index}-${item.dimension}`}>{item.evidence}</a>
               </li>
             ))}
           </ul>
@@ -386,18 +435,49 @@ export function ProfilePage() {
             </button>
             <p className="eyebrow">PROFILE REVIEW</p>
             <h2 id="profile-dispute-title">提交画像异议</h2>
-            <p>
-              请指出遗漏或错误的证据。提交后由规则与人工复核，当前画像不会被浏览器直接修改。
-            </p>
+            <p>请指出遗漏或错误的证据。提交后由规则与人工复核，当前画像不会被浏览器直接修改。</p>
             <form
               onSubmit={(event) => {
                 event.preventDefault();
-                setDisputeOpen(false);
-                setDisputeSubmitted(true);
+                const reason = new FormData(event.currentTarget).get("reason")?.toString().trim();
+                if (!reason || !accessToken) return;
+                setDisputeState("submitting");
+                setDisputeError(null);
+                configureProfileClient();
+                void disputeProfileApiV1ProfilesDisputesPost({
+                  body: { profile_version_id: profile.id, reason },
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    "Idempotency-Key": commandKey("profile-dispute"),
+                  },
+                })
+                  .then((result) => {
+                    if (!result.response.ok) {
+                      throw new Error(profileError(result.error));
+                    }
+                    setDisputeOpen(false);
+                    setDisputeState("submitted");
+                  })
+                  .catch((error: unknown) => {
+                    setDisputeError(profileError(error));
+                    setDisputeState("error");
+                  });
               }}
             >
               <label htmlFor="profile-dispute">异议说明</label>
-              <textarea id="profile-dispute" minLength={8} required rows={5} />
+              <textarea
+                disabled={disputeState === "submitting"}
+                id="profile-dispute"
+                minLength={8}
+                name="reason"
+                required
+                rows={5}
+              />
+              {disputeError ? (
+                <p aria-label="异议提交错误" role="alert">
+                  {disputeError}
+                </p>
+              ) : null}
               <div>
                 <button
                   className="profile-secondary-button"
@@ -406,8 +486,12 @@ export function ProfilePage() {
                 >
                   取消
                 </button>
-                <button className="py-button" type="submit">
-                  提交异议
+                <button
+                  className="py-button"
+                  disabled={disputeState === "submitting"}
+                  type="submit"
+                >
+                  {disputeState === "submitting" ? "提交中…" : "提交异议"}
                 </button>
               </div>
             </form>
