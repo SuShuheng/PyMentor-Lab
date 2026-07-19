@@ -6,7 +6,16 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -112,3 +121,47 @@ class AgentToolCall(Base):
     error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = _created_at()
+
+
+class AgentPromptTemplate(Base):
+    """BE-020 versioned, tenant-scoped system prompt per LangGraph node.
+
+    V1.0 hardcoded prompts inside the Worker; BE-020 externalizes them so a
+    System Admin can version, audit, and publish prompt edits without a deploy.
+    At most one row per ``(tenant_id, node)`` may have ``published = true``;
+    publishing a new version atomically unpublishes the others. The Worker reads
+    the published version at runtime (see api.agent_prompts contract).
+    """
+
+    __tablename__ = "agent_prompt_templates"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "node",
+            "version",
+            name="uq_agent_prompt_templates_tenant_node_version",
+        ),
+        CheckConstraint("version >= 1", name="ck_agent_prompt_templates_version_positive"),
+        CheckConstraint(
+            "length(system_prompt) >= 1",
+            name="ck_agent_prompt_templates_prompt_nonempty",
+        ),
+    )
+
+    id: Mapped[UUID] = _uuid_pk()
+    tenant_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    node: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    system_prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    published: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default=func.false(), index=True
+    )
+    created_by: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = _created_at()
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )

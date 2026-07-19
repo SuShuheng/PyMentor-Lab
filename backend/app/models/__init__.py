@@ -1,6 +1,6 @@
 """ORM 模型包。导入即向 Base.metadata 注册表结构（Alembic 自动生成依赖此副作用）。"""
 
-from app.models.agent import AgentDefinition, AgentRun, AgentToolCall
+from app.models.agent import AgentDefinition, AgentPromptTemplate, AgentRun, AgentToolCall
 from app.models.base import RoleName, TenantType, TokenType, UserStatus
 from app.models.code import (
     CodeRevision,
@@ -73,6 +73,7 @@ from app.models.resource import (
 
 __all__ = [
     "AgentDefinition",
+    "AgentPromptTemplate",
     "AgentRun",
     "AgentToolCall",
     "AssessmentResult",

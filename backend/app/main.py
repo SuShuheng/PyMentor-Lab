@@ -16,6 +16,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 from app.api.admin import router as admin_router
 from app.api.admin_queries import router as admin_queries_router
+from app.api.agent_prompts import router as agent_prompts_router
 from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
 from app.api.cms import router as cms_router
@@ -117,6 +118,7 @@ def create_app() -> FastAPI:
     app.include_router(chat_router)
     app.include_router(admin_router)
     app.include_router(admin_queries_router)
+    app.include_router(agent_prompts_router)
     app.include_router(cms_router)
     app.include_router(providers_router)
     app.include_router(system_observability_router)
