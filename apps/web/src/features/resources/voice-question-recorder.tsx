@@ -42,6 +42,21 @@ type VoiceQuestionRecorderProps = {
   disabled?: boolean;
   /** Receives the recognised transcript; the parent fills the composer. */
   onTranscript: (transcript: string) => void;
+  /**
+   * Optional seam that yields the raw captured audio blob instead of running
+   * the BE-025 ASR call. When provided, the recorder skips transcription and
+   * hands the parent the clip (with its observed MIME) so the parent can ship
+   * it to a different endpoint (e.g. FE-023 oral-explanation, which performs
+   * its own ASR server-side). FE-022's default behaviour (no prop) is
+   * unchanged: ASR runs and `onTranscript` receives the text.
+   */
+  onAudioCaptured?: (clip: Blob) => void;
+  /**
+   * Optional accessible label override for the idle trigger button. The tutor
+   * page uses the default "语音提问"; the oral-explanation page reuses the same
+   * control but labels it "开始录音" to match its context.
+   */
+  triggerLabel?: string;
 };
 
 /**
@@ -98,6 +113,8 @@ export function VoiceQuestionRecorder({
   accessToken,
   disabled = false,
   onTranscript,
+  onAudioCaptured,
+  triggerLabel = "语音提问",
 }: VoiceQuestionRecorderProps) {
   const [phase, setPhase] = useState<RecorderPhase>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -125,17 +142,29 @@ export function VoiceQuestionRecorder({
 
   const handleTranscribe = useCallback(
     async (chunks: Blob[], mime: string) => {
+      const clip = new Blob(chunks, { type: clipMimeType(mime) });
+      // Drop the only client-side copy of the raw chunks immediately; the clip
+      // is the single reference handed downstream.
+      chunksRef.current = [];
+
+      // FE-023 seam: when the caller wants the raw audio (e.g. to ship to
+      // BE-026 oral-explanation, which performs its own ASR server-side), skip
+      // the BE-025 transcription call entirely and yield the clip. The parent
+      // is responsible for the clip's lifecycle after this point.
+      if (onAudioCaptured) {
+        onAudioCaptured(clip);
+        setPhase("idle");
+        return;
+      }
+
       setPhase("transcribing");
       setErrorMessage(null);
       setErrorKind(null);
       try {
-        const clip = new Blob(chunks, { type: clipMimeType(mime) });
         const result = await submitAsr({
           body: { file: clip },
           headers: commandHeaders(accessToken, "asr-voice"),
         });
-        // Drop the only client-side copy of the audio immediately.
-        chunksRef.current = [];
         if (result.data?.transcript) {
           onTranscript(result.data.transcript);
           setTranscriptJustArrived(true);
@@ -153,7 +182,7 @@ export function VoiceQuestionRecorder({
         setPhase("idle");
       }
     },
-    [accessToken, onTranscript],
+    [accessToken, onAudioCaptured, onTranscript],
   );
 
   const startRecording = useCallback(async () => {
@@ -239,7 +268,7 @@ export function VoiceQuestionRecorder({
           onClick={startRecording}
           type="button"
         >
-          <Microphone size={16} /> 语音提问
+          <Microphone size={16} /> {triggerLabel}
         </button>
       </>
     );
@@ -268,7 +297,8 @@ export function VoiceQuestionRecorder({
       <span>录音中（最长 60 秒）</span>
       <div>
         <button onClick={stopAndTranscribe} type="button">
-          <StopCircle size={16} weight="fill" /> 停止录音并识别
+          <StopCircle size={16} weight="fill" />{" "}
+          {onAudioCaptured ? "停止录音" : "停止录音并识别"}
         </button>
         <button className="tutor-voice-cancel" onClick={cancelRecording} type="button">
           <X size={16} /> 取消录音

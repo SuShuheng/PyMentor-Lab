@@ -3487,3 +3487,165 @@ input {
   font-size: 11px;
 }
 
+/*
+ * FE-023 — oral explanation page. Most layout rides on the shared
+ * .foundation-page / .page-heading / .section-heading-row classes; only the
+ * genuinely page-specific visual treatments (prompt block, rubric breakdown,
+ * two-column result, honesty/mock notes) are defined here. Mirrors the
+ * tts-* / tutor-voice-* conventions: feature classes are hooks for the
+ * honesty-critical visual states.
+ */
+.oral-page .oral-prompt {
+  margin: 24px 0;
+  padding: 20px 24px;
+  border-radius: 12px;
+  background: #f7f9fc;
+  border: 1px solid #e1e7ef;
+}
+
+.oral-page .oral-prompt__text {
+  margin-top: 14px;
+}
+
+.oral-page .oral-prompt__text > p {
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.oral-page .oral-prompt__play {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.oral-page .oral-answer {
+  margin: 24px 0;
+}
+
+.oral-honesty-note,
+.oral-evidence-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 14px 0 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #f0f4fa;
+  border: 1px solid #c4d4ea;
+  color: #2a4a6a;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.oral-evidence-note {
+  background: #f0f7f0;
+  border-color: #b6d6b6;
+  color: #2a5a2a;
+}
+
+.oral-error-block {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.oral-result {
+  margin: 28px 0;
+  padding: 24px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e1e7ef;
+}
+
+.oral-mock-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 12px 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fff8e6;
+  border: 1px solid #ecd49a;
+  color: #7a5a1a;
+  font-size: 12px;
+}
+
+.oral-rubric {
+  list-style: none;
+  margin: 16px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.oral-rubric__item {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #f7f9fc;
+  border: 1px solid #e1e7ef;
+}
+
+.oral-rubric__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.oral-rubric__head strong {
+  font-size: 14px;
+}
+
+.oral-rubric__head span {
+  font-size: 12px;
+  color: #555;
+  white-space: nowrap;
+}
+
+.oral-rubric__item p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #333;
+}
+
+.oral-result__columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 18px 0;
+}
+
+@media (max-width: 720px) {
+  .oral-result__columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.oral-transcript,
+.oral-model-answer {
+  padding: 14px;
+  border-radius: 8px;
+  background: #f7f9fc;
+  border: 1px solid #e1e7ef;
+}
+
+.oral-transcript p,
+.oral-model-answer p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.oral-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+

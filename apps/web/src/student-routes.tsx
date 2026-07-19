@@ -28,6 +28,7 @@ import {
 } from "./features/learning/learning-pages";
 import { NotebookPage, TracePage } from "./features/notebook/notebook-pages";
 import { PracticePage } from "./features/practice/practice-pages";
+import { OralExplanationPage } from "./features/resources/oral-explanation-page";
 import {
   ResourceDetailPage,
   ResourcesPage,
@@ -103,6 +104,7 @@ function StudentLayout() {
         <Route path="/lab/trace" element={<TracePage />} />
         <Route path="/lab/*" element={<NotebookPage />} />
         <Route path="/practice/:nodeId" element={<PracticePage />} />
+        <Route path="/oral/:nodeId" element={<OralExplanationPage />} />
         <Route path="/map/graph" element={<LearningGraphPage />} />
         <Route path="/map/*" element={<LearningMapPage />} />
         <Route path="/growth/profile" element={<ProfilePage />} />

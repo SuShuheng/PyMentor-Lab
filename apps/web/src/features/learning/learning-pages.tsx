@@ -670,6 +670,16 @@ export function LearningMapPage() {
                   >
                     自测
                   </Link>
+                  {/* FE-023: oral explanation entry. Records an
+                      independence/explanation evidence signal; never
+                      auto-advances mastery. */}
+                  <Link
+                    aria-label={`口述解释 ${title}`}
+                    className="path-node-self-test"
+                    to={`/oral/${nodeId}`}
+                  >
+                    口述
+                  </Link>
                 </div>
                 <span className="path-node-status">{status}</span>
               </li>

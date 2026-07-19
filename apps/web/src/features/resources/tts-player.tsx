@@ -190,11 +190,19 @@ export function TtsNarration({
   answerText,
   courseId,
   nodeId,
+  triggerLabel = "播放讲解",
 }: {
   accessToken: string;
   answerText: string;
   courseId?: string;
   nodeId?: string;
+  /**
+   * Optional override for the idle/retry trigger label. The tutor page uses the
+   * default "播放讲解"; the oral-explanation page reuses the same orchestrator
+   * but labels it "播放题目" to match its context. Default keeps FE-019
+   * behaviour unchanged.
+   */
+  triggerLabel?: string;
 }) {
   const [response, setResponse] = useState<TtsResponse | null>(null);
   const [phase, setPhase] = useState<"idle" | "loading" | "ready" | "error">(
@@ -230,7 +238,7 @@ export function TtsNarration({
         onClick={startNarration}
         type="button"
       >
-        <SpeakerHigh size={16} /> 播放讲解
+        <SpeakerHigh size={16} /> {triggerLabel}
       </button>
     );
   }
@@ -247,7 +255,7 @@ export function TtsNarration({
     return (
       <div className="tts-narration-fallback">
         <button className="tts-trigger" onClick={startNarration} type="button">
-          <SpeakerHigh size={16} /> 重试播放讲解
+          <SpeakerHigh size={16} /> 重试{triggerLabel}
         </button>
         <p className="tts-player-fallback" role="status">
           <SpeakerHigh size={16} /> 讲解音频暂不可用：{errorMessage}
@@ -268,7 +276,7 @@ export function TtsNarration({
         onClick={startNarration}
         type="button"
       >
-        <SpeakerHigh size={16} /> 播放讲解
+        <SpeakerHigh size={16} /> {triggerLabel}
       </button>
     );
   }
