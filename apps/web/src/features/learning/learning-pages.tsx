@@ -15,15 +15,18 @@ import {
 } from "@phosphor-icons/react";
 import {
   getCurrentPathApiV1PathsCurrentGet,
+  getCurrentProfileApiV1ProfilesCurrentGet,
   getDueReviewsApiV1ReviewsDueGet,
   getMasteryApiV1MasteryGet,
   getTodayApiV1LearningTodayGet,
   startTaskApiV1TasksTaskVersionIdStartPost,
   type MasteryView,
+  type PathStepKindContract,
+  type PathValidationStatusContract,
   type ReviewView,
 } from "@pymentor/api-client";
 import { StatePanel } from "@pymentor/ui";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import {
@@ -33,6 +36,14 @@ import {
   studentAuthorization,
 } from "../../student-api";
 import { useAuth } from "../auth/auth-session";
+import {
+  classifyMapEmptyState,
+  emptyPathSummary,
+  LearningMapEmptyState,
+  LearningMapReasonPanel,
+  synthesizePathReasoning,
+  type PathSummary,
+} from "./learning-map";
 
 const USING_TEST_FIXTURES = import.meta.env.MODE === "test";
 
@@ -437,13 +448,46 @@ const fixturePathNodes: PathNodeRow[] = [
   ["05", "列表与字典", "LOCKED · 待解锁", "等待路径前置完成"],
 ];
 
+/**
+ * Fixture path metadata used to synthesize the "WHY THIS PATH" panel in
+ * test/demo mode. Counts mirror the 5-node fixture above (the kinds are
+ * illustrative; in production these come from the server projection).
+ */
+const fixturePathSummary: PathSummary = {
+  totalSteps: 5,
+  kindCounts: { LEARN: 3, PRACTICE: 1, REVIEW: 1, ASSESSMENT: 0 },
+  validationCounts: { VALIDATED: 4, REPAIRED: 1, FALLBACK: 0 },
+};
+
+function summarizePath(
+  steps: ReadonlyArray<{
+    kind: PathStepKindContract;
+    validation_status: PathValidationStatusContract;
+  }>,
+): PathSummary {
+  const summary = emptyPathSummary();
+  for (const step of steps) {
+    summary.totalSteps += 1;
+    summary.kindCounts[step.kind] += 1;
+    summary.validationCounts[step.validation_status] += 1;
+  }
+  return summary;
+}
+
 export function LearningMapPage() {
-  const { session } = useAuth();
+  const { session, status } = useAuth();
   const [searchParams] = useSearchParams();
   const [pathNodes, setPathNodes] = useState<PathNodeRow[] | null>(
     USING_TEST_FIXTURES ? fixturePathNodes : null,
   );
   const [pathVersion, setPathVersion] = useState<number | null>(USING_TEST_FIXTURES ? 7 : null);
+  const [pathSummary, setPathSummary] = useState<PathSummary | null>(
+    USING_TEST_FIXTURES ? fixturePathSummary : null,
+  );
+  // HTTP status for the path/profile lookups, used to classify empty states.
+  // 404 means "not found" (no path / no profile yet); 200 means present.
+  const [pathStatus, setPathStatus] = useState<number | null>(null);
+  const [profileStatus, setProfileStatus] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -458,19 +502,36 @@ export function LearningMapPage() {
     void Promise.all([
       getCurrentPathApiV1PathsCurrentGet({ headers: studentAuthorization(accessToken) }),
       getMasteryApiV1MasteryGet({ headers: studentAuthorization(accessToken) }),
+      getCurrentProfileApiV1ProfilesCurrentGet({
+        headers: studentAuthorization(accessToken),
+      }).then((result) => {
+        // Profile presence drives the no-profile vs pending-path branch.
+        // We intentionally do not throw on 404 — it is a valid empty state.
+        if (active) setProfileStatus(result.response.status);
+        return result;
+      }),
     ])
       .then(([pathResult, masteryResult]) => {
         if (!active) return;
-        if (!pathResult.data) throw new Error(safeApiMessage(pathResult.error));
+        setPathStatus(pathResult.response.status);
+        if (!pathResult.data) {
+          // 404 from the path endpoint is a legitimate empty state, not an
+          // error — surface it through the classifier instead of throwing.
+          if (pathResult.response.status !== 404) {
+            throw new Error(safeApiMessage(pathResult.error));
+          }
+          return;
+        }
         if (!masteryResult.data) throw new Error(safeApiMessage(masteryResult.error));
         const masteryByNode = new Map(
           masteryResult.data.map((item) => [item.node_id, item.status]),
         );
         setPathVersion(pathResult.data.version);
+        setPathSummary(summarizePath(pathResult.data.steps));
         setPathNodes(
           pathResult.data.steps.map((step) => {
             const mastery = masteryByNode.get(step.node_id);
-            const status = mastery
+            const masteryStatus = mastery
               ? `${mastery} · 服务端掌握状态`
               : step.position === 1
                 ? "LEARNING · 学习中"
@@ -478,7 +539,7 @@ export function LearningMapPage() {
             return [
               String(step.position).padStart(2, "0"),
               `节点 ${step.node_id.slice(0, 8)}`,
-              status,
+              masteryStatus,
               `${step.kind} · ${step.scenario_key} · ${step.validation_status}`,
             ] as const;
           }),
@@ -492,6 +553,28 @@ export function LearningMapPage() {
     };
   }, [session?.accessToken]);
 
+  const emptyKind = useMemo(() => {
+    if (USING_TEST_FIXTURES) {
+      // Fixtures always provide a path; classify on role alone for demo.
+      return session?.role === "demo" ? "demo-guest" : null;
+    }
+    if (pathStatus === null) return null; // still loading
+    return classifyMapEmptyState({
+      role: session?.role ?? "student",
+      status: status === "pending" ? "pending" : undefined,
+      pathStatus: pathStatus ?? undefined,
+      profileStatus: profileStatus ?? undefined,
+    });
+  }, [USING_TEST_FIXTURES, session?.role, status, pathStatus, profileStatus]);
+
+  const reasoning = useMemo(
+    () =>
+      pathSummary && pathVersion !== null
+        ? synthesizePathReasoning(pathSummary, pathVersion)
+        : null,
+    [pathSummary, pathVersion],
+  );
+
   if (searchParams.get("view") === "permission") {
     return (
       <StatePanel
@@ -499,6 +582,15 @@ export function LearningMapPage() {
         state="error"
         title="无权查看学习路径"
       />
+    );
+  }
+  // Empty-state branches (FE-015). These take priority over the generic
+  // load-error panel so a missing path/profile is actionable, not a bug.
+  if (emptyKind) {
+    return (
+      <div className="foundation-page map-page">
+        <LearningMapEmptyState kind={emptyKind} />
+      </div>
     );
   }
   if (!USING_TEST_FIXTURES && loadError) {
@@ -549,7 +641,7 @@ export function LearningMapPage() {
               <p className="eyebrow">CURRENT PATH</p>
               <h2 id="current-path-title">当前学习路径</h2>
             </div>
-            <small>5 个节点 · 2 个稳定掌握</small>
+            <small>{pathNodes.length} 个节点 · 服务端路径版本</small>
           </div>
           <ol aria-label="当前学习路径" className="path-node-list">
             {pathNodes.map(([index, title, status, note]) => (
@@ -564,28 +656,7 @@ export function LearningMapPage() {
             ))}
           </ol>
         </section>
-        <aside className="map-reason-panel">
-          <p className="eyebrow">WHY THIS PATH</p>
-          <h2>为什么这样安排？</h2>
-          <p>你能写出循环，但两次在边界值上出错。规则组件保留已稳定掌握节点，仅补强函数前置。</p>
-          <dl>
-            <div>
-              <dt>证据</dt>
-              <dd>EVD-1882 / EVD-1901</dd>
-            </div>
-            <div>
-              <dt>路径候选</dt>
-              <dd>path-candidate-08</dd>
-            </div>
-            <div>
-              <dt>验证结果</dt>
-              <dd>VALID · 自动插入前置</dd>
-            </div>
-          </dl>
-          <Link className="profile-secondary-button" to="/growth/profile">
-            查看相关画像证据
-          </Link>
-        </aside>
+        {reasoning ? <LearningMapReasonPanel reasoning={reasoning} /> : null}
       </div>
     </div>
   );
