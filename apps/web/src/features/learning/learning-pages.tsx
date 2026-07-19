@@ -25,6 +25,7 @@ import {
   type PathValidationStatusContract,
   type ReviewView,
 } from "@pymentor/api-client";
+import { KnowledgeGraph } from "@pymentor/charts";
 import { StatePanel } from "@pymentor/ui";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -36,6 +37,12 @@ import {
   studentAuthorization,
 } from "../../student-api";
 import { useAuth } from "../auth/auth-session";
+import {
+  getKnowledgeGraph,
+  type KnowledgeGraph as KnowledgeGraphPayload,
+  type KnowledgeGraphEdge,
+  type KnowledgeGraphNode,
+} from "./knowledge-graph-api";
 import {
   classifyMapEmptyState,
   emptyPathSummary,
@@ -438,14 +445,14 @@ export function TodayPage() {
   );
 }
 
-type PathNodeRow = readonly [string, string, string, string];
+type PathNodeRow = readonly [string, string, string, string, string];
 
 const fixturePathNodes: PathNodeRow[] = [
-  ["01", "变量与表达式", "STABLE_MASTERY · 稳定掌握", "已通过到期复测"],
-  ["02", "条件与循环", "STABLE_MASTERY · 稳定掌握", "最近复测 92 分"],
-  ["03", "函数基础", "LEARNING · 学习中", "当前路径节点"],
-  ["04", "函数参数与返回值", "UNSEEN · 未开始", "前置：函数基础"],
-  ["05", "列表与字典", "LOCKED · 待解锁", "等待路径前置完成"],
+  ["01", "变量与表达式", "STABLE_MASTERY · 稳定掌握", "已通过到期复测", "00000000-0000-0000-0000-0000000000a1"],
+  ["02", "条件与循环", "STABLE_MASTERY · 稳定掌握", "最近复测 92 分", "00000000-0000-0000-0000-0000000000a2"],
+  ["03", "函数基础", "LEARNING · 学习中", "当前路径节点", "00000000-0000-0000-0000-0000000000a3"],
+  ["04", "函数参数与返回值", "UNSEEN · 未开始", "前置：函数基础", "00000000-0000-0000-0000-0000000000a4"],
+  ["05", "列表与字典", "LOCKED · 待解锁", "等待路径前置完成", "00000000-0000-0000-0000-0000000000a5"],
 ];
 
 /**
@@ -541,6 +548,7 @@ export function LearningMapPage() {
               `节点 ${step.node_id.slice(0, 8)}`,
               masteryStatus,
               `${step.kind} · ${step.scenario_key} · ${step.validation_status}`,
+              step.node_id,
             ] as const;
           }),
         );
@@ -618,9 +626,14 @@ export function LearningMapPage() {
           <h1>学习地图</h1>
           <p>路径建议经确定性验证器补齐前置关系后发布</p>
         </div>
-        <span className="status-chip">
-          <MapTrifold size={16} /> Path v{pathVersion ?? "-"}
-        </span>
+        <div className="map-heading-actions">
+          <Link className="profile-secondary-button" to="/map/graph">
+            <ChartBar size={16} /> 知识图谱
+          </Link>
+          <span className="status-chip">
+            <MapTrifold size={16} /> Path v{pathVersion ?? "-"}
+          </span>
+        </div>
       </div>
       <div aria-label="学习路径已调整" className="path-change-banner" role="status">
         <Sparkle size={22} weight="fill" />
@@ -644,12 +657,19 @@ export function LearningMapPage() {
             <small>{pathNodes.length} 个节点 · 服务端路径版本</small>
           </div>
           <ol aria-label="当前学习路径" className="path-node-list">
-            {pathNodes.map(([index, title, status, note]) => (
+            {pathNodes.map(([index, title, status, note, nodeId]) => (
               <li className={status.startsWith("LEARNING") ? "is-current" : ""} key={index}>
                 <span className="path-node-index">{index}</span>
                 <div>
                   <strong>{title}</strong>
                   <small>{note}</small>
+                  <Link
+                    aria-label={`自测 ${title}`}
+                    className="path-node-self-test"
+                    to={`/practice/${nodeId}`}
+                  >
+                    自测
+                  </Link>
                 </div>
                 <span className="path-node-status">{status}</span>
               </li>
@@ -658,6 +678,194 @@ export function LearningMapPage() {
         </section>
         {reasoning ? <LearningMapReasonPanel reasoning={reasoning} /> : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * FE-018 — Knowledge graph page (NON-radial).
+ *
+ * Renders BE-021 `GET /api/v1/knowledge/graph` as a force-directed
+ * nodes+edges graph. Node color is bound to the server's `mastery_status`
+ * only (the chart package enforces this; the browser never rewrites colors).
+ * Radial/circular layouts are intentionally unsupported (v1.1 design call).
+ *
+ * Mounted at `/map/graph` so the existing map entry stays the canonical
+ * "validated path" view and the graph is a sibling exploration surface.
+ */
+const fixtureGraph: KnowledgeGraphPayload = {
+  course_id: "course-py-fundamentals",
+  nodes: [
+    {
+      node_id: "node-variables",
+      title: "变量与表达式",
+      chapter_id: "ch-01",
+      mastery_status: "STABLE_MASTERY",
+    },
+    {
+      node_id: "node-conditions",
+      title: "条件分支",
+      chapter_id: "ch-02",
+      mastery_status: "STABLE_MASTERY",
+    },
+    {
+      node_id: "node-loops",
+      title: "循环结构",
+      chapter_id: "ch-02",
+      mastery_status: "LEARNING",
+    },
+    {
+      node_id: "node-functions",
+      title: "函数基础",
+      chapter_id: "ch-03",
+      mastery_status: "LEARNING",
+    },
+    {
+      node_id: "node-params",
+      title: "函数参数与返回值",
+      chapter_id: "ch-03",
+      mastery_status: "UNSEEN",
+    },
+    {
+      node_id: "node-collections",
+      title: "列表与字典",
+      chapter_id: "ch-04",
+      mastery_status: "UNSEEN",
+    },
+  ],
+  edges: [
+    { from_node_id: "node-variables", to_node_id: "node-conditions", kind: "PREREQUISITE" },
+    { from_node_id: "node-conditions", to_node_id: "node-loops", kind: "PREREQUISITE" },
+    { from_node_id: "node-loops", to_node_id: "node-functions", kind: "PREREQUISITE" },
+    { from_node_id: "node-functions", to_node_id: "node-params", kind: "PREREQUISITE" },
+    { from_node_id: "node-params", to_node_id: "node-collections", kind: "PREREQUISITE" },
+  ],
+};
+
+export function LearningGraphPage() {
+  const { session, status } = useAuth();
+  const [graph, setGraph] = useState<KnowledgeGraphPayload | null>(
+    USING_TEST_FIXTURES ? fixtureGraph : null,
+  );
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [graphStatus, setGraphStatus] = useState<number | null>(null);
+  const [profileStatus, setProfileStatus] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (USING_TEST_FIXTURES) return;
+    const accessToken = session?.accessToken;
+    if (!accessToken) {
+      setLoadError("登录会话缺少访问令牌，请重新登录");
+      return;
+    }
+    let active = true;
+    configureStudentApi();
+    void Promise.all([
+      getKnowledgeGraph({ headers: studentAuthorization(accessToken) }).then((result) => {
+        if (active) setGraphStatus(result.response.status);
+        return result;
+      }),
+      getCurrentProfileApiV1ProfilesCurrentGet({
+        headers: studentAuthorization(accessToken),
+      }).then((result) => {
+        // Profile presence drives the no-profile vs pending-graph branch,
+        // mirroring the LearningMapPage classifier. 404 is legitimate, not
+        // an error, so we swallow it instead of throwing.
+        if (active) setProfileStatus(result.response.status);
+        return result;
+      }),
+    ])
+      .then(([graphResult]) => {
+        if (!active) return;
+        if (!graphResult.data) {
+          // 404 from the graph endpoint is a legitimate empty state.
+          if (graphResult.response.status !== 404) {
+            throw new Error(safeApiMessage(graphResult.error));
+          }
+          return;
+        }
+        setGraph(graphResult.data);
+      })
+      .catch((error: unknown) => {
+        if (active) setLoadError(safeApiMessage(error));
+      });
+    return () => {
+      active = false;
+    };
+  }, [session?.accessToken]);
+
+  const emptyKind = useMemo(() => {
+    if (USING_TEST_FIXTURES) {
+      return session?.role === "demo" ? "demo-guest" : null;
+    }
+    if (graphStatus === null) return null; // still loading
+    return classifyMapEmptyState({
+      role: session?.role ?? "student",
+      status: status === "pending" ? "pending" : undefined,
+      // Reuse the path-empty-state classifier: a missing graph behaves like
+      // a missing path from the student's perspective.
+      pathStatus: graphStatus ?? undefined,
+      profileStatus: profileStatus ?? undefined,
+    });
+  }, [USING_TEST_FIXTURES, session?.role, status, graphStatus, profileStatus]);
+
+  if (emptyKind) {
+    return (
+      <div className="foundation-page map-page map-graph-page">
+        <LearningMapEmptyState kind={emptyKind} />
+      </div>
+    );
+  }
+  if (!USING_TEST_FIXTURES && loadError) {
+    return (
+      <StatePanel
+        actionLabel="重试"
+        description={loadError}
+        onAction={() => window.location.reload()}
+        state="error"
+        title="无法加载知识图谱"
+      />
+    );
+  }
+  if (!graph) {
+    return (
+      <StatePanel
+        description="正在读取服务端知识图谱与前置依赖"
+        state="loading"
+        title="加载知识图谱"
+      />
+    );
+  }
+
+  const nodes: ReadonlyArray<KnowledgeGraphNode> = graph.nodes;
+  const edges: ReadonlyArray<KnowledgeGraphEdge> = graph.edges;
+
+  return (
+    <div className="foundation-page map-page map-graph-page">
+      <div className="page-heading">
+        <div>
+          <p className="eyebrow">KNOWLEDGE GRAPH · BE-021</p>
+          <h1>知识图谱</h1>
+          <p>节点颜色由服务端掌握状态决定；箭头表示前置依赖关系</p>
+        </div>
+        <div className="map-heading-actions">
+          <Link className="profile-secondary-button" to="/map">
+            <MapTrifold size={16} /> 返回学习地图
+          </Link>
+        </div>
+      </div>
+      <p aria-label="图谱说明" className="path-change-banner" role="status">
+        <Sparkle size={18} weight="fill" />
+        <span>
+          力导向布局（非环形）；点击节点查看掌握状态。浏览器不会修改节点状态。
+        </span>
+      </p>
+      <KnowledgeGraph
+        description="按服务端掌握状态着色的知识图谱，箭头表示前置依赖"
+        edges={edges}
+        nodes={nodes}
+        title="知识依赖图谱"
+      />
     </div>
   );
 }

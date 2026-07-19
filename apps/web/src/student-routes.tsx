@@ -20,8 +20,14 @@ import {
   useAuth,
 } from "./features/auth/auth-session";
 import { OnboardingPage, ProfilePage } from "./features/onboarding/onboarding-pages";
-import { GrowthPage, LearningMapPage, TodayPage } from "./features/learning/learning-pages";
+import {
+  GrowthPage,
+  LearningGraphPage,
+  LearningMapPage,
+  TodayPage,
+} from "./features/learning/learning-pages";
 import { NotebookPage, TracePage } from "./features/notebook/notebook-pages";
+import { PracticePage } from "./features/practice/practice-pages";
 import {
   ResourceDetailPage,
   ResourcesPage,
@@ -96,6 +102,8 @@ function StudentLayout() {
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/lab/trace" element={<TracePage />} />
         <Route path="/lab/*" element={<NotebookPage />} />
+        <Route path="/practice/:nodeId" element={<PracticePage />} />
+        <Route path="/map/graph" element={<LearningGraphPage />} />
         <Route path="/map/*" element={<LearningMapPage />} />
         <Route path="/growth/profile" element={<ProfilePage />} />
         <Route path="/growth/*" element={<GrowthPage />} />
