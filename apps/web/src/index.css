@@ -160,6 +160,120 @@ input {
   background: #dc2626;
 }
 
+/*
+ * FE Stage C — student header dropdowns (notifications bell + profile menu).
+ * Both wrappers (.student-notifications / .student-profile-menu) own a button
+ * AND the floating <ul role="menu">; they need position: relative so the
+ * absolutely-positioned menu anchors under the right button. Mirrors the
+ * working .admin-profile-menu__list pattern in apps/admin/src/index.css.
+ */
+.student-notifications,
+.student-profile-menu {
+  position: relative;
+}
+
+.student-notifications__list,
+.student-profile-menu__list {
+  position: absolute;
+  z-index: 20;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 240px;
+  max-width: 320px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgb(15 23 42 / 14%);
+}
+
+.student-profile-menu__list {
+  min-width: 220px;
+}
+
+/* Notification empty / loading placeholder row. */
+.student-notifications__empty {
+  padding: 12px 14px;
+  color: #6b7280;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Notification list item — a full-width button styled as a menu row. */
+.student-notifications__item {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #111827;
+  text-align: left;
+  cursor: pointer;
+}
+
+.student-notifications__item:hover,
+.student-notifications__item:focus-visible {
+  background: #f3f4f6;
+}
+
+.student-notifications__item span {
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+.student-notifications__item small {
+  color: #6b7280;
+  font-size: 11px;
+}
+
+/* Profile menu session header (avatar + display name + user id). */
+.student-profile-menu__session {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  color: #111827;
+}
+
+.student-profile-menu__session strong {
+  display: block;
+  font-size: 13px;
+}
+
+.student-profile-menu__session small {
+  display: block;
+  margin-top: 2px;
+  color: #6b7280;
+  font-size: 11px;
+}
+
+/* Profile menu action rows. */
+.student-profile-menu__list li > button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #111827;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.student-profile-menu__list li > button:hover,
+.student-profile-menu__list li > button:focus-visible {
+  background: #f3f4f6;
+}
+
 .foundation-page {
   display: grid;
   gap: 20px;

@@ -1122,6 +1122,233 @@ textarea {
   height: 16px;
 }
 
+/* FE-016 Stage B — Settings page: AI provider summary + first-run wizard.
+   The wizard JSX (admin-settings-page.tsx) reuses .admin-provider-form for
+   its field layout but renders <form>/<input>/<select> directly, so these
+   rules style the wizard-specific surface that the CRUD page does not share.
+   Follows the existing black/white admin theme: 1px #d1d5db borders, #fff
+   surfaces, #0a0a0a / #111 primary actions, #6b7280 secondary text. */
+
+/* "应用预设" row: button + hint side by side, wraps on narrow widths. */
+.admin-provider-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0 4px;
+}
+
+/* The preset button uses the inverted (primary) treatment so it stands out
+   against the otherwise neutral form fields. */
+.admin-provider-preset-apply {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #111;
+  border-radius: 7px;
+  color: #fff;
+  background: #111;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-provider-preset-apply:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* The wizard's <form> carries BOTH .admin-provider-form and the wizard hook.
+   The CRUD rule ".admin-provider-form form" does not match (the form IS the
+   .admin-provider-form element), so we lay out labels/inputs/selects here. */
+.admin-setup-wizard__form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.admin-setup-wizard__form label {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.admin-setup-wizard__form input,
+.admin-setup-wizard__form select {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 11px;
+  border: 1px solid #9ca3af;
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+}
+
+.admin-setup-wizard__form input:focus,
+.admin-setup-wizard__form select:focus {
+  outline: 0;
+  border-color: #111;
+  box-shadow: 0 0 0 3px rgb(17 17 17 / 8%);
+}
+
+.admin-setup-wizard__form select:disabled {
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+/* First-run guided setup container + step list. */
+.admin-setup-wizard {
+  border-top: 1px solid #e5e7eb;
+}
+
+.admin-setup-wizard__steps {
+  display: grid;
+  gap: 14px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each capability-slot card. Incomplete steps are an interactive form;
+   complete steps collapse to a header-only summary. */
+.admin-setup-wizard__step {
+  padding: 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.admin-setup-wizard__step.is-complete {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.admin-setup-wizard__step-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-setup-wizard__step-header h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 0;
+  font-size: 16px;
+}
+
+.admin-setup-wizard__step-header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* ✓ marker shown in the step header once the slot is satisfied. */
+.admin-setup-wizard__done {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #166534;
+  background: #dcfce7;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+/* Inline "已存在 X 类型 Provider" note on a complete step. */
+.admin-setup-wizard__covered {
+  margin: 6px 0 0;
+  color: #166534;
+  font-size: 11px;
+}
+
+/* Wizard action row + status. */
+.admin-setup-wizard__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.admin-setup-wizard__actions button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-setup-wizard__actions button.is-primary {
+  border: 1px solid #111;
+  color: #fff;
+  background: #111;
+}
+
+.admin-setup-wizard__actions button.is-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* "配置完成" banner rendered once every guided slot is satisfied. */
+.admin-setup-wizard__complete {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 18px 20px;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  color: #14532d;
+  background: #f0fdf4;
+}
+
+.admin-setup-wizard__complete strong {
+  display: block;
+  font-size: 15px;
+}
+
+.admin-setup-wizard__complete p {
+  margin: 4px 0 0;
+  color: #166534;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.admin-setup-wizard__complete a {
+  color: #111;
+  font-weight: 700;
+}
+
+/* "跳过引导" link rendered in the wizard panel header. */
+.admin-setup-skip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  color: #374151;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.admin-setup-skip:hover {
+  border-color: #111;
+  color: #111;
+}
+
 .admin-auth-page {
   display: grid;
   min-height: 100vh;

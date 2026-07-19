@@ -117,19 +117,35 @@ function promptError(error: unknown, fallback: string): Error {
   return new Error(detail ?? fallback);
 }
 
+/**
+ * Returns the currently published prompt for `node`, or `null` if no version
+ * has been published yet.
+ *
+ * BE-020 signals "fresh install / never published" with HTTP 200 + a JSON
+ * `null` body — a SUCCESSFUL empty state, not an error. We must distinguish
+ * that from a real transport/HTTP failure:
+ *   - 200 + null body → return `null` (page renders the "尚未发布" empty state)
+ *   - non-200 / error → throw (page renders "加载失败")
+ *
+ * Note the difference from the history/save/publish calls below: those
+ * endpoints never legitimately return `null`, so they keep the stricter
+ * `!data` rejection. Only the "current published" endpoint treats `null`
+ * as a meaningful, non-error payload.
+ */
 export async function fetchCurrentAgentPrompt({
   accessToken,
   node,
-}: AgentPromptQuery): Promise<AgentPromptVersion> {
+}: AgentPromptQuery): Promise<AgentPromptVersion | null> {
   configureAdminAgentPromptClient();
-  const { data, error, response } = await client.get<AgentPromptVersion>({
+  const { data, error, response } = await client.get<AgentPromptVersion | null>({
     headers: { Authorization: `Bearer ${accessToken}` },
     url: `/api/v1/admin/agent-prompts/${node}`,
   });
-  if (!response.ok || !data) {
+  if (!response.ok) {
     throw promptError(error, `Agent 提示词加载失败：${node}`);
   }
-  return data;
+  // 200 + null body = no published prompt yet; a valid empty state.
+  return data ?? null;
 }
 
 export async function fetchAgentPromptHistory({
