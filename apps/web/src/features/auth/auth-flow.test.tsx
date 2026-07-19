@@ -10,6 +10,7 @@ const pendingApi: AuthApi = {
   login: vi.fn().mockResolvedValue({ outcome: "pending" }),
   register: vi.fn(),
   refresh: vi.fn(),
+  signOut: vi.fn(),
   startDemo: vi.fn(),
 };
 

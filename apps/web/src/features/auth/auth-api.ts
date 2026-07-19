@@ -35,6 +35,7 @@ export type AuthApi = {
     password: string;
     studentId: string;
   }): Promise<AuthResult>;
+  signOut(): void;
   startDemo(): Promise<AuthResult>;
 };
 
@@ -163,6 +164,13 @@ export const browserAuthApi: AuthApi = {
     });
     if (!result.data) throwApiError(result.error);
     return { outcome: "pending" };
+  },
+  // Client-side sign-out only: the backend has no /auth/logout endpoint, so we
+  // drop the in-memory refresh token. The session object is cleared by the
+  // AuthProvider, which drops the access token with it. A page reload or a
+  // guarded request will then require a fresh login.
+  signOut: () => {
+    refreshToken = null;
   },
   startDemo: async () => {
     configureClient();
