@@ -77,9 +77,7 @@ def db_session(db_engine: Engine) -> Iterator[Session]:
     from app.knowledge_seed import seed_published_course
     from app.models import CourseCatalog
 
-    course_id = type(
-        "CourseId", (), {"value": "69408047-3b99-5fb2-b383-81f7314ecd5d"}
-    )().value
+    course_id = type("CourseId", (), {"value": "69408047-3b99-5fb2-b383-81f7314ecd5d"})().value
     from uuid import UUID
 
     canonical_course = UUID(course_id)

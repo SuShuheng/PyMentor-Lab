@@ -632,16 +632,14 @@ def test_platform_error_never_reduces_mastery_or_creates_assessment_evidence(
 
     assessment_results = list(
         db_session.scalars(
-            select(AssessmentResult).where(
-                AssessmentResult.task_instance_id == instance.id
-            )
+            select(AssessmentResult).where(AssessmentResult.task_instance_id == instance.id)
         )
     )
     # The AssessmentResult row may be persisted for audit, but its facts must
     # carry platform_error=True and must never have driven a mastery transition.
-    assert all(
-        (row.facts or {}).get("platform_error") is True for row in assessment_results
-    ), "a platform-error assessment must record facts.platform_error=True"
+    assert all((row.facts or {}).get("platform_error") is True for row in assessment_results), (
+        "a platform-error assessment must record facts.platform_error=True"
+    )
 
 
 def test_admin_progress_projection_reflects_the_persisted_learning_loop(
