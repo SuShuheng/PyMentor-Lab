@@ -16,10 +16,14 @@ import {
 } from "@pymentor/api-client";
 import { readServerUrl } from "@pymentor/config";
 import { StatePanel } from "@pymentor/ui";
-import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/auth-session";
+import {
+  submitOnboarding,
+  type OnboardingAnswers,
+} from "./onboarding-api";
 
 const ONBOARDING_STEP_KEY = "pymentor.onboardingStep";
 
@@ -28,28 +32,45 @@ const questions = [
     prompt: "你之前接触过 Python 吗？",
     help: "这只影响诊断起点，不会直接决定能力分数。",
     choices: ["第一次学习", "有一点基础", "做过完整项目"],
+    field: "prior_experience" as const,
   },
   {
     prompt: "你这学期最希望解决什么问题？",
     help: "可以选择最接近的一项，后续仍可修改学习目标。",
     choices: ["跟上课堂进度", "独立完成作业", "准备竞赛或项目"],
+    field: "primary_goal" as const,
   },
   {
     prompt: "遇到报错时，你通常先怎么做？",
     help: "我们会结合后续真实代码证据验证，而不是仅凭回答打分。",
     choices: ["阅读错误信息", "逐行检查代码", "先请求提示"],
+    field: "error_strategy" as const,
   },
   {
     prompt: "下面哪类练习对你最有帮助？",
     help: "资源偏好只用于推荐排序，不会改变正式掌握状态。",
     choices: ["短小例题", "可运行代码", "图解与执行轨迹"],
+    field: "preferred_exercise" as const,
   },
   {
     prompt: "每周可以稳定安排多少学习时间？",
     help: "学习计划会保留弹性，可随时暂停或重新安排。",
     choices: ["少于 2 小时", "2–4 小时", "4 小时以上"],
+    field: "weekly_band" as const,
   },
 ] as const;
+
+/**
+ * Maps the conversational answers (collected in question order) onto the
+ * BE-018 `OnboardingAnswers` shape. Keys mirror the contract field-for-field.
+ */
+function mapAnswers(answers: string[]): OnboardingAnswers {
+  const entries = questions.map((question, index) => [
+    question.field,
+    answers[index] ?? "",
+  ]);
+  return Object.fromEntries(entries) as OnboardingAnswers;
+}
 
 const dimensionLabels: Record<ProfileDimensionContract, string> = {
   CONCEPT_KNOWLEDGE: "概念知识掌握",
@@ -88,10 +109,60 @@ function loadStep(): number {
 }
 
 export function OnboardingPage() {
+  const { session } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [step, setStep] = useState(loadStep);
   const [answers, setAnswers] = useState<string[]>([]);
+  const [submitState, setSubmitState] = useState<"error" | "idle" | "submitting">("idle");
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  // Idempotency key is generated per attempt (not per render). It is minted
+  // when an attempt starts and reused for retries of that same attempt so the
+  // backend can de-duplicate; a fresh attempt mints a fresh key.
+  const idempotencyKeyRef = useRef<string | null>(null);
   const view = searchParams.get("view");
+
+  const submit = useCallback(async () => {
+    const accessToken = session?.accessToken;
+    if (!accessToken) {
+      setSubmitState("error");
+      setSubmitError("登录会话缺少访问令牌，请重新登录");
+      return;
+    }
+    if (answers.length < questions.length) {
+      setSubmitState("error");
+      setSubmitError("请先完成全部 5 个问题");
+      return;
+    }
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current = commandKey("onboarding");
+    }
+    setSubmitState("submitting");
+    setSubmitError(null);
+    configureProfileClient();
+    try {
+      const result = await submitOnboarding({
+        body: {
+          answers: mapAnswers(answers),
+          expected_profile_version: 0,
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Idempotency-Key": idempotencyKeyRef.current,
+        },
+      });
+      if (!result.response.ok || !result.data) {
+        throw new Error(profileError(result.error));
+      }
+      // Success: persist nothing locally — the backend owns the projection.
+      window.localStorage.removeItem(ONBOARDING_STEP_KEY);
+      setSubmitState("idle");
+      navigate("/growth/profile");
+    } catch (error: unknown) {
+      setSubmitState("error");
+      setSubmitError(profileError(error));
+    }
+  }, [answers, navigate, session?.accessToken]);
 
   if (view === "reconnecting") {
     return (
@@ -123,6 +194,7 @@ export function OnboardingPage() {
 
   const complete = step >= questions.length;
   const currentQuestion = questions[Math.min(step, questions.length - 1)]!;
+  const submitting = submitState === "submitting";
 
   return (
     <div className="foundation-page onboarding-page">
@@ -189,8 +261,21 @@ export function OnboardingPage() {
               <ShieldCheck size={34} weight="fill" />
               <h2>初始上下文已建立</h2>
               <p>下一步会用短练习补齐诊断；证据不足的维度将标记为“待观察”。</p>
-              <Link className="py-button" to="/growth/profile">
-                查看初始画像
+              {submitError ? (
+                <p aria-label="提交错误" className="onboarding-submit-error" role="alert">
+                  {submitError}
+                </p>
+              ) : null}
+              <button
+                className="py-button"
+                disabled={submitting}
+                onClick={() => void submit()}
+                type="button"
+              >
+                {submitting ? "提交中…" : "提交并生成初始画像"}
+              </button>
+              <Link className="onboarding-skip-link" to="/growth/profile">
+                暂不提交，直接查看画像
               </Link>
             </div>
           ) : (

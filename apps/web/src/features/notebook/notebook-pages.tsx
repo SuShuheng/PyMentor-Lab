@@ -26,6 +26,7 @@ import { Link, useLocation, useSearchParams } from "react-router-dom";
 
 import { commandHeaders, configureStudentApi, safeApiMessage } from "../../student-api";
 import { useAuth } from "../auth/auth-session";
+import { OcrScreenshotUpload } from "./ocr-screenshot-upload";
 
 const USING_TEST_FIXTURES = import.meta.env.MODE === "test";
 
@@ -97,6 +98,14 @@ export function NotebookPage() {
     USING_TEST_FIXTURES ? (view === "long-output" ? longOutput : "6") : (run?.result?.stdout ?? ""),
   );
   const showResults = runStatus === "success";
+  // FE-021: offer the OCR screenshot upload whenever the notebook is showing a
+  // student-facing error (a real failed run, the user-error fixture, or a run
+  // request that failed with a user-actionable message). Platform errors are
+  // excluded — OCR-ing a "sandbox down" message adds nothing.
+  const showOcrUpload =
+    runStatus === "failed" ||
+    view === "user-error" ||
+    Boolean(operationError);
 
   async function runCode(): Promise<void> {
     setRunStatus("running");
@@ -467,6 +476,10 @@ export function NotebookPage() {
               <p>沙箱暂时不可用，本次不会计入学习证据。请稍后重试。</p>
             </div>
           </div>
+        ) : null}
+
+        {showOcrUpload ? (
+          <OcrScreenshotUpload accessToken={session?.accessToken} />
         ) : null}
 
         {showResults && view !== "user-error" && view !== "platform-error" ? (

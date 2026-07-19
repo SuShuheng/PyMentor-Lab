@@ -7,6 +7,8 @@ export interface NavigationItem {
   icon?: ReactNode;
 }
 
+export type SidebarTool = "settings" | "console";
+
 export interface AppShellProps {
   activeHref: string;
   brand: string;
@@ -14,6 +16,7 @@ export interface AppShellProps {
   header?: ReactNode;
   navigation: readonly NavigationItem[];
   onNavigate?: (href: string) => void;
+  onToolAction?: (tool: SidebarTool) => void;
   status?: {
     detail: string;
     label: string;
@@ -29,6 +32,7 @@ export function AppShell({
   header,
   navigation,
   onNavigate,
+  onToolAction,
   status,
   subtitle = "PyMentor Lab",
   variant = "student",
@@ -106,10 +110,18 @@ export function AppShell({
             </span>
           </div>
           <div className="py-sidebar__tools" aria-label="快捷工具">
-            <button aria-label="设置" type="button">
+            <button
+              aria-label="设置"
+              onClick={onToolAction ? () => onToolAction("settings") : undefined}
+              type="button"
+            >
               <Gear size={22} />
             </button>
-            <button aria-label="打开控制台" type="button">
+            <button
+              aria-label="打开控制台"
+              onClick={onToolAction ? () => onToolAction("console") : undefined}
+              type="button"
+            >
               <TerminalWindow size={22} />
             </button>
           </div>

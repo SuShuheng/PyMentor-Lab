@@ -1,5 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import { saveServerUrl } from "@pymentor/config";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -20,6 +21,14 @@ const pendingRegistration = {
   user_id: "00000000-0000-0000-0000-000000000101",
 };
 
+function createQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: { gcTime: 0, retry: false, staleTime: 0 },
+    },
+  });
+}
+
 afterEach(() => {
   window.localStorage.clear();
   vi.unstubAllGlobals();
@@ -27,9 +36,11 @@ afterEach(() => {
 
 function renderAdmin(route: string) {
   return render(
-    <MemoryRouter initialEntries={[route]}>
-      <AdminRoutes initialSession={liveAdminSession} />
-    </MemoryRouter>,
+    <QueryClientProvider client={createQueryClient()}>
+      <MemoryRouter initialEntries={[route]}>
+        <AdminRoutes initialSession={liveAdminSession} />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -136,20 +147,33 @@ describe("admin registration and student operations", () => {
 
   it("reviews pending registrations from the overview", async () => {
     saveServerUrl("https://api.example.test");
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify([pendingRegistration]), {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const request = input as Request;
+      if (request.url.includes("/api/v1/admin/registrations/pending")) {
+        return new Response(JSON.stringify([pendingRegistration]), {
           headers: { "Content-Type": "application/json" },
           status: 200,
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ status: "ACTIVE" }), {
+        });
+      }
+      if (request.url.endsWith("/api/v1/admin/overview")) {
+        return new Response(
+          JSON.stringify({
+            active_students: 1,
+            pending_registrations: 1,
+            resource_reviews: 0,
+            due_reviews: 0,
+          }),
+          { headers: { "Content-Type": "application/json" }, status: 200 },
+        );
+      }
+      if (request.url.endsWith(`/registrations/${pendingRegistration.user_id}/approve`)) {
+        return new Response(JSON.stringify({ status: "ACTIVE" }), {
           headers: { "Content-Type": "application/json" },
           status: 200,
-        }),
-      );
+        });
+      }
+      throw new Error(`Unexpected request: ${request.url}`);
+    });
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
     renderAdmin("/admin/overview");
@@ -163,32 +187,50 @@ describe("admin registration and student operations", () => {
     );
     expect(queue).not.toHaveTextContent("S-001");
 
-    const listRequest = fetchMock.mock.calls[0]?.[0] as Request;
-    const approveRequest = fetchMock.mock.calls[1]?.[0] as Request;
-    expect(listRequest.url).toContain("/api/v1/admin/registrations/pending");
-    expect(listRequest.headers.get("Authorization")).toBe("Bearer admin-access");
-    expect(approveRequest.url).toBe(
+    const listRequest = fetchMock.mock.calls
+      .map(([request]) => request as Request)
+      .find((request) => request.url.includes("/api/v1/admin/registrations/pending"));
+    expect(listRequest?.headers.get("Authorization")).toBe("Bearer admin-access");
+    const approveRequest = fetchMock.mock.calls
+      .map(([request]) => request as Request)
+      .find((request) =>
+        request.url.endsWith(`/api/v1/admin/registrations/${pendingRegistration.user_id}/approve`),
+      );
+    expect(approveRequest?.url).toBe(
       `https://api.example.test/api/v1/admin/registrations/${pendingRegistration.user_id}/approve`,
     );
-    expect(approveRequest.headers.get("Idempotency-Key")).toMatch(/^registration-approved-/);
+    expect(approveRequest?.headers.get("Idempotency-Key")).toMatch(/^registration-approved-/);
   });
 
   it("rejects a pending registration through the generated command", async () => {
     saveServerUrl("https://api.example.test");
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify([pendingRegistration]), {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const request = input as Request;
+      if (request.url.includes("/api/v1/admin/registrations/pending")) {
+        return new Response(JSON.stringify([pendingRegistration]), {
           headers: { "Content-Type": "application/json" },
           status: 200,
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ status: "REJECTED" }), {
+        });
+      }
+      if (request.url.endsWith("/api/v1/admin/overview")) {
+        return new Response(
+          JSON.stringify({
+            active_students: 1,
+            pending_registrations: 1,
+            resource_reviews: 0,
+            due_reviews: 0,
+          }),
+          { headers: { "Content-Type": "application/json" }, status: 200 },
+        );
+      }
+      if (request.url.endsWith(`/registrations/${pendingRegistration.user_id}/reject`)) {
+        return new Response(JSON.stringify({ status: "REJECTED" }), {
           headers: { "Content-Type": "application/json" },
           status: 200,
-        }),
-      );
+        });
+      }
+      throw new Error(`Unexpected request: ${request.url}`);
+    });
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
     renderAdmin("/admin/overview");
@@ -198,13 +240,17 @@ describe("admin registration and student operations", () => {
     await waitFor(() =>
       expect(screen.getByRole("status", { name: "注册审核状态" })).toHaveTextContent("S-001已拒绝"),
     );
-    const rejectRequest = fetchMock.mock.calls[1]?.[0] as Request;
-    expect(rejectRequest.url).toBe(
+    const rejectRequest = fetchMock.mock.calls
+      .map(([request]) => request as Request)
+      .find((request) =>
+        request.url.endsWith(`/api/v1/admin/registrations/${pendingRegistration.user_id}/reject`),
+      );
+    expect(rejectRequest?.url).toBe(
       `https://api.example.test/api/v1/admin/registrations/${pendingRegistration.user_id}/reject`,
     );
-    expect(rejectRequest.headers.get("Authorization")).toBe("Bearer admin-access");
-    expect(rejectRequest.headers.get("Idempotency-Key")).toMatch(/^registration-rejected-/);
-    await expect(rejectRequest.clone().json()).resolves.toEqual({
+    expect(rejectRequest?.headers.get("Authorization")).toBe("Bearer admin-access");
+    expect(rejectRequest?.headers.get("Idempotency-Key")).toMatch(/^registration-rejected-/);
+    await expect(rejectRequest?.clone().json()).resolves.toEqual({
       reason: "Rejected from the registration review queue",
     });
   });
@@ -425,6 +471,28 @@ describe("admin safety and infrastructure operations", () => {
           { headers: { "Content-Type": "application/json" }, status: 200 },
         );
       }
+      // FE-025 advanced metrics (BE-028 `GET /api/v1/admin/metrics`). The
+      // Metrics page now consumes this alongside the provider metrics above,
+      // so this branch keeps the aggregate regression test green. The chart
+      // inputs are stubbed empty here; FE-025's dedicated suite covers the
+      // series rendering.
+      if (request.url.includes("/api/v1/admin/metrics")) {
+        return new Response(
+          JSON.stringify({
+            window: {
+              bucket: "hour",
+              bucket_count: 0,
+              since: "2026-07-18T02:30:00Z",
+              until: "2026-07-19T02:30:00Z",
+            },
+            api_usage: { buckets: [] },
+            mastery_distribution: { counts: {} },
+            agent_timeline: { points: [] },
+            resource_stats: { course_id: null, items: [] },
+          }),
+          { headers: { "Content-Type": "application/json" }, status: 200 },
+        );
+      }
       if (request.url.includes("/api/v1/admin/system/logs")) {
         return new Response(
           JSON.stringify({
@@ -480,7 +548,9 @@ describe("admin safety and infrastructure operations", () => {
     renderAdmin("/admin/database");
     expect(await screen.findByText("0011-live")).toBeVisible();
 
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    // 5 calls: health, provider metrics, BE-028 advanced metrics (FE-025),
+    // logs, and database status.
+    expect(fetchMock).toHaveBeenCalledTimes(5);
     for (const [request] of fetchMock.mock.calls) {
       expect((request as Request).headers.get("Authorization")).toBe("Bearer admin-access");
     }
@@ -597,5 +667,93 @@ describe("admin safety and infrastructure operations", () => {
     expect(screen.queryByText("PLAINTEXT_KEY_SHOULD_NOT_RENDER")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "测试讯飞 LLM 连通性" }));
     expect(screen.getByRole("status", { name: "Provider 测试状态" })).toHaveTextContent("连接成功");
+  });
+});
+
+describe("admin overview aggregate metrics (FE-013)", () => {
+  it("renders BE-017 overview counts instead of the hardcoded 248 / 7 values", async () => {
+    saveServerUrl("https://api.example.test");
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const request = input as Request;
+      if (request.url.endsWith("/api/v1/admin/overview")) {
+        return new Response(
+          JSON.stringify({
+            active_students: 312,
+            pending_registrations: 4,
+            resource_reviews: 9,
+            due_reviews: 18,
+          }),
+          { headers: { "Content-Type": "application/json" }, status: 200 },
+        );
+      }
+      if (request.url.includes("/api/v1/admin/registrations/pending")) {
+        return new Response(JSON.stringify([]), {
+          headers: { "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      throw new Error(`Unexpected request: ${request.url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderAdmin("/admin/overview");
+
+    const metrics = await screen.findByRole("region", { name: "平台概览指标" });
+    expect(await within(metrics).findByText("312")).toBeVisible();
+    expect(within(metrics).getByText("9")).toBeVisible();
+    expect(within(metrics).getByText("4")).toBeVisible();
+    // Hardcoded placeholder values must not leak through.
+    expect(metrics).not.toHaveTextContent("248");
+    expect(metrics).not.toHaveTextContent("+12 本周");
+    expect(metrics).not.toHaveTextContent("2 项高优先级");
+
+    const overviewRequest = fetchMock.mock.calls.find(([request]) =>
+      (request as Request).url.endsWith("/api/v1/admin/overview"),
+    )?.[0] as Request;
+    expect(overviewRequest.headers.get("Authorization")).toBe("Bearer admin-access");
+  });
+
+  it("falls back to an error state with retry when the overview endpoint fails", async () => {
+    saveServerUrl("https://api.example.test");
+    let overviewFailing = true;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const request = input as Request;
+      if (request.url.endsWith("/api/v1/admin/overview")) {
+        if (overviewFailing) {
+          return new Response(JSON.stringify({ detail: "租户概览不可用" }), {
+            headers: { "Content-Type": "application/json" },
+            status: 503,
+          });
+        }
+        return new Response(
+          JSON.stringify({
+            active_students: 27,
+            pending_registrations: 1,
+            resource_reviews: 2,
+            due_reviews: 3,
+          }),
+          { headers: { "Content-Type": "application/json" }, status: 200 },
+        );
+      }
+      if (request.url.includes("/api/v1/admin/registrations/pending")) {
+        return new Response(JSON.stringify([]), {
+          headers: { "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      throw new Error(`Unexpected request: ${request.url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    renderAdmin("/admin/overview");
+
+    const alert = await screen.findByRole("alert", { name: "管理概览错误" });
+    expect(alert).toHaveTextContent("租户概览不可用");
+
+    // Next overview fetch succeeds so the manual retry recovers the metrics.
+    overviewFailing = false;
+    await user.click(screen.getByRole("button", { name: "重试概览" }));
+    const metrics = screen.getByRole("region", { name: "平台概览指标" });
+    expect(await within(metrics).findByText("27")).toBeVisible();
   });
 });

@@ -1849,6 +1849,150 @@ input {
   background: #fffbeb;
 }
 
+/* FE-021 — OCR error-screenshot upload widget (notebook error panel). */
+.notebook-ocr-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.notebook-ocr-upload__heading {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.notebook-ocr-upload__heading h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.notebook-ocr-upload__heading p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #475569;
+}
+
+.notebook-ocr-upload__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.notebook-ocr-upload__input {
+  font-size: 11px;
+}
+
+.notebook-ocr-upload__button {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: #1e3a8a;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.notebook-ocr-upload__button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.notebook-ocr-upload__filename {
+  font-size: 11px;
+  color: #475569;
+}
+
+.notebook-ocr-upload__result {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+}
+
+.notebook-ocr-upload__result-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.notebook-ocr-upload__result-head small {
+  margin-left: auto;
+  font-weight: 400;
+  color: #047857;
+}
+
+.notebook-ocr-upload__result pre {
+  margin: 8px 0;
+  padding: 10px;
+  font-size: 11px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #fff;
+  border-radius: 6px;
+}
+
+.notebook-ocr-upload__hint {
+  margin: 0;
+  font-size: 11px;
+  color: #047857;
+}
+
+.notebook-ocr-upload__unavailable,
+.notebook-ocr-upload__error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.notebook-ocr-upload__unavailable {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+}
+
+.notebook-ocr-upload__error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.notebook-ocr-upload__error p {
+  margin: 0;
+  flex: 1 1 160px;
+}
+
+.notebook-ocr-upload__retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #991b1b;
+  background: #fff;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
 .trace-toolbar {
   display: grid;
   min-height: 54px;
@@ -2538,6 +2682,139 @@ input {
   color: #666;
 }
 
+/* FE-019 TTS narration: 播放讲解 trigger, audio + synced subtitles. */
+.tts-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 7px 12px;
+  border: 1px solid #111;
+  border-radius: 7px;
+  background: #fff;
+  color: #111;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tts-trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tts-trigger--secondary {
+  margin-top: 0;
+  border-color: #9a9a9a;
+  background: transparent;
+  font-weight: 600;
+}
+
+.tts-trigger--loading {
+  opacity: 0.8;
+  cursor: progress;
+}
+
+.tts-narration,
+.tts-narration-fallback {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.tts-player {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.tts-player audio {
+  width: 100%;
+}
+
+.tts-mock-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 6px 9px;
+  border-radius: 6px;
+  background: #fff7e6;
+  border: 1px solid #f0c674;
+  color: #8a5a00;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tts-player-fallback {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 11px;
+  border-radius: 7px;
+  background: #fff5f5;
+  border: 1px solid #e7a9a9;
+  color: #8a3a3a;
+  font-size: 11px;
+}
+
+.tts-subtitle-track {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.tts-subtitle {
+  margin: 0;
+}
+
+.tts-subtitle button {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  width: 100%;
+  padding: 6px 9px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: #444;
+}
+
+.tts-subtitle button:hover {
+  background: #f2f2f2;
+}
+
+.tts-subtitle.is-active button {
+  background: #eef4ff;
+  color: #111;
+  font-weight: 600;
+}
+
+.tts-subtitle__time {
+  flex: 0 0 auto;
+  color: #888;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+
+.tts-subtitle__text {
+  flex: 1 1 auto;
+}
+
 .tutor-stream-error {
   align-items: center;
   border: 1px solid #e7a9a9;
@@ -2593,6 +2870,123 @@ input {
 .tutor-composer > div > span {
   color: #6f6f6f;
   font-size: 10px;
+}
+
+/* FE-022 — voice-question recorder, mounted inside .tutor-composer. */
+.tutor-voice-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  padding: 8px 13px;
+  border: 1px solid #c9c9c9;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f3a5f;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tutor-voice-button:hover:not(:disabled) {
+  border-color: #1f3a5f;
+}
+
+.tutor-voice-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tutor-voice-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #f3f6fb;
+  border: 1px solid #cdd9ea;
+  color: #1f3a5f;
+  font-size: 12px;
+}
+
+.tutor-voice-recording {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 11px 13px;
+  border-radius: 9px;
+  background: #fff0f0;
+  border: 1px solid #e7b0b0;
+  color: #7a1f1f;
+  font-size: 12px;
+}
+
+.tutor-voice-recording > span:nth-child(2) {
+  font-weight: 600;
+}
+
+.tutor-voice-recording__pulse {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #d33;
+  box-shadow: 0 0 0 0 rgb(221 51 51 / 60%);
+  animation: tutor-voice-pulse 1.2s infinite;
+}
+
+@keyframes tutor-voice-pulse {
+  0% { box-shadow: 0 0 0 0 rgb(221 51 51 / 60%); }
+  70% { box-shadow: 0 0 0 9px rgb(221 51 51 / 0%); }
+  100% { box-shadow: 0 0 0 0 rgb(221 51 51 / 0%); }
+}
+
+.tutor-voice-recording div {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.tutor-voice-recording button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 7px;
+  border: 1px solid #c9c9c9;
+  background: #fff;
+  color: #1f3a5f;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tutor-voice-recording .tutor-voice-cancel {
+  background: transparent;
+  color: #6a3a3a;
+}
+
+.tutor-voice-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #f0f7f0;
+  border: 1px solid #b6d6b6;
+  color: #2a5a2a;
+  font-size: 11px;
+}
+
+.tutor-voice-note--error {
+  background: #fff5f5;
+  border-color: #e7a9a9;
+  color: #8a3a3a;
 }
 
 .tutor-stream-panel {
@@ -2950,3 +3344,308 @@ input {
     flex-direction: column;
   }
 }
+
+/* FE-018 — knowledge graph page (non-radial) */
+.map-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.map-graph-page .path-change-banner {
+  margin-bottom: 18px;
+}
+
+.py-knowledge-graph {
+  margin: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  padding: 24px;
+}
+
+.py-knowledge-graph__heading h2 {
+  margin: 4px 0 6px;
+  font-size: 21px;
+}
+
+.py-knowledge-graph__heading p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.py-knowledge-graph__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  list-style: none;
+  margin: 18px 0 12px;
+  padding: 0;
+}
+
+.py-knowledge-graph__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #374151;
+}
+
+.py-knowledge-graph__legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.py-knowledge-graph__legend-item [aria-label$="数量"] {
+  color: #6b7280;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+.py-knowledge-graph__reset {
+  margin-bottom: 12px;
+}
+
+.py-knowledge-graph__visual {
+  width: 100%;
+  border-radius: 9px;
+  background: #fafafa;
+  border: 1px dashed #e5e7eb;
+}
+
+.py-knowledge-graph__canvas-loading {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.py-knowledge-graph__summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin: 16px 0 0;
+  padding: 12px 0 0;
+  border-top: 1px solid #f3f4f6;
+}
+
+.py-knowledge-graph__summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.py-knowledge-graph__summary dt {
+  color: #6b7280;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.py-knowledge-graph__summary dd {
+  margin: 0;
+  font-size: 13px;
+}
+
+.py-knowledge-graph__panel {
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 9px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.py-knowledge-graph__panel h3 {
+  margin: 4px 0 10px;
+  font-size: 16px;
+}
+
+.py-knowledge-graph__panel dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.py-knowledge-graph__panel dt {
+  color: #6b7280;
+  font-size: 10px;
+}
+
+.py-knowledge-graph__panel dd {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.py-knowledge-graph__panel code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+/*
+ * FE-023 — oral explanation page. Most layout rides on the shared
+ * .foundation-page / .page-heading / .section-heading-row classes; only the
+ * genuinely page-specific visual treatments (prompt block, rubric breakdown,
+ * two-column result, honesty/mock notes) are defined here. Mirrors the
+ * tts-* / tutor-voice-* conventions: feature classes are hooks for the
+ * honesty-critical visual states.
+ */
+.oral-page .oral-prompt {
+  margin: 24px 0;
+  padding: 20px 24px;
+  border-radius: 12px;
+  background: #f7f9fc;
+  border: 1px solid #e1e7ef;
+}
+
+.oral-page .oral-prompt__text {
+  margin-top: 14px;
+}
+
+.oral-page .oral-prompt__text > p {
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.oral-page .oral-prompt__play {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.oral-page .oral-answer {
+  margin: 24px 0;
+}
+
+.oral-honesty-note,
+.oral-evidence-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 14px 0 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #f0f4fa;
+  border: 1px solid #c4d4ea;
+  color: #2a4a6a;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.oral-evidence-note {
+  background: #f0f7f0;
+  border-color: #b6d6b6;
+  color: #2a5a2a;
+}
+
+.oral-error-block {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.oral-result {
+  margin: 28px 0;
+  padding: 24px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e1e7ef;
+}
+
+.oral-mock-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 12px 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fff8e6;
+  border: 1px solid #ecd49a;
+  color: #7a5a1a;
+  font-size: 12px;
+}
+
+.oral-rubric {
+  list-style: none;
+  margin: 16px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.oral-rubric__item {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #f7f9fc;
+  border: 1px solid #e1e7ef;
+}
+
+.oral-rubric__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.oral-rubric__head strong {
+  font-size: 14px;
+}
+
+.oral-rubric__head span {
+  font-size: 12px;
+  color: #555;
+  white-space: nowrap;
+}
+
+.oral-rubric__item p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #333;
+}
+
+.oral-result__columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 18px 0;
+}
+
+@media (max-width: 720px) {
+  .oral-result__columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.oral-transcript,
+.oral-model-answer {
+  padding: 14px;
+  border-radius: 8px;
+  background: #f7f9fc;
+  border: 1px solid #e1e7ef;
+}
+
+.oral-transcript p,
+.oral-model-answer p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.oral-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
