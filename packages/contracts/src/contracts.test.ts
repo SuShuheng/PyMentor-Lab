@@ -7,6 +7,7 @@ import {
   AssessmentAgentInput,
   AssessmentAgentOutput,
   ChatCompletionChunk,
+  ChatCompletionRequest,
   CoachAgentInput,
   CoachAgentOutput,
   CodeRunStatus,
@@ -50,6 +51,34 @@ describe("contracts", () => {
       retryable: false,
     });
     expect(parsed.success).toBe(true);
+  });
+
+  it("rejects unknown fields on renderer-facing request, error, and event contracts", () => {
+    expect(
+      ChatCompletionRequest.safeParse({
+        course_id: "10000000-0000-4000-8000-000000000001",
+        node_id: "10000000-0000-4000-8000-000000000002",
+        messages: [{ role: "user", content: "Explain recursion." }],
+        stream: true,
+        raw_prompt: "must not cross the contract boundary",
+      }).success,
+    ).toBe(false);
+    expect(
+      ErrorEnvelope.safeParse({
+        code: "VALIDATION_ERROR",
+        message: "bad",
+        trace_id: "t1",
+        retryable: false,
+        stack: "must not cross the contract boundary",
+      }).success,
+    ).toBe(false);
+    expect(
+      StreamEvent.safeParse({
+        type: "done",
+        event_id: "e1",
+        raw_reasoning: "must not cross the contract boundary",
+      }).success,
+    ).toBe(false);
   });
 
   it("parses HealthResponse, SystemPingResponse", () => {
