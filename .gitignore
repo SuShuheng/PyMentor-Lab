@@ -46,3 +46,24 @@ raw/
 .worktrees/
 .zcode/
 .pnpm-store/
+
+# ---- Distribution package (dist/) ----
+# The root dist/ directory holds the deployment package SOURCE:
+#   dist/build-dist.mjs                      assembler script
+#   dist/README.md                           top-level dist docs
+#   dist/backend-deploy/{*.sh,*.ps1,         deploy/upgrade/rollback/backup/
+#                         docker-compose.yml, restore/healthcheck scripts +
+#                         .env.example,README.md}  compose + env template
+#   dist/installer-source/{*.iss,*.ps1,      Windows installer source (added
+#                          README.md}        by the installer lane)
+# These are tracked. The `dist/` rule above still ignores NESTED per-package
+# build outputs (apps/*/dist/, packages/*/dist/). Use anchored `/dist/`
+# negations so we only un-ignore the root dist, not the nested ones.
+!/dist/
+!/dist/**
+# Generated outputs under dist/ (never commit):
+dist/backend-deploy/code/
+dist/backend-deploy/*.zip
+dist/installer/
+dist/installer-source/installer-assets/
+dist/installer-source/tools/
