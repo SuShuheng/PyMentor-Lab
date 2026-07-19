@@ -29,6 +29,7 @@ from app.api.knowledge import router as knowledge_router
 from app.api.learning import router as learning_router
 from app.api.mastery import router as mastery_router
 from app.api.ocr import router as ocr_router
+from app.api.oral_explanation import router as oral_explanation_router
 from app.api.paths import router as paths_router
 from app.api.practice import router as practice_router
 from app.api.profiles import router as profiles_router
@@ -141,6 +142,7 @@ def create_app() -> FastAPI:
     app.include_router(hints_router)
     app.include_router(ocr_router)
     app.include_router(asr_router)
+    app.include_router(oral_explanation_router)
 
     return app
 
