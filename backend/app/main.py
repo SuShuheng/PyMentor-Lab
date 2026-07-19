@@ -17,6 +17,7 @@ from starlette.middleware.cors import CORSMiddleware
 from app.api.admin import router as admin_router
 from app.api.admin_queries import router as admin_queries_router
 from app.api.agent_prompts import router as agent_prompts_router
+from app.api.asr import router as asr_router
 from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
 from app.api.cms import router as cms_router
@@ -27,6 +28,7 @@ from app.api.hints import router as hints_router
 from app.api.knowledge import router as knowledge_router
 from app.api.learning import router as learning_router
 from app.api.mastery import router as mastery_router
+from app.api.ocr import router as ocr_router
 from app.api.paths import router as paths_router
 from app.api.practice import router as practice_router
 from app.api.profiles import router as profiles_router
@@ -36,6 +38,7 @@ from app.api.reviews import router as reviews_router
 from app.api.system_maintenance import router as system_maintenance_router
 from app.api.system_observability import router as system_observability_router
 from app.api.tasks import router as tasks_router
+from app.api.tts import router as tts_router
 from app.config import get_settings
 from app.errors import install_error_handlers
 from app.middleware import TraceIdMiddleware
@@ -129,12 +132,15 @@ def create_app() -> FastAPI:
     app.include_router(learning_router)
     app.include_router(paths_router)
     app.include_router(tasks_router)
+    app.include_router(tts_router)
     app.include_router(mastery_router)
     app.include_router(practice_router)
     app.include_router(reviews_router)
     app.include_router(resources_router)
     app.include_router(code_router)
     app.include_router(hints_router)
+    app.include_router(ocr_router)
+    app.include_router(asr_router)
 
     return app
 
