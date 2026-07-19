@@ -6,10 +6,17 @@ import {
   House,
   MagnifyingGlass,
   MapTrifold,
+  SignOut,
   UserCircle,
 } from "@phosphor-icons/react";
+import {
+  getDueReviewsApiV1ReviewsDueGet,
+  getTodayApiV1LearningTodayGet,
+  type ReviewView,
+  type TodayItem,
+} from "@pymentor/api-client";
 import { AppShell, StatePanel } from "@pymentor/ui";
-import type { ReactNode } from "react";
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { LoginPage, RegisterPage } from "./features/auth/auth-pages";
@@ -34,6 +41,7 @@ import {
   ResourcesPage,
   TutorPage,
 } from "./features/resources/resource-tutor-pages";
+import { configureStudentApi, studentAuthorization } from "./student-api";
 
 const navigation = [
   {
@@ -50,7 +58,104 @@ const navigation = [
   },
 ] as const;
 
+/**
+ * Dismisses `setOpen(false)` when a pointer lands outside `wrapperRef` or the
+ * user presses Escape. Mirrors the FE-012 admin dropdown dismissal pattern
+ * (controlled menu + outside-click + Escape).
+ */
+function useMenuDismiss(
+  open: boolean,
+  setOpen: (next: boolean) => void,
+  wrapperRef: RefObject<HTMLElement | null>,
+) {
+  useEffect(() => {
+    if (!open) return;
+    function handlePointer(event: MouseEvent) {
+      if (!wrapperRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handlePointer);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handlePointer);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open, setOpen, wrapperRef]);
+}
+
+type NotificationState = {
+  dueReviews: ReviewView[];
+  todayTasks: TodayItem[];
+};
+
 function StudentHeader() {
+  const { session, signOut } = useAuth();
+  const navigate = useNavigate();
+  const [openMenu, setOpenMenu] = useState<"none" | "notifications" | "profile">(
+    "none",
+  );
+  const notificationRef = useRef<HTMLDivElement | null>(null);
+  const profileRef = useRef<HTMLDivElement | null>(null);
+  const [notifications, setNotifications] = useState<NotificationState | null>(null);
+
+  const notificationsOpen = openMenu === "notifications";
+  const profileOpen = openMenu === "profile";
+  const setNotificationsOpen = (next: boolean) =>
+    setOpenMenu(next ? "notifications" : "none");
+  const setProfileOpen = (next: boolean) => setOpenMenu(next ? "profile" : "none");
+
+  useMenuDismiss(notificationsOpen, setNotificationsOpen, notificationRef);
+  useMenuDismiss(profileOpen, setProfileOpen, profileRef);
+
+  // Lazily load notification data only when the bell is opened, mirroring the
+  // other pages' direct client.fetch + configureStudentApi pattern (the web
+  // app does not use TanStack Query hooks). Empty data sources render the
+  // honest "暂无新通知" state.
+  useEffect(() => {
+    if (!notificationsOpen) return;
+    const accessToken = session?.accessToken;
+    if (!accessToken) {
+      setNotifications({ dueReviews: [], todayTasks: [] });
+      return;
+    }
+    let active = true;
+    configureStudentApi();
+    void Promise.all([
+      getDueReviewsApiV1ReviewsDueGet({ headers: studentAuthorization(accessToken) }),
+      getTodayApiV1LearningTodayGet({ headers: studentAuthorization(accessToken) }),
+    ])
+      .then(([reviewResult, todayResult]) => {
+        if (!active) return;
+        // Both endpoints are read-only projections; a missing body means
+        // "empty for now", so we coerce to [] rather than throwing and
+        // blocking the panel.
+        setNotifications({
+          dueReviews: reviewResult.data ?? [],
+          todayTasks: todayResult.data ?? [],
+        });
+      })
+      .catch(() => {
+        if (active) setNotifications({ dueReviews: [], todayTasks: [] });
+      });
+    return () => {
+      active = false;
+    };
+  }, [notificationsOpen, session?.accessToken]);
+
+  function handleSignOut() {
+    setProfileOpen(false);
+    signOut();
+    navigate("/login", { replace: true });
+  }
+
+  const dueReviews = notifications?.dueReviews ?? [];
+  const todayTasks = notifications?.todayTasks ?? [];
+  const reviewTasks = todayTasks.filter((task) => task.kind === "REVIEW");
+  const learningTasks = todayTasks.filter((task) => task.kind !== "REVIEW");
+  const hasNotifications = dueReviews.length > 0 || todayTasks.length > 0;
+
   return (
     <div className="student-header">
       <button className="course-switcher" type="button">
@@ -66,18 +171,160 @@ function StudentHeader() {
         <input placeholder="搜索知识点、资源、代码…（⌘K）" type="search" />
       </label>
       <div className="student-header__actions">
-        <button className="task-progress" type="button">
+        <button
+          className="task-progress"
+          onClick={() => navigate("/today")}
+          type="button"
+        >
           <span>今日计划</span>
           <strong>服务端同步</strong>
           <span aria-label="进度见今日学习页" className="task-progress__ring" />
         </button>
-        <button aria-label="通知" className="icon-button" type="button">
-          <Bell size={22} />
-        </button>
-        <button aria-label="打开个人菜单" className="profile-button" type="button">
-          <UserCircle size={34} weight="duotone" />
-          <CaretDown size={14} />
-        </button>
+        <div className="student-notifications" ref={notificationRef}>
+          <button
+            aria-expanded={notificationsOpen}
+            aria-haspopup="menu"
+            aria-label="通知"
+            className="icon-button"
+            onClick={() => setNotificationsOpen(!notificationsOpen)}
+            type="button"
+          >
+            <Bell size={22} />
+          </button>
+          {notificationsOpen ? (
+            <ul
+              aria-label="通知中心"
+              className="student-notifications__list"
+              role="menu"
+            >
+              {!notifications ? (
+                <li aria-label="加载通知" className="student-notifications__empty" role="menuiteminfo">
+                  正在加载通知…
+                </li>
+              ) : !hasNotifications ? (
+                <li
+                  aria-label="暂无新通知"
+                  className="student-notifications__empty"
+                  role="menuiteminfo"
+                >
+                  暂无新通知
+                </li>
+              ) : (
+                <>
+                  {dueReviews.map((review) => (
+                    <li key={`due-${review.id}`} role="none">
+                      <button
+                        className="student-notifications__item"
+                        onClick={() => {
+                          setNotificationsOpen(false);
+                          navigate("/growth");
+                        }}
+                        role="menuitem"
+                        type="button"
+                      >
+                        <span>到期复测 · {review.node_id.slice(0, 8)}</span>
+                        <small>
+                          场景 {review.scenario_key} · {review.due_at ?? "今天"}
+                        </small>
+                      </button>
+                    </li>
+                  ))}
+                  {reviewTasks.map((task) => (
+                    <li key={`task-review-${task.id}`} role="none">
+                      <button
+                        className="student-notifications__item"
+                        onClick={() => {
+                          setNotificationsOpen(false);
+                          navigate("/today");
+                        }}
+                        role="menuitem"
+                        type="button"
+                      >
+                        <span>到期复测任务 · {task.node_id.slice(0, 8)}</span>
+                        <small>预计 {task.estimated_minutes} 分钟</small>
+                      </button>
+                    </li>
+                  ))}
+                  {learningTasks.map((task) => (
+                    <li key={`task-${task.id}`} role="none">
+                      <button
+                        className="student-notifications__item"
+                        onClick={() => {
+                          setNotificationsOpen(false);
+                          navigate("/today");
+                        }}
+                        role="menuitem"
+                        type="button"
+                      >
+                        <span>今日学习任务 · {task.node_id.slice(0, 8)}</span>
+                        <small>
+                          {task.kind} · 预计 {task.estimated_minutes} 分钟
+                        </small>
+                      </button>
+                    </li>
+                  ))}
+                </>
+              )}
+            </ul>
+          ) : null}
+        </div>
+        <div className="student-profile-menu" ref={profileRef}>
+          <button
+            aria-expanded={profileOpen}
+            aria-haspopup="menu"
+            aria-label="打开个人菜单"
+            className="profile-button"
+            onClick={() => setProfileOpen(!profileOpen)}
+            type="button"
+          >
+            <UserCircle size={34} weight="duotone" />
+            <CaretDown size={14} />
+          </button>
+          {profileOpen ? (
+            <ul
+              aria-label="学生个人菜单"
+              className="student-profile-menu__list"
+              role="menu"
+            >
+              <li className="student-profile-menu__session" role="menuiteminfo">
+                <UserCircle size={20} />
+                <div>
+                  <strong>{session?.displayName ?? "学生"}</strong>
+                  <small>{session?.userId}</small>
+                </div>
+              </li>
+              <li role="none">
+                <button
+                  onClick={() => {
+                    setProfileOpen(false);
+                    navigate("/growth/profile");
+                  }}
+                  role="menuitem"
+                  type="button"
+                >
+                  <ChartBar size={16} /> 我的画像
+                </button>
+              </li>
+              <li role="none">
+                <button
+                  onClick={() => {
+                    setProfileOpen(false);
+                    navigate("/growth");
+                  }}
+                  role="menuitem"
+                  type="button"
+                >
+                  <ChartBar size={16} /> 我的成长
+                </button>
+              </li>
+              <li role="none">
+                <button onClick={handleSignOut} role="menuitem" type="button">
+                  <SignOut size={16} /> 退出登录
+                </button>
+              </li>
+            </ul>
+          ) : null}
+        </div>
       </div>
     </div>
   );

@@ -33,6 +33,7 @@ type AuthContextValue = {
     studentId: string;
   }): Promise<void>;
   session: AuthSession | null;
+  signOut(): void;
   startDemo(): Promise<void>;
   status: AuthStatus;
 };
@@ -111,6 +112,12 @@ export function AuthProvider({
       refresh,
       register: (input) => run(() => api.register(input)),
       session,
+      signOut: () => {
+        api.signOut();
+        setSession(null);
+        setStatus("anonymous");
+        setErrorMessage(null);
+      },
       startDemo: () => run(() => api.startDemo()),
       status,
     }),
