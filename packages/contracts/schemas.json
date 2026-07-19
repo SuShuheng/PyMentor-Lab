@@ -5080,13 +5080,37 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 128
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "ok",
           "latency_ms",
           "status_code",
-          "detail"
+          "detail",
+          "model_id",
+          "error_code"
         ],
         "additionalProperties": false
       }

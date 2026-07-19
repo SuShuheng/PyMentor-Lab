@@ -83,6 +83,7 @@ from app.contracts.providers import (
     ProviderConfigPage,
     ProviderConfigUpdate,
     ProviderConfigView,
+    ProviderConnectivityTestRequest,
     ProviderConnectivityView,
 )
 from app.contracts.resources import (
@@ -247,6 +248,7 @@ __all__ = [
     "ProviderConfigPage",
     "ProviderConfigUpdate",
     "ProviderConfigView",
+    "ProviderConnectivityTestRequest",
     "ProviderConnectivityView",
     "ProviderMetricsView",
     "ReasoningDeltaEvent",

@@ -116,8 +116,31 @@ class ProviderConfigPage(StrictProviderModel):
     items: list[ProviderConfigView]
 
 
+class ProviderConnectivityTestRequest(StrictProviderModel):
+    """Optional request body for ``POST /{id}/test`` (BE-019).
+
+    When ``api_key`` is supplied it is used INSTEAD of the stored key for the
+    one-shot reachability probe (pre-save rotation validation). It is never
+    persisted and never echoed in the response. Omit the body to test the
+    currently stored key.
+    """
+
+    api_key: SecretStr | None = Field(default=None, min_length=8, max_length=4096)
+
+
 class ProviderConnectivityView(StrictProviderModel):
+    """Standardized connection-test response (BE-019).
+
+    The legacy ``status_code``/``detail`` pair is preserved for diagnostics
+    and backwards compatibility, while the new ``model_id``/``error_code``
+    pair gives the UI a machine-readable contract. ``error_code`` is ``None``
+    on success; on failure it carries a stable enum-like string
+    (``CONNECTIVITY_FAILED``). The API key is never echoed.
+    """
+
     ok: bool
     latency_ms: int = Field(ge=0)
     status_code: int | None
     detail: str = Field(min_length=1, max_length=128)
+    model_id: str | None = Field(default=None, max_length=128)
+    error_code: str | None = Field(default=None, max_length=64)

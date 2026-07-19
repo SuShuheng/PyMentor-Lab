@@ -76,12 +76,23 @@ export const ProviderConfigPage = z
   .strict();
 export type ProviderConfigPage = z.infer<typeof ProviderConfigPage>;
 
+export const ProviderConnectivityTestRequest = z
+  .object({
+    api_key: z.string().min(8).max(4096).optional(),
+  })
+  .strict();
+export type ProviderConnectivityTestRequest = z.infer<
+  typeof ProviderConnectivityTestRequest
+>;
+
 export const ProviderConnectivityView = z
   .object({
     ok: z.boolean(),
     latency_ms: z.number().int().nonnegative(),
     status_code: z.number().int().nullable(),
     detail: z.string().min(1).max(128),
+    model_id: z.string().max(128).nullable(),
+    error_code: z.string().max(64).nullable(),
   })
   .strict();
 export type ProviderConnectivityView = z.infer<typeof ProviderConnectivityView>;
