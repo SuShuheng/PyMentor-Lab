@@ -9,9 +9,23 @@ import {
   Sparkle,
   Users,
 } from "@phosphor-icons/react";
+import {
+  adminAgentRunApiV1AdminAgentRunsExternalRunIdGet,
+  client,
+  type AdminAgentRunView,
+  type AdminSystemHealthView,
+} from "@pymentor/api-client";
+import { readServerUrl } from "@pymentor/config";
 import { AppShell, StatePanel } from "@pymentor/ui";
-import type { ReactNode } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 
 import { AdminLoginPage } from "./features/auth/admin-login";
 import {
@@ -50,23 +64,6 @@ const navigation = [
   { href: "/admin/health", label: "运行监控", icon: <Pulse size={21} /> },
 ] as const;
 
-const calls = [
-  ["RUN-8F21", "教学主任", "函数边界补救路径", "成功", "4.8s"],
-  ["RUN-8F20", "路径规划", "生成今日学习路径", "成功", "3.9s"],
-  ["RUN-8F19", "教学资源", "五类资源需求单", "进行中", "12.6s"],
-  ["RUN-8F18", "编程教练", "解释 IndexError", "成功", "2.1s"],
-  ["RUN-8F17", "测评反馈", "开放题量表评分", "降级", "7.3s"],
-] as const;
-
-const timeline = [
-  ["23:59:18", "输入校验", "InteractionAccepted"],
-  ["23:59:19", "教学主任 Agent", "识别意图：循环边界错误"],
-  ["23:59:20", "工具调用", "读取画像与最近证据"],
-  ["23:59:21", "路径规划 Agent", "提出补救路径建议"],
-  ["23:59:22", "路径验证器", "自动插入前置节点"],
-  ["23:59:24", "Outbox", "发布 TASK_COMPILED"],
-] as const;
-
 function AdminHeader() {
   return (
     <div className="admin-topbar">
@@ -85,6 +82,55 @@ function AdminHeader() {
 }
 
 function AgentRunsPage() {
+  const { session } = useAdminAuth();
+  const accessToken = session?.accessToken;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedRunId = searchParams.get("run_id")?.trim() ?? "";
+  const [query, setQuery] = useState(requestedRunId);
+  const [run, setRun] = useState<AdminAgentRunView | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setRun(null);
+    setError(null);
+    setQuery(requestedRunId);
+    if (!requestedRunId) {
+      return () => {
+        active = false;
+      };
+    }
+    if (!accessToken) {
+      setError("管理员会话缺少访问令牌，请重新登录");
+      return () => {
+        active = false;
+      };
+    }
+    client.setConfig({ baseUrl: readServerUrl(), credentials: "include", fetch });
+    void adminAgentRunApiV1AdminAgentRunsExternalRunIdGet({
+      headers: { Authorization: `Bearer ${accessToken}` },
+      path: { external_run_id: requestedRunId },
+    })
+      .then((result) => {
+        if (!active) return;
+        if (!result.data) throw new Error("Agent 回放不存在或当前租户无权访问");
+        setRun(result.data);
+      })
+      .catch((caught: unknown) => {
+        if (!active) return;
+        setError(caught instanceof Error ? caught.message : "Agent 回放加载失败");
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessToken, requestedRunId]);
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const runId = query.trim();
+    setSearchParams(runId ? { run_id: runId } : {});
+  }
+
   return (
     <div className="admin-page">
       <div className="admin-page__heading">
@@ -93,17 +139,32 @@ function AgentRunsPage() {
           <h1>Agent 调用回放</h1>
           <p>查看六类 Agent 的输入、工具调用、结构化输出与最终规则决策</p>
         </div>
-        <button className="admin-filter-button" type="button">
-          <ListMagnifyingGlass size={18} /> 筛选调用
-        </button>
+        <form onSubmit={submit}>
+          <label>
+            <span className="sr-only">Agent run ID</span>
+            <input
+              aria-label="Agent run ID"
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="输入 run_id"
+              value={query}
+            />
+          </label>
+          <button className="admin-filter-button" type="submit">
+            <ListMagnifyingGlass size={18} /> 加载回放
+          </button>
+        </form>
       </div>
+
+      {!requestedRunId ? <p role="status">输入 run_id 以读取受租户隔离的审计回放。</p> : null}
+      {requestedRunId && !run && !error ? <p role="status">正在加载 Agent 回放…</p> : null}
+      {error ? <p role="alert">{error}</p> : null}
 
       <section aria-label="调用指标" className="metric-grid">
         {[
-          ["今日调用", "1,284", "↑ 8.6%"],
-          ["Schema 通过率", "99.4%", "稳定"],
-          ["平均耗时", "4.2s", "P95 8.1s"],
-          ["降级次数", "17", "1.3%"],
+          ["状态", run?.status ?? "-", "持久化审计"],
+          ["最新序号", String(run?.latest_sequence ?? 0), "单调事件序列"],
+          ["工具调用", String(run?.tool_calls.length ?? 0), "只显示摘要"],
+          ["降级", run?.fallback_used ? "YES" : "NO", run?.error_code ?? "无错误码"],
         ].map(([label, value, trend]) => (
           <article className="metric-card" key={label}>
             <p>{label}</p>
@@ -116,49 +177,42 @@ function AgentRunsPage() {
       </section>
 
       <div className="replay-grid">
-        <section
-          className="admin-panel call-list"
-          aria-labelledby="call-list-title"
-        >
+        <section className="admin-panel call-list" aria-labelledby="call-list-title">
           <h2 id="call-list-title">调用记录</h2>
           <div className="call-list__items">
-            {calls.map(([id, agent, summary, status, duration], index) => (
-              <button
-                className={index === 0 ? "call-row is-selected" : "call-row"}
-                key={id}
-                type="button"
-              >
+            {run ? (
+              <button className="call-row is-selected" type="button">
                 <span>
-                  <strong>{id}</strong>
-                  <small>{summary}</small>
+                  <strong>{run.external_run_id}</strong>
+                  <small>{run.route ?? "未记录 route"}</small>
                 </span>
                 <span>
-                  <strong>{agent}</strong>
-                  <small>{duration}</small>
+                  <strong>{run.student_id}</strong>
+                  <small>{run.trace_id}</small>
                 </span>
-                <span className={`call-status call-status--${status}`}>
-                  {status}
-                </span>
+                <span className={`call-status call-status--${run.status}`}>{run.status}</span>
               </button>
-            ))}
+            ) : null}
           </div>
         </section>
 
-        <section
-          className="admin-panel replay-timeline"
-          aria-labelledby="timeline-title"
-        >
-          <h2 id="timeline-title">执行时间线 · RUN-8F21</h2>
+        <section className="admin-panel replay-timeline" aria-labelledby="timeline-title">
+          <h2 id="timeline-title">
+            执行时间线 · {(run?.external_run_id ?? requestedRunId) || "-"}
+          </h2>
           <ol>
-            {timeline.map(([time, title, detail], index) => (
+            {(run?.tool_calls ?? []).map((tool, index, tools) => (
               <li
-                className={index === timeline.length - 1 ? "is-current" : ""}
-                key={time}
+                className={index === tools.length - 1 ? "is-current" : ""}
+                key={`${tool.sequence}-${tool.tool_name}`}
               >
-                <time>{time}</time>
+                <time>{new Date(tool.occurred_at).toLocaleTimeString("zh-CN")}</time>
                 <span>
-                  <strong>{title}</strong>
-                  <small>{detail}</small>
+                  <strong>{tool.tool_name}</strong>
+                  <small>
+                    {tool.event_type} · {tool.status ?? "UNKNOWN"} · {tool.latency_ms}ms · retry{" "}
+                    {tool.retry_count}
+                  </small>
                 </span>
               </li>
             ))}
@@ -168,39 +222,36 @@ function AgentRunsPage() {
           </p>
         </section>
 
-        <section
-          className="admin-panel run-detail"
-          aria-labelledby="detail-title"
-        >
+        <section className="admin-panel run-detail" aria-labelledby="detail-title">
           <h2 id="detail-title">本次调用详情</h2>
           <dl>
             <div>
-              <dt>Agent</dt>
-              <dd>教学主任 Orchestrator</dd>
+              <dt>Route</dt>
+              <dd>{run?.route ?? "-"}</dd>
             </div>
             <div>
-              <dt>模型 / Provider</dt>
-              <dd>讯飞 LLM · temperature 0.2</dd>
+              <dt>Thread</dt>
+              <dd>{run?.checkpoint_thread_id ?? "-"}</dd>
             </div>
             <div>
-              <dt>输入 Schema</dt>
-              <dd>orchestrator_input_v3</dd>
+              <dt>Checkpoint</dt>
+              <dd>{run?.latest_checkpoint_id ?? "-"}</dd>
             </div>
             <div>
-              <dt>输出 Schema</dt>
-              <dd>workflow_decision_v2</dd>
+              <dt>Event</dt>
+              <dd>{run?.event_id ?? "-"}</dd>
             </div>
             <div>
               <dt>工具调用</dt>
-              <dd>profile.read · evidence.query</dd>
+              <dd>{run?.tool_calls.map((tool) => tool.tool_name).join(" · ") || "-"}</dd>
             </div>
             <div>
               <dt>结果</dt>
-              <dd>PATH_REPLAN_REQUESTED</dd>
+              <dd>{run?.status ?? "-"}</dd>
             </div>
             <div>
               <dt>审计</dt>
-              <dd>已记录 · 可追溯</dd>
+              <dd>{run ? `trace ${run.trace_id} · 已脱敏` : "-"}</dd>
             </div>
           </dl>
           <div className="constraint-note">
@@ -213,20 +264,29 @@ function AgentRunsPage() {
   );
 }
 
+export function describeAdminSystemHealth(systemHealth: AdminSystemHealthView | null) {
+  const degradedCount =
+    systemHealth?.components?.filter((component) => component.status !== "HEALTHY").length ?? 0;
+  if (systemHealth?.status === "DEGRADED" || degradedCount > 0) {
+    return { label: "系统存在降级", detail: `${degradedCount} 个组件需要关注` };
+  }
+  if (systemHealth) {
+    return { label: "系统状态正常", detail: "全部服务可用" };
+  }
+  return { label: "正在检查系统状态", detail: "读取实时健康接口" };
+}
+
 function AdminLayout() {
   const location = useLocation();
-  const operationalPaths = [
-    "/admin/providers",
-    "/admin/metrics",
-    "/admin/logs",
-    "/admin/database",
-  ];
-  const activeHref = operationalPaths.some((path) =>
-    location.pathname.startsWith(path),
-  )
+  const navigate = useNavigate();
+  const [systemHealth, setSystemHealth] = useState<AdminSystemHealthView | null>(null);
+  const operationalPaths = ["/admin/providers", "/admin/metrics", "/admin/logs", "/admin/database"];
+  const activeHref = operationalPaths.some((path) => location.pathname.startsWith(path))
     ? "/admin/health"
-    : (navigation.find((item) => location.pathname.startsWith(item.href))
-        ?.href ?? "/admin/overview");
+    : (navigation.find((item) => location.pathname.startsWith(item.href))?.href ??
+      "/admin/overview");
+
+  const sidebarStatus = describeAdminSystemHealth(systemHealth);
 
   return (
     <AppShell
@@ -234,21 +294,20 @@ function AdminLayout() {
       brand="灵蟒智学"
       header={<AdminHeader />}
       navigation={navigation}
+      onNavigate={navigate}
+      status={sidebarStatus}
       subtitle="PyMentor Lab · 管理端"
       variant="admin"
     >
       <Routes>
         <Route path="/admin/agent-runs" element={<AgentRunsPage />} />
-        <Route path="/admin/health" element={<HealthPage />} />
+        <Route path="/admin/health" element={<HealthPage onHealthChange={setSystemHealth} />} />
         <Route path="/admin/metrics" element={<MetricsPage />} />
         <Route path="/admin/providers" element={<ProvidersPage />} />
         <Route path="/admin/logs" element={<LogsPage />} />
         <Route path="/admin/database" element={<DatabasePage />} />
         <Route path="/admin/overview" element={<OverviewPage />} />
-        <Route
-          path="/admin/students/:studentId"
-          element={<StudentDetailPage />}
-        />
+        <Route path="/admin/students/:studentId" element={<StudentDetailPage />} />
         <Route path="/admin/students" element={<StudentsPage />} />
         <Route path="/admin/resources/*" element={<ResourceReviewPage />} />
         <Route path="/admin/audit/*" element={<AuditPage />} />
@@ -271,16 +330,9 @@ function RequireAdmin({ children }: { children: ReactNode }) {
   const { session, status } = useAdminAuth();
 
   if (status === "checking") {
-    return (
-      <StatePanel
-        description="正在验证管理员会话"
-        state="loading"
-        title="检查管理权限"
-      />
-    );
+    return <StatePanel description="正在验证管理员会话" state="loading" title="检查管理权限" />;
   }
-  if (!session || status !== "authenticated")
-    return <Navigate replace to="/login" />;
+  if (!session || status !== "authenticated") return <Navigate replace to="/login" />;
   if (session.role !== "admin") {
     return (
       <StatePanel
@@ -298,10 +350,7 @@ function AdminRouteTree() {
     <Routes>
       <Route path="/login" element={<AdminLoginPage />} />
       <Route path="/" element={<Navigate replace to="/admin/overview" />} />
-      <Route
-        path="/admin"
-        element={<Navigate replace to="/admin/overview" />}
-      />
+      <Route path="/admin" element={<Navigate replace to="/admin/overview" />} />
       <Route
         path="*"
         element={

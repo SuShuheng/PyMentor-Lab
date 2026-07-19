@@ -3,34 +3,53 @@ import {
   ArrowRight,
   Check,
   CheckCircle,
-  Clock,
   Database,
   DownloadSimple,
   Funnel,
   Gauge,
   HardDrives,
-  Key,
   LinkSimple,
   MagnifyingGlass,
-  Pulse,
   ShieldCheck,
   Student,
-  Trash,
   WarningCircle,
   X,
 } from "@phosphor-icons/react";
 import { ChartFrame } from "@pymentor/charts";
 import {
+  adminProviderMetricsApiV1AdminSystemMetricsGet,
+  adminResourceReviewsApiV1AdminResourcesReviewsGet,
+  adminStudentEvidenceApiV1AdminStudentsStudentIdEvidenceGet,
+  adminStudentProfileApiV1AdminStudentsStudentIdProfileGet,
+  adminStudentProgressApiV1AdminStudentsStudentIdProgressGet,
+  adminStudentsApiV1AdminStudentsGet,
+  adminSystemHealthApiV1AdminSystemHealthGet,
+  adminSystemLogsApiV1AdminSystemLogsGet,
   approveRegistrationApiV1AdminRegistrationsUserIdApprovePost,
   client,
+  createDatabaseBackupApiV1AdminSystemDbBackupPost,
+  databaseStatusApiV1AdminSystemDbGet,
+  type AdminLogPage,
+  type AdminResourceReviewPage,
+  type AdminEvidencePage,
+  type AdminStudentPage,
+  type AdminStudentProfile,
+  type AdminStudentProgress,
+  type AdminSystemHealthView,
+  type DatabaseStatusView,
+  listProvidersApiV1AdminProvidersGet,
   listPendingApiV1AdminRegistrationsPendingGet,
+  type ProviderMetricsView,
   rejectRegistrationApiV1AdminRegistrationsUserIdRejectPost,
+  restoreDatabaseBackupApiV1AdminSystemDbRestorePost,
   type PendingRegistration,
+  type ProviderConfigView,
+  testProviderConnectivityApiV1AdminProvidersProviderIdTestPost,
 } from "@pymentor/api-client";
 import { readServerUrl } from "@pymentor/config";
 import { StatePanel } from "@pymentor/ui";
-import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 
 import { useAdminAuth } from "../auth/auth-session";
 
@@ -93,7 +112,7 @@ function operationsError(error: unknown): string {
     const message = Reflect.get(error, "message");
     if (typeof message === "string") return message;
   }
-  return "注册审核服务暂时不可用，请稍后重试";
+  return "管理服务暂时不可用，请稍后重试";
 }
 
 function registrationLabel(registration: PendingRegistration): string {
@@ -102,6 +121,13 @@ function registrationLabel(registration: PendingRegistration): string {
 
 function commandKey(prefix: string): string {
   return `${prefix}-${globalThis.crypto.randomUUID()}`;
+}
+
+function formatBytes(value: number): string {
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  if (value < 1024 * 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)} MB`;
+  return `${(value / 1024 / 1024 / 1024).toFixed(1)} GB`;
 }
 
 export function OverviewPage() {
@@ -316,27 +342,43 @@ export function OverviewPage() {
   );
 }
 
-const students = [
-  ["STU-2026001", "林晓", "Python 1 班", "ACTIVE", "12 / 20", "今天 10:42"],
-  ["STU-2026002", "赵珂", "Python 1 班", "ACTIVE", "9 / 20", "今天 09:18"],
-  ["STU-2026003", "周宁", "Python 2 班", "ACTIVE", "15 / 20", "昨天 21:04"],
-  ["STU-2026004", "魏乔", "Python 2 班", "PAUSED", "7 / 20", "昨天 16:30"],
-  ["STU-2026005", "唐夏", "Python 3 班", "ACTIVE", "11 / 20", "今天 11:06"],
-  ["STU-2026006", "何川", "Python 3 班", "ACTIVE", "6 / 20", "3 天前"],
-] as const;
-
 export function StudentsPage() {
+  const { session } = useAdminAuth();
+  const accessToken = session?.accessToken;
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const filtered = useMemo(() => {
-    const keyword = query.trim().toLowerCase();
-    return keyword
-      ? students.filter((row) => row.join(" ").toLowerCase().includes(keyword))
-      : students;
-  }, [query]);
-  const pageSize = 2;
-  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const rows = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const [students, setStudents] = useState<AdminStudentPage | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setError(null);
+    if (!accessToken) {
+      setError("管理员会话缺少访问令牌，请重新登录");
+      return () => {
+        active = false;
+      };
+    }
+    configureOperationsClient();
+    void adminStudentsApiV1AdminStudentsGet({
+      headers: { Authorization: `Bearer ${accessToken}` },
+      query: { page, page_size: 2, q: query.trim() || undefined },
+    })
+      .then((result) => {
+        if (!active) return;
+        if (!result.data) throw new Error(operationsError(result.error));
+        setStudents(result.data);
+      })
+      .catch((caught: unknown) => {
+        if (!active) return;
+        setError(caught instanceof Error ? caught.message : operationsError(caught));
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessToken, page, query]);
+
+  const pageCount = students?.page.total_pages ?? 1;
 
   return (
     <div className="admin-page">
@@ -364,38 +406,47 @@ export function StudentsPage() {
             <Funnel size={16} /> 状态：全部
           </button>
           <span>
-            {query ? `筛选结果 ${filtered.length} 人` : `共 ${students.length} 人 · 服务端分页`}
+            {query
+              ? `筛选结果 ${students?.page.total_items ?? 0} 人`
+              : `共 ${students?.page.total_items ?? 0} 人 · 服务端分页`}
           </span>
         </div>
+        {!students && !error ? <p role="status">正在加载学生列表…</p> : null}
+        {error ? <p role="alert">{error}</p> : null}
         <div className="admin-table-scroll">
           <table aria-label="学生列表" className="admin-data-table">
             <thead>
               <tr>
                 <th>学生</th>
-                <th>班级</th>
+                <th>邮箱</th>
                 <th>状态</th>
-                <th>稳定掌握</th>
-                <th>最近活动</th>
+                <th>已完成任务</th>
+                <th>到期复测</th>
                 <th>
                   <span className="sr-only">操作</span>
                 </th>
               </tr>
             </thead>
             <tbody>
-              {rows.map(([id, name, course, status, mastery, activity]) => (
-                <tr key={id}>
+              {(students?.items ?? []).map((student) => (
+                <tr key={student.id}>
                   <th scope="row">
-                    <strong>{name}</strong>
-                    <small>{id}</small>
+                    <strong>{student.display_name ?? student.email}</strong>
+                    <small>{student.student_no ?? student.id}</small>
                   </th>
-                  <td>{course}</td>
+                  <td>{student.email}</td>
                   <td>
-                    <span className={`admin-badge is-${status.toLowerCase()}`}>{status}</span>
+                    <span className={`admin-badge is-${student.status.toLowerCase()}`}>
+                      {student.status}
+                    </span>
                   </td>
-                  <td>{mastery}</td>
-                  <td>{activity}</td>
+                  <td>{student.completed_tasks}</td>
+                  <td>{student.due_reviews}</td>
                   <td>
-                    <Link aria-label={`查看${name}的学习详情`} to={`/admin/students/${id}`}>
+                    <Link
+                      aria-label={`查看${student.display_name ?? student.email}的学习详情`}
+                      to={`/admin/students/${student.id}`}
+                    >
                       查看 <ArrowRight size={14} />
                     </Link>
                   </td>
@@ -431,6 +482,59 @@ export function StudentsPage() {
 }
 
 export function StudentDetailPage() {
+  const { session } = useAdminAuth();
+  const accessToken = session?.accessToken;
+  const { studentId } = useParams<{ studentId: string }>();
+  const [profile, setProfile] = useState<AdminStudentProfile | null>(null);
+  const [progress, setProgress] = useState<AdminStudentProgress | null>(null);
+  const [evidence, setEvidence] = useState<AdminEvidencePage | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!accessToken || !studentId) {
+      setError("学生身份或管理员会话无效");
+      return () => {
+        active = false;
+      };
+    }
+    configureOperationsClient();
+    const headers = { Authorization: `Bearer ${accessToken}` };
+    void Promise.all([
+      adminStudentProfileApiV1AdminStudentsStudentIdProfileGet({
+        headers,
+        path: { student_id: studentId },
+      }),
+      adminStudentProgressApiV1AdminStudentsStudentIdProgressGet({
+        headers,
+        path: { student_id: studentId },
+      }),
+      adminStudentEvidenceApiV1AdminStudentsStudentIdEvidenceGet({
+        headers,
+        path: { student_id: studentId },
+        query: { page: 1, page_size: 20 },
+      }),
+    ])
+      .then(([profileResult, progressResult, evidenceResult]) => {
+        if (!active) return;
+        if (!profileResult.data || !progressResult.data || !evidenceResult.data) {
+          throw new Error(
+            operationsError(profileResult.error ?? progressResult.error ?? evidenceResult.error),
+          );
+        }
+        setProfile(profileResult.data);
+        setProgress(progressResult.data);
+        setEvidence(evidenceResult.data);
+      })
+      .catch((caught: unknown) => {
+        if (!active) return;
+        setError(caught instanceof Error ? caught.message : operationsError(caught));
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessToken, studentId]);
+
   return (
     <div className="admin-page">
       <AdminPageHeading
@@ -439,15 +543,21 @@ export function StudentDetailPage() {
             <ArrowLeft size={15} /> 返回学生列表
           </Link>
         }
-        description="STU-2026001 · Python 程序设计 1 班 · Profile v3"
-        title="林晓 · 学习详情"
+        description={`${studentId ?? "未知学生"} · Profile v${profile?.version ?? "-"}`}
+        title="学生学习详情"
       />
+      {!profile && !error ? <p role="status">正在加载学生学习详情…</p> : null}
+      {error ? <p role="alert">{error}</p> : null}
       <section aria-label="学生概览" className="metric-grid">
         {[
-          ["稳定掌握", "12", "20 个节点"],
-          ["初步掌握", "5", "等待复测"],
-          ["到期复测", "1", "今天"],
-          ["证据记录", "86", "最新 10:42"],
+          ["稳定掌握", String(progress?.mastery_counts.STABLE_MASTERY ?? 0), "规则状态"],
+          ["初步掌握", String(progress?.mastery_counts.INITIAL_MASTERY ?? 0), "等待复测"],
+          ["到期复测", String(progress?.due_reviews ?? 0), "服务端计划"],
+          [
+            "证据记录",
+            String(evidence?.page.total_items ?? 0),
+            progress?.current_node_id ?? "无当前节点",
+          ],
         ].map(([label, value, note]) => (
           <article className="metric-card" key={label}>
             <p>{label}</p>
@@ -467,27 +577,18 @@ export function StudentDetailPage() {
             </div>
           </div>
           <ul className="mastery-review-list">
-            <li>
-              <CheckCircle size={18} weight="fill" />
-              <div>
-                <strong>条件分支 · STABLE_MASTERY</strong>
-                <small>复测通过 · 2026-07-16</small>
-              </div>
-            </li>
-            <li>
-              <Clock size={18} />
-              <div>
-                <strong>循环边界 · INITIAL_MASTERY</strong>
-                <small>到期复测：今天 23:59</small>
-              </div>
-            </li>
-            <li>
-              <Pulse size={18} />
-              <div>
-                <strong>函数基础 · LEARNING</strong>
-                <small>当前路径节点</small>
-              </div>
-            </li>
+            {(profile?.dimensions ?? []).map((dimension) => (
+              <li key={`${dimension.dimension}-${dimension.scope_key}`}>
+                <CheckCircle size={18} weight="fill" />
+                <div>
+                  <strong>{dimension.dimension}</strong>
+                  <small>
+                    {dimension.scope_key} · score {dimension.score.toFixed(2)} · confidence{" "}
+                    {dimension.confidence.toFixed(2)}
+                  </small>
+                </div>
+              </li>
+            ))}
           </ul>
           <p className="admin-authority-note">
             <ShieldCheck size={15} /> 正式掌握状态只允许由规则引擎写入
@@ -510,24 +611,14 @@ export function StudentDetailPage() {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <th scope="row">EVD-1882</th>
-                <td>隐藏测试</td>
-                <td>边界值失败</td>
-                <td>10:42</td>
-              </tr>
-              <tr>
-                <th scope="row">EVD-1877</th>
-                <td>Trace 预测</td>
-                <td>关键帧正确</td>
-                <td>10:36</td>
-              </tr>
-              <tr>
-                <th scope="row">EVD-1844</th>
-                <td>到期复测</td>
-                <td>通过</td>
-                <td>昨天</td>
-              </tr>
+              {(evidence?.items ?? []).map((item) => (
+                <tr key={item.id}>
+                  <th scope="row">{item.event_id}</th>
+                  <td>{item.event_type}</td>
+                  <td>{item.node_id ?? item.task_id ?? "-"}</td>
+                  <td>{new Date(item.created_at).toLocaleString("zh-CN")}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </section>
@@ -536,122 +627,152 @@ export function StudentDetailPage() {
   );
 }
 
-const reviewResources = [
-  ["RES-102", "循环边界微讲义", "v3.1", "KB-PY-04", "事实通过 · 合规通过"],
-  ["RES-103", "函数参数结构卡", "v2.0", "KB-PY-05", "事实待复核 · 合规通过"],
-] as const;
-
 export function ResourceReviewPage() {
-  const [status, setStatus] = useState<string | null>(null);
-  const [rejecting, setRejecting] = useState<string | null>(null);
-  const [reason, setReason] = useState("");
+  const { session } = useAdminAuth();
+  const accessToken = session?.accessToken;
+  const [reviews, setReviews] = useState<AdminResourceReviewPage | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!accessToken) {
+      setError("管理员会话缺少访问令牌，请重新登录");
+      return () => {
+        active = false;
+      };
+    }
+    configureOperationsClient();
+    void adminResourceReviewsApiV1AdminResourcesReviewsGet({
+      headers: { Authorization: `Bearer ${accessToken}` },
+      query: { page: 1, page_size: 20 },
+    })
+      .then((result) => {
+        if (!active) return;
+        if (!result.data) throw new Error(operationsError(result.error));
+        setReviews(result.data);
+      })
+      .catch((caught: unknown) => {
+        if (!active) return;
+        setError(caught instanceof Error ? caught.message : operationsError(caught));
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessToken]);
+
   return (
     <div className="admin-page">
       <AdminPageHeading
         description="核对来源映射、事实性、合规性与版本差异后再发布"
         title="资源审核"
       />
-      {status ? (
-        <p aria-label="资源审核状态" className="admin-inline-status" role="status">
-          {status}
-        </p>
-      ) : null}
       <section className="admin-panel admin-table-panel">
         <div className="admin-table-toolbar">
-          <strong>待审校版本</strong>
-          <span>2 项 · 发布门禁默认关闭</span>
+          <strong>资源审校记录</strong>
+          <span>{reviews?.page.total_items ?? 0} 项 · 发布门禁由后端强制执行</span>
         </div>
+        {!reviews && !error ? <p role="status">正在加载资源审校记录…</p> : null}
+        {error ? <p role="alert">{error}</p> : null}
         <table aria-label="待审核资源" className="admin-data-table">
           <thead>
             <tr>
-              <th>资源</th>
+              <th>资源类型</th>
               <th>版本</th>
-              <th>来源</th>
-              <th>审校</th>
-              <th>操作</th>
+              <th>状态</th>
+              <th>内容摘要</th>
+              <th>门禁证据</th>
             </tr>
           </thead>
           <tbody>
-            {reviewResources.map(([id, title, version, source, review]) => (
-              <tr key={id}>
+            {(reviews?.items ?? []).map((resource) => (
+              <tr key={resource.resource_id}>
                 <th scope="row">
-                  <strong>{title}</strong>
-                  <small>{id}</small>
+                  <strong>{resource.resource_type}</strong>
+                  <small>{resource.resource_id}</small>
                 </th>
-                <td>{version}</td>
-                <td>{source}</td>
-                <td>{review}</td>
+                <td>v{resource.version}</td>
+                <td>{resource.status}</td>
                 <td>
-                  <div className="admin-row-actions">
-                    <button
-                      aria-label={`拒绝资源 ${id}`}
-                      onClick={() => {
-                        setRejecting(id);
-                        setReason("");
-                      }}
-                      type="button"
+                  <code>{resource.content_digest}</code>
+                </td>
+                <td>
+                  {resource.gates.map((gate) => (
+                    <span
+                      className={`admin-badge is-${gate.passed ? "active" : "paused"}`}
+                      key={`${gate.gate}-${gate.version}`}
                     >
-                      拒绝
-                    </button>
-                    <button
-                      aria-label={`批准资源 ${id}`}
-                      className="is-primary"
-                      onClick={() => setStatus(`${id} 已批准发布 · 审计记录已保存`)}
-                      type="button"
-                    >
-                      批准
-                    </button>
-                  </div>
+                      {gate.gate} · {gate.passed ? "PASSED" : "FAILED"} · {gate.reviewer}
+                    </span>
+                  ))}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        <p className="admin-authority-note">
+          <ShieldCheck size={15} /> 此页面只读；审校与发布由后端双门禁及审计记录决定。
+        </p>
       </section>
-      {rejecting ? (
-        <div className="admin-dialog-backdrop">
-          <section
-            aria-labelledby="reject-resource-title"
-            aria-modal="true"
-            className="admin-confirm-dialog"
-            role="dialog"
-          >
-            <p className="eyebrow">REJECT RESOURCE</p>
-            <h2 id="reject-resource-title">拒绝资源 {rejecting}</h2>
-            <p>拒绝后不会发布此版本，上一审校通过版本保持可用。</p>
-            <label htmlFor="reject-reason">拒绝原因</label>
-            <textarea
-              aria-label="拒绝原因"
-              id="reject-reason"
-              onChange={(event) => setReason(event.target.value)}
-              rows={3}
-              value={reason}
-            />
-            <div>
-              <button onClick={() => setRejecting(null)} type="button">
-                取消
-              </button>
-              <button
-                className="is-danger"
-                disabled={!reason.trim()}
-                onClick={() => {
-                  setStatus(`${rejecting} 已拒绝 · ${reason}`);
-                  setRejecting(null);
-                }}
-                type="button"
-              >
-                确认拒绝
-              </button>
-            </div>
-          </section>
-        </div>
-      ) : null}
     </div>
   );
 }
 
 export function ProvidersPage() {
+  const { session } = useAdminAuth();
+  const accessToken = session?.accessToken;
+  const [providers, setProviders] = useState<ProviderConfigView[]>([]);
+  const [loadState, setLoadState] = useState<"error" | "loading" | "ready">("loading");
   const [status, setStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!accessToken) {
+      setLoadState("error");
+      setStatus("管理员会话缺少访问令牌，请重新登录");
+      return () => {
+        active = false;
+      };
+    }
+    configureOperationsClient();
+    void listProvidersApiV1AdminProvidersGet({
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then((result) => {
+        if (!active) return;
+        if (!result.data) throw new Error(operationsError(result.error));
+        setProviders(result.data.items);
+        setLoadState("ready");
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setStatus(error instanceof Error ? error.message : operationsError(error));
+        setLoadState("error");
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessToken]);
+
+  async function testConnectivity(provider: ProviderConfigView) {
+    if (!accessToken) return;
+    setStatus(`正在测试 ${provider.vendor}…`);
+    configureOperationsClient();
+    try {
+      const result = await testProviderConnectivityApiV1AdminProvidersProviderIdTestPost({
+        headers: { Authorization: `Bearer ${accessToken}` },
+        path: { provider_id: provider.id },
+      });
+      if (!result.data) throw new Error(operationsError(result.error));
+      setStatus(
+        result.data.ok
+          ? `${provider.vendor} 连接成功 · ${result.data.latency_ms}ms · 未返回任何密钥`
+          : `${provider.vendor} 连接失败 · ${result.data.detail}`,
+      );
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : operationsError(error));
+    }
+  }
+
   return (
     <div className="admin-page">
       <AdminPageHeading description="密钥仅可替换，不从 API 返回明文" title="Provider 配置" />
@@ -662,6 +783,10 @@ export function ProvidersPage() {
         </p>
       ) : null}
       <section className="admin-panel admin-table-panel">
+        {loadState === "loading" ? <p role="status">正在加载 Provider 配置…</p> : null}
+        {loadState === "error" && !providers.length ? (
+          <p role="alert">Provider 配置加载失败</p>
+        ) : null}
         <table aria-label="Provider 配置" className="admin-data-table">
           <thead>
             <tr>
@@ -673,47 +798,33 @@ export function ProvidersPage() {
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <th scope="row">
-                <strong>讯飞 LLM</strong>
-                <small>spark-compatible</small>
-              </th>
-              <td>对话 / Agent</td>
-              <td>
-                <code>••••••••7H2K</code>
-              </td>
-              <td>
-                <span className="admin-badge is-active">ACTIVE</span>
-              </td>
-              <td>
-                <button
-                  aria-label="测试讯飞 LLM 连通性"
-                  className="admin-table-action"
-                  onClick={() => setStatus("讯飞 LLM 连接成功 · 428ms · 未返回任何密钥")}
-                  type="button"
-                >
-                  <LinkSimple size={14} /> 测试连接
-                </button>
-              </td>
-            </tr>
-            <tr>
-              <th scope="row">
-                <strong>图像生成</strong>
-                <small>image-v2</small>
-              </th>
-              <td>配图 / 图解</td>
-              <td>
-                <code>••••••••91QF</code>
-              </td>
-              <td>
-                <span className="admin-badge is-paused">DEGRADED</span>
-              </td>
-              <td>
-                <button className="admin-table-action" type="button">
-                  <Key size={14} /> 替换密钥
-                </button>
-              </td>
-            </tr>
+            {providers.map((provider) => (
+              <tr key={provider.id}>
+                <th scope="row">
+                  <strong>{provider.vendor}</strong>
+                  <small>{provider.model}</small>
+                </th>
+                <td>{provider.provider_type}</td>
+                <td>
+                  <code>{provider.api_key_masked}</code>
+                </td>
+                <td>
+                  <span className={`admin-badge is-${provider.enabled ? "active" : "paused"}`}>
+                    {provider.enabled ? "ACTIVE" : "DISABLED"}
+                  </span>
+                </td>
+                <td>
+                  <button
+                    aria-label={`测试${provider.vendor} 连通性`}
+                    className="admin-table-action"
+                    onClick={() => void testConnectivity(provider)}
+                    type="button"
+                  >
+                    <LinkSimple size={14} /> 测试连接
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
         <p className="admin-authority-note">
@@ -724,18 +835,45 @@ export function ProvidersPage() {
   );
 }
 
-const services = [
-  ["API", "HEALTHY", "41ms"],
-  ["Agent Worker", "HEALTHY", "队列 3"],
-  ["Sandbox", "HEALTHY", "88ms"],
-  ["PostgreSQL", "HEALTHY", "14ms"],
-  ["Redis", "HEALTHY", "6ms"],
-  ["Object Storage", "HEALTHY", "31ms"],
-  ["图像 Provider", "DEGRADED", "超时 18m"],
-] as const;
-
-export function HealthPage() {
+export function HealthPage({
+  onHealthChange,
+}: {
+  onHealthChange?: (health: AdminSystemHealthView | null) => void;
+} = {}) {
+  const { session } = useAdminAuth();
+  const accessToken = session?.accessToken;
   const [searchParams] = useSearchParams();
+  const [health, setHealth] = useState<AdminSystemHealthView | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!accessToken) {
+      setError("管理员会话缺少访问令牌，请重新登录");
+      return () => {
+        active = false;
+      };
+    }
+    configureOperationsClient();
+    void adminSystemHealthApiV1AdminSystemHealthGet({
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then((result) => {
+        if (!active) return;
+        if (!result.data) throw new Error(operationsError(result.error));
+        setHealth(result.data);
+        onHealthChange?.(result.data);
+      })
+      .catch((caught: unknown) => {
+        if (!active) return;
+        setError(caught instanceof Error ? caught.message : operationsError(caught));
+        onHealthChange?.(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessToken, onHealthChange]);
+
   if (searchParams.get("view") === "loading")
     return (
       <StatePanel
@@ -744,29 +882,33 @@ export function HealthPage() {
         title="加载系统健康状态"
       />
     );
-  const degraded = searchParams.get("view") === "degraded";
+  const degraded = searchParams.get("view") === "degraded" || health?.status === "DEGRADED";
   return (
     <div className="admin-page">
       <AdminPageHeading description="查看核心服务、队列、延迟与降级边界" title="运行监控" />
       <OperationsNav />
+      {!health && !error ? <p role="status">正在加载系统健康状态…</p> : null}
+      {error ? <p role="alert">{error}</p> : null}
       {degraded ? (
         <section aria-label="服务降级" className="admin-health-alert" role="alert">
           <WarningCircle size={20} />
           <div>
-            <strong>图像 Provider 当前降级</strong>
-            <p>文字资源与 Notebook 不受影响；配图作业使用文字回退。</p>
+            <strong>系统当前存在降级组件</strong>
+            <p>请检查下方组件详情；未受影响的功能会继续服务。</p>
           </div>
         </section>
       ) : null}
       <ul aria-label="服务健康状态" className="health-grid">
-        {services.map(([name, state, detail]) => (
-          <li key={name}>
-            <span className={`health-dot is-${state.toLowerCase()}`} />
+        {health?.components.map((component) => (
+          <li key={component.component}>
+            <span className={`health-dot is-${component.status.toLowerCase()}`} />
             <div>
-              <strong>{name}</strong>
-              <small>{detail}</small>
+              <strong>{component.component}</strong>
+              <small>
+                {component.detail} · {component.latency_ms}ms
+              </small>
             </div>
-            <span>{state}</span>
+            <span>{component.status}</span>
           </li>
         ))}
       </ul>
@@ -775,6 +917,41 @@ export function HealthPage() {
 }
 
 export function MetricsPage() {
+  const { session } = useAdminAuth();
+  const accessToken = session?.accessToken;
+  const [metrics, setMetrics] = useState<ProviderMetricsView | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!accessToken) {
+      setError("管理员会话缺少访问令牌，请重新登录");
+      return () => {
+        active = false;
+      };
+    }
+    configureOperationsClient();
+    void adminProviderMetricsApiV1AdminSystemMetricsGet({
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then((result) => {
+        if (!active) return;
+        if (!result.data) throw new Error(operationsError(result.error));
+        setMetrics(result.data);
+      })
+      .catch((caught: unknown) => {
+        if (!active) return;
+        setError(caught instanceof Error ? caught.message : operationsError(caught));
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessToken]);
+
+  const calls = metrics?.items.reduce((total, item) => total + item.calls, 0) ?? 0;
+  const errors = metrics?.items.reduce((total, item) => total + item.errors, 0) ?? 0;
+  const rateLimited = metrics?.items.reduce((total, item) => total + item.rate_limited, 0) ?? 0;
+  const p95 = Math.max(0, ...(metrics?.items.map((item) => item.p95_latency_ms) ?? []));
   return (
     <div className="admin-page">
       <AdminPageHeading
@@ -782,13 +959,15 @@ export function MetricsPage() {
         title="API 与作业指标"
       />
       <OperationsNav />
+      {!metrics && !error ? <p role="status">正在加载 Provider 指标…</p> : null}
+      {error ? <p role="alert">{error}</p> : null}
       <section className="metric-grid">
         {(
           [
-            ["API P95", "182ms", "预算 500ms"],
-            ["SSE 首字 P95", "1.8s", "预算 3s"],
-            ["Sandbox P95", "1.2s", "预算 2s"],
-            ["作业成功率", "98.7%", "24h"],
+            ["Provider 调用", String(calls), "当前窗口"],
+            ["P95 延迟", `${p95}ms`, "最慢 Provider"],
+            ["错误数", String(errors), calls ? `${((errors / calls) * 100).toFixed(1)}%` : "0%"],
+            ["限流次数", String(rateLimited), "当前窗口"],
           ] as const
         ).map(([label, value, note]) => (
           <article className="metric-card" key={label}>
@@ -800,49 +979,71 @@ export function MetricsPage() {
             <progress
               aria-label={`${label}预算使用`}
               max={100}
-              value={label.includes("成功") ? 99 : 48}
+              value={Math.min(100, label === "错误数" && calls ? (errors / calls) * 100 : 48)}
             />
           </article>
         ))}
       </section>
       <ChartFrame
-        columns={["端点", "请求", "P95", "错误率"]}
-        description="最近 6 小时的服务端请求量、延迟和错误预算"
-        rows={[
-          ["/api/v1/tasks", "4,281", "164ms", "0.2%"],
-          ["/api/v1/code-runs", "1,403", "1.2s", "1.1%"],
-          ["/api/v1/tutor/stream", "926", "1.8s 首字", "0.8%"],
-        ]}
-        title="请求指标"
+        columns={["Provider", "模型", "请求", "P95", "错误率"]}
+        description="后端聚合的 Provider 调用量、延迟和错误率"
+        rows={(metrics?.items ?? []).map((item) => [
+          item.vendor,
+          item.model,
+          String(item.calls),
+          `${item.p95_latency_ms}ms`,
+          `${(item.error_rate * 100).toFixed(1)}%`,
+        ])}
+        title="Provider 指标"
       >
         <div className="admin-metric-bars">
-          <label>
-            任务查询
-            <progress max={5000} value={4281} />
-          </label>
-          <label>
-            代码运行
-            <progress max={5000} value={1403} />
-          </label>
-          <label>
-            辅导流
-            <progress max={5000} value={926} />
-          </label>
+          {(metrics?.items ?? []).map((item) => (
+            <label key={`${item.vendor}-${item.model}`}>
+              {item.vendor}
+              <progress max={Math.max(1, calls)} value={item.calls} />
+            </label>
+          ))}
         </div>
       </ChartFrame>
     </div>
   );
 }
 
-const logs = [
-  ["INFO", "12:06:48", "worker.job.started", "JOB-RES-2407 · resource_pack"],
-  ["WARN", "12:05:31", "provider.image.degraded", "fallback=text-only"],
-  ["ERROR", "12:05:29", "provider.image.timeout", "request_id=req-88f2"],
-] as const;
-
 export function LogsPage() {
+  const { session } = useAdminAuth();
+  const accessToken = session?.accessToken;
   const [level, setLevel] = useState("ALL");
-  const rows = level === "ALL" ? logs : logs.filter((row) => row[0] === level);
+  const [logs, setLogs] = useState<AdminLogPage | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setError(null);
+    if (!accessToken) {
+      setError("管理员会话缺少访问令牌，请重新登录");
+      return () => {
+        active = false;
+      };
+    }
+    configureOperationsClient();
+    void adminSystemLogsApiV1AdminSystemLogsGet({
+      headers: { Authorization: `Bearer ${accessToken}` },
+      query: { level: level === "ALL" ? undefined : level, page: 1, page_size: 50 },
+    })
+      .then((result) => {
+        if (!active) return;
+        if (!result.data) throw new Error(operationsError(result.error));
+        setLogs(result.data);
+      })
+      .catch((caught: unknown) => {
+        if (!active) return;
+        setError(caught instanceof Error ? caught.message : operationsError(caught));
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessToken, level]);
+
   return (
     <div className="admin-page">
       <AdminPageHeading
@@ -851,6 +1052,8 @@ export function LogsPage() {
       />
       <OperationsNav />
       <section className="admin-panel admin-table-panel">
+        {!logs && !error ? <p role="status">正在加载结构化日志…</p> : null}
+        {error ? <p role="alert">{error}</p> : null}
         <div className="admin-table-toolbar">
           <label>
             日志级别
@@ -877,16 +1080,18 @@ export function LogsPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map(([logLevel, time, event, context]) => (
-              <tr key={event}>
+            {(logs?.items ?? []).map((item) => (
+              <tr key={item.id}>
                 <td>
-                  <span className={`admin-badge is-${logLevel.toLowerCase()}`}>{logLevel}</span>
+                  <span className={`admin-badge is-${item.level.toLowerCase()}`}>{item.level}</span>
                 </td>
-                <td>{time}</td>
+                <td>{new Date(item.created_at).toLocaleString("zh-CN")}</td>
                 <th scope="row">
-                  <code>{event}</code>
+                  <code>{item.message}</code>
                 </th>
-                <td>{context}</td>
+                <td>
+                  {item.source} · {item.trace_id} · {JSON.stringify(item.context)}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -896,13 +1101,77 @@ export function LogsPage() {
   );
 }
 
-type RiskOperation = "restore" | "cleanup";
+type RiskOperation = "backup" | "restore";
 
 export function DatabasePage() {
+  const { session } = useAdminAuth();
+  const accessToken = session?.accessToken;
+  const [database, setDatabase] = useState<DatabaseStatusView | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [operation, setOperation] = useState<RiskOperation | null>(null);
   const [confirmation, setConfirmation] = useState("");
   const [status, setStatus] = useState<string | null>(null);
-  const phrase = operation === "cleanup" ? "DELETE DEMO DATA" : "RESTORE PYMENTOR";
+  const phrase = operation === "backup" ? "BACKUP DATABASE" : "RESTORE DATABASE";
+
+  useEffect(() => {
+    let active = true;
+    if (!accessToken) {
+      setLoadError("管理员会话缺少访问令牌，请重新登录");
+      return () => {
+        active = false;
+      };
+    }
+    configureOperationsClient();
+    void databaseStatusApiV1AdminSystemDbGet({
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then((result) => {
+        if (!active) return;
+        if (!result.data) throw new Error(operationsError(result.error));
+        setDatabase(result.data);
+      })
+      .catch((caught: unknown) => {
+        if (!active) return;
+        setLoadError(caught instanceof Error ? caught.message : operationsError(caught));
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessToken]);
+
+  async function submitMaintenance() {
+    if (!accessToken || !operation || confirmation !== phrase) return;
+    configureOperationsClient();
+    const headers = {
+      Authorization: `Bearer ${accessToken}`,
+      "Idempotency-Key": commandKey(`database-${operation}`),
+    };
+    try {
+      if (operation === "backup") {
+        const result = await createDatabaseBackupApiV1AdminSystemDbBackupPost({
+          body: { confirmation },
+          headers,
+        });
+        if (!result.data) throw new Error(operationsError(result.error));
+        setDatabase((current) => (current ? { ...current, last_backup: result.data } : current));
+        setStatus(`备份已创建 · ${result.data.id} · ${formatBytes(result.data.size_bytes)}`);
+      } else {
+        const backupId = database?.last_backup?.id;
+        if (!backupId) throw new Error("没有可恢复的已验证备份");
+        const result = await restoreDatabaseBackupApiV1AdminSystemDbRestorePost({
+          body: { backup_id: backupId, confirmation },
+          headers,
+        });
+        if (!result.data) throw new Error(operationsError(result.error));
+        setStatus(`恢复已完成 · ${result.data.id} · ${result.data.status}`);
+      }
+      setOperation(null);
+      setConfirmation("");
+    } catch (caught) {
+      setStatus(caught instanceof Error ? caught.message : operationsError(caught));
+    }
+  }
+
   return (
     <div className="admin-page">
       <AdminPageHeading
@@ -910,6 +1179,8 @@ export function DatabasePage() {
         title="数据运维"
       />
       <OperationsNav />
+      {!database && !loadError ? <p role="status">正在加载数据库状态…</p> : null}
+      {loadError ? <p role="alert">{loadError}</p> : null}
       {status ? (
         <p aria-label="数据库操作状态" className="admin-inline-status" role="status">
           {status}
@@ -919,29 +1190,33 @@ export function DatabasePage() {
         <article className="metric-card">
           <p>数据库大小</p>
           <div>
-            <strong>2.8 GB</strong>
-            <span>PostgreSQL</span>
+            <strong>{formatBytes(database?.database_size_bytes ?? 0)}</strong>
+            <span>{database?.engine ?? "等待后端"}</span>
           </div>
         </article>
         <article className="metric-card">
           <p>最近备份</p>
           <div>
-            <strong>03:00</strong>
-            <span>校验通过</span>
+            <strong>
+              {database?.last_backup
+                ? new Date(database.last_backup.created_at).toLocaleString("zh-CN")
+                : "暂无"}
+            </strong>
+            <span>{database?.last_backup?.status ?? "未创建备份"}</span>
           </div>
         </article>
         <article className="metric-card">
-          <p>RPO</p>
+          <p>Schema</p>
           <div>
-            <strong>24h</strong>
-            <span>竞赛环境</span>
+            <strong>{database?.schema_revision ?? "未知"}</strong>
+            <span>{database?.table_count ?? 0} 张表</span>
           </div>
         </article>
         <article className="metric-card">
-          <p>对象存储</p>
+          <p>活动连接</p>
           <div>
-            <strong>18.4 GB</strong>
-            <span>版本化</span>
+            <strong>{database?.active_connections ?? 0}</strong>
+            <span>慢查询 {database?.slow_query_count ?? 0}</span>
           </div>
         </article>
       </section>
@@ -958,11 +1233,18 @@ export function DatabasePage() {
               <DownloadSimple size={20} />
             </span>
             <div>
-              <strong>导出审计数据</strong>
-              <p>生成脱敏 CSV，不包含 Provider 密钥。</p>
+              <strong>创建数据库备份</strong>
+              <p>生成校验摘要并写入私有、版本化对象存储。</p>
             </div>
-            <button onClick={() => setStatus("脱敏导出任务已创建")} type="button">
-              创建导出
+            <button
+              aria-label="创建数据库备份"
+              onClick={() => {
+                setOperation("backup");
+                setConfirmation("");
+              }}
+              type="button"
+            >
+              创建备份
             </button>
           </article>
           <article>
@@ -975,6 +1257,7 @@ export function DatabasePage() {
             </div>
             <button
               aria-label="恢复备份"
+              disabled={!database?.last_backup}
               onClick={() => {
                 setOperation("restore");
                 setConfirmation("");
@@ -982,25 +1265,6 @@ export function DatabasePage() {
               type="button"
             >
               恢复备份
-            </button>
-          </article>
-          <article>
-            <span>
-              <Trash size={20} />
-            </span>
-            <div>
-              <strong>清理演示数据</strong>
-              <p>只删除已标记的演示租户数据。</p>
-            </div>
-            <button
-              className="is-danger"
-              onClick={() => {
-                setOperation("cleanup");
-                setConfirmation("");
-              }}
-              type="button"
-            >
-              清理数据
             </button>
           </article>
         </div>
@@ -1015,9 +1279,9 @@ export function DatabasePage() {
           >
             <p className="eyebrow">HIGH-RISK OPERATION</p>
             <h2 id="database-confirm-title">
-              {operation === "restore" ? "确认恢复数据库" : "确认清理演示数据"}
+              {operation === "restore" ? "确认恢复数据库" : "确认创建数据库备份"}
             </h2>
-            <p>此操作不会在浏览器中直接执行；确认后只创建受审计的后端任务。</p>
+            <p>确认后由后端执行幂等、受审计的维护命令；浏览器不会接触数据库凭据。</p>
             <label htmlFor="database-confirmation">
               输入确认短语 <code>{phrase}</code>
             </label>
@@ -1029,7 +1293,7 @@ export function DatabasePage() {
             />
             <div>
               <button
-                aria-label={operation === "restore" ? "取消恢复" : "取消清理"}
+                aria-label={operation === "restore" ? "取消恢复" : "取消备份"}
                 onClick={() => setOperation(null)}
                 type="button"
               >
@@ -1038,17 +1302,10 @@ export function DatabasePage() {
               <button
                 className="is-danger"
                 disabled={confirmation !== phrase}
-                onClick={() => {
-                  setStatus(
-                    operation === "restore"
-                      ? "恢复任务已安全入队 · 等待双人复核"
-                      : "演示数据清理任务已安全入队 · 等待双人复核",
-                  );
-                  setOperation(null);
-                }}
+                onClick={() => void submitMaintenance()}
                 type="button"
               >
-                {operation === "restore" ? "确认恢复" : "确认清理"}
+                {operation === "restore" ? "确认恢复" : "确认备份"}
               </button>
             </div>
           </section>
@@ -1059,46 +1316,73 @@ export function DatabasePage() {
 }
 
 export function AuditPage() {
+  const { session } = useAdminAuth();
+  const accessToken = session?.accessToken;
+  const [auditLogs, setAuditLogs] = useState<AdminLogPage | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setError(null);
+    if (!accessToken) {
+      setError("管理员会话缺少访问令牌，请重新登录");
+      return () => {
+        active = false;
+      };
+    }
+    configureOperationsClient();
+    void adminSystemLogsApiV1AdminSystemLogsGet({
+      headers: { Authorization: `Bearer ${accessToken}` },
+      query: { page: 1, page_size: 50, source: "AUDIT" },
+    })
+      .then((result) => {
+        if (!active) return;
+        if (!result.data) throw new Error(operationsError(result.error));
+        setAuditLogs(result.data);
+      })
+      .catch((caught: unknown) => {
+        if (!active) return;
+        setError(caught instanceof Error ? caught.message : operationsError(caught));
+      });
+    return () => {
+      active = false;
+    };
+  }, [accessToken]);
+
   return (
     <div className="admin-page">
       <AdminPageHeading description="检索认证、审核、Agent 与高风险数据操作" title="系统审计" />
       <section className="admin-panel admin-table-panel">
+        {!auditLogs && !error ? <p role="status">正在加载不可变审计记录…</p> : null}
+        {error ? <p role="alert">{error}</p> : null}
         <div className="admin-table-toolbar">
           <strong>不可变审计记录</strong>
-          <span>按 event_id 追溯</span>
+          <span>审计投影只读 · 敏感字段已脱敏</span>
         </div>
         <table aria-label="系统审计记录" className="admin-data-table">
           <thead>
             <tr>
               <th>事件</th>
-              <th>操作者</th>
-              <th>对象</th>
-              <th>结果</th>
+              <th>来源</th>
+              <th>Trace</th>
+              <th>安全上下文</th>
               <th>时间</th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <th scope="row">AUD-8810</th>
-              <td>admin@pymentor</td>
-              <td>REG-2801</td>
-              <td>REGISTRATION_APPROVED</td>
-              <td>12:04</td>
-            </tr>
-            <tr>
-              <th scope="row">AUD-8809</th>
-              <td>resource-worker</td>
-              <td>RES-102</td>
-              <td>REVIEW_REQUIRED</td>
-              <td>11:58</td>
-            </tr>
-            <tr>
-              <th scope="row">AUD-8808</th>
-              <td>system</td>
-              <td>backup-0717</td>
-              <td>BACKUP_VERIFIED</td>
-              <td>03:16</td>
-            </tr>
+            {(auditLogs?.items ?? []).map((item) => (
+              <tr key={item.id}>
+                <th scope="row">
+                  <code>{item.message}</code>
+                </th>
+                <td>{item.source}</td>
+                <td>
+                  <code>{item.trace_id}</code>
+                </td>
+                <td>{JSON.stringify(item.context)}</td>
+                <td>{new Date(item.created_at).toLocaleString("zh-CN")}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </section>

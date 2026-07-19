@@ -10,7 +10,7 @@ import {
 } from "@phosphor-icons/react";
 import { AppShell, StatePanel } from "@pymentor/ui";
 import type { ReactNode } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { LoginPage, RegisterPage } from "./features/auth/auth-pages";
 import {
@@ -19,15 +19,8 @@ import {
   type AuthSession,
   useAuth,
 } from "./features/auth/auth-session";
-import {
-  OnboardingPage,
-  ProfilePage,
-} from "./features/onboarding/onboarding-pages";
-import {
-  GrowthPage,
-  LearningMapPage,
-  TodayPage,
-} from "./features/learning/learning-pages";
+import { OnboardingPage, ProfilePage } from "./features/onboarding/onboarding-pages";
+import { GrowthPage, LearningMapPage, TodayPage } from "./features/learning/learning-pages";
 import { NotebookPage, TracePage } from "./features/notebook/notebook-pages";
 import {
   ResourceDetailPage,
@@ -71,19 +64,11 @@ function StudentHeader() {
           <strong>3/6</strong>
           <span aria-label="完成度 50%" className="task-progress__ring" />
         </button>
-        <button
-          aria-label="通知，有 1 条未读消息"
-          className="icon-button"
-          type="button"
-        >
+        <button aria-label="通知，有 1 条未读消息" className="icon-button" type="button">
           <Bell size={22} />
           <span className="notification-dot" />
         </button>
-        <button
-          aria-label="打开个人菜单"
-          className="profile-button"
-          type="button"
-        >
+        <button aria-label="打开个人菜单" className="profile-button" type="button">
           <UserCircle size={34} weight="duotone" />
           <CaretDown size={14} />
         </button>
@@ -94,9 +79,9 @@ function StudentHeader() {
 
 function StudentLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const activeHref =
-    navigation.find((item) => location.pathname.startsWith(item.href))?.href ??
-    "/today";
+    navigation.find((item) => location.pathname.startsWith(item.href))?.href ?? "/today";
 
   return (
     <AppShell
@@ -104,6 +89,7 @@ function StudentLayout() {
       brand="灵蟒智学"
       header={<StudentHeader />}
       navigation={navigation}
+      onNavigate={navigate}
     >
       <Routes>
         <Route path="/today" element={<TodayPage />} />
@@ -113,14 +99,8 @@ function StudentLayout() {
         <Route path="/map/*" element={<LearningMapPage />} />
         <Route path="/growth/profile" element={<ProfilePage />} />
         <Route path="/growth/*" element={<GrowthPage />} />
-        <Route
-          path="/resources/micro-lecture"
-          element={<ResourceDetailPage />}
-        />
-        <Route
-          path="/resources/knowledge-card"
-          element={<ResourceDetailPage />}
-        />
+        <Route path="/resources/micro-lecture" element={<ResourceDetailPage />} />
+        <Route path="/resources/knowledge-card" element={<ResourceDetailPage />} />
         <Route path="/resources/*" element={<ResourcesPage />} />
         <Route path="/tutor" element={<TutorPage />} />
         <Route
@@ -145,11 +125,7 @@ function RequireStudent({ children }: { children: ReactNode }) {
 
   if (status === "checking") {
     return (
-      <StatePanel
-        description="正在安全恢复你的登录状态"
-        state="loading"
-        title="检查登录会话"
-      />
+      <StatePanel description="正在安全恢复你的登录状态" state="loading" title="检查登录会话" />
     );
   }
   if (status !== "authenticated" || !session) {

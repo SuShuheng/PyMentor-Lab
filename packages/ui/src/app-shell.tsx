@@ -1,10 +1,5 @@
-import {
-  BracketsCurly,
-  Gear,
-  TerminalWindow,
-  WifiHigh,
-} from "@phosphor-icons/react";
-import type { ReactNode } from "react";
+import { BracketsCurly, Gear, TerminalWindow, WifiHigh } from "@phosphor-icons/react";
+import type { MouseEvent, ReactNode } from "react";
 
 export interface NavigationItem {
   href: string;
@@ -18,6 +13,11 @@ export interface AppShellProps {
   children: ReactNode;
   header?: ReactNode;
   navigation: readonly NavigationItem[];
+  onNavigate?: (href: string) => void;
+  status?: {
+    detail: string;
+    label: string;
+  };
   subtitle?: string;
   variant?: "student" | "admin";
 }
@@ -28,9 +28,33 @@ export function AppShell({
   children,
   header,
   navigation,
+  onNavigate,
+  status,
   subtitle = "PyMentor Lab",
   variant = "student",
 }: AppShellProps) {
+  function handleNavigation(event: MouseEvent<HTMLAnchorElement>, href: string) {
+    if (
+      !onNavigate ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+    event.preventDefault();
+    onNavigate(href);
+  }
+
+  const homeHref = variant === "student" ? "/today" : "/admin";
+  const shellStatus =
+    status ??
+    (variant === "student"
+      ? { label: "AI 助教 · 在线", detail: "随时为你答疑解惑" }
+      : { label: "系统状态未知", detail: "打开运行监控查看实时状态" });
+
   return (
     <div className={`py-shell py-shell--${variant}`}>
       <a className="py-skip-link" href="#main-content">
@@ -39,7 +63,8 @@ export function AppShell({
       <aside className="py-sidebar">
         <a
           className="py-brand"
-          href={variant === "student" ? "/today" : "/admin"}
+          href={homeHref}
+          onClick={(event) => handleNavigation(event, homeHref)}
         >
           <span className="py-brand__mark" aria-hidden="true">
             <BracketsCurly size={30} weight="bold" />
@@ -59,6 +84,7 @@ export function AppShell({
                 className={isCurrent ? "py-nav-link is-current" : "py-nav-link"}
                 href={item.href}
                 key={item.href}
+                onClick={(event) => handleNavigation(event, item.href)}
               >
                 {item.icon ? (
                   <span aria-hidden="true" className="py-nav-link__icon">
@@ -75,12 +101,8 @@ export function AppShell({
           <div className="py-assistant-status" role="status">
             <WifiHigh aria-hidden="true" size={18} />
             <span>
-              <strong>
-                {variant === "student" ? "AI 助教 · 在线" : "系统状态正常"}
-              </strong>
-              <small>
-                {variant === "student" ? "随时为你答疑解惑" : "全部服务可用"}
-              </small>
+              <strong>{shellStatus.label}</strong>
+              <small>{shellStatus.detail}</small>
             </span>
           </div>
           <div className="py-sidebar__tools" aria-label="快捷工具">
@@ -95,9 +117,7 @@ export function AppShell({
       </aside>
 
       <div className="py-workspace">
-        <header className="py-header">
-          {header ?? <strong>{brand}</strong>}
-        </header>
+        <header className="py-header">{header ?? <strong>{brand}</strong>}</header>
         <main className="py-main" id="main-content" tabIndex={-1}>
           {children}
         </main>
