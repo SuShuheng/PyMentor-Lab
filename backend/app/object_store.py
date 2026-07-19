@@ -106,3 +106,22 @@ class MinioObjectStore:
     def publish(self, key: str, expected_digest: str) -> None:
         if not self.verify(key, expected_digest):
             raise ResourceGateError("resource object digest verification failed")
+
+    def read_published(self, key: str, expected_digest: str, *, max_bytes: int) -> bytes:
+        if not key.startswith("resources/") or ".." in key.split("/"):
+            raise ResourceGateError("object key is outside the governed resources prefix")
+        response = self.client.get_object(self.settings.bucket, key)
+        digest = hashlib.sha256()
+        content = bytearray()
+        try:
+            for chunk in response.stream(amt=64 * 1024):
+                content.extend(chunk)
+                digest.update(chunk)
+                if len(content) > max_bytes:
+                    raise ResourceGateError("resource object exceeds the download boundary")
+        finally:
+            response.close()
+            response.release_conn()
+        if digest.hexdigest() != expected_digest:
+            raise ResourceGateError("resource object digest verification failed")
+        return bytes(content)

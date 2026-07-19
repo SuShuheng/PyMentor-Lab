@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 # Sandbox SUPERVISOR image (Python 3.13).
 #
 # This is the trusted orchestrator — the only component allowed to create job
@@ -13,22 +12,23 @@
 FROM python:3.13-slim AS supervisor
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/backend:/app
 
 WORKDIR /app
 
 RUN pip install --no-cache-dir uv==0.11.7
 
-COPY pyproject.toml ./
+COPY pyproject.toml README.md ./
 COPY backend ./backend
 COPY sandbox ./sandbox
 
-RUN uv pip install --system -e ".[dev]"
+RUN uv pip install --system .
 
 # Install the Docker CLI so the executor can create/remove job containers.
 # The daemon socket is supplied at run time (mounted read-only from the host or
 # a rootless engine); it is NOT baked into the image.
-RUN apt-get update && apt-get install -y --no-install-recommends docker.io && \
+RUN apt-get update && apt-get install -y --no-install-recommends docker-cli && \
     rm -rf /var/lib/apt/lists/*
 
 # The Supervisor reads its shared secret, runtime image reference, and request

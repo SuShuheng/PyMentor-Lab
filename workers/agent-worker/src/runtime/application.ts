@@ -17,6 +17,7 @@ import {
 } from "../queue/runtime.js";
 import { createCheckpointSaver, type CheckpointSaverRuntime } from "../workflow/checkpoints.js";
 import { buildAgentGraph } from "../workflow/graph.js";
+import { createResourceGenerationHandler } from "../resources/http.js";
 import type { WorkerRuntimeConfig } from "./config.js";
 
 export interface WorkerHttpRuntime {
@@ -155,7 +156,11 @@ export function buildWorkerApplication(
   let checkpoint: CheckpointSaverRuntime | undefined;
   let queue: AgentQueueRuntime | undefined;
   let worker: WorkerIntakeRuntime | undefined;
-  const health = buildHealthApp(undefined, { isReady: () => ready });
+  const health = buildHealthApp(
+    undefined,
+    { isReady: () => ready },
+    createResourceGenerationHandler(config.internalSecret),
+  );
 
   const closeResources = async (): Promise<void> => {
     ready = false;

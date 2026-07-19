@@ -75,6 +75,17 @@ class Settings:
     agent_event_retry_base_ms: int = int(_env("PYMENTOR_AGENT_EVENT_RETRY_BASE_MS", "100"))
     agent_event_retry_max_ms: int = int(_env("PYMENTOR_AGENT_EVENT_RETRY_MAX_MS", "5000"))
     worker_health_url: str = _env("PYMENTOR_WORKER_HEALTH_URL", "http://127.0.0.1:8081/ready")
+    worker_resource_url: str = _env(
+        "PYMENTOR_WORKER_RESOURCE_URL",
+        "http://127.0.0.1:8081/internal/v1/resource-generation",
+    )
+    worker_internal_secret: str = field(
+        default_factory=lambda: _env("PYMENTOR_WORKER_INTERNAL_SECRET", ""),
+        repr=False,
+    )
+    resource_processing_enabled: bool = (
+        _env("PYMENTOR_RESOURCE_PROCESSING_ENABLED", "false").lower() == "true"
+    )
     operational_log_persistence_enabled: bool = (
         _env("PYMENTOR_OPERATIONAL_LOG_PERSISTENCE_ENABLED", "false").lower() == "true"
     )

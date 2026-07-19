@@ -17,14 +17,28 @@ import {
   Sparkle,
   WarningCircle,
 } from "@phosphor-icons/react";
+import {
+  getCurrentPathApiV1PathsCurrentGet,
+  getResourceJobApiV1ResourceJobsJobIdGet,
+  startResourceJobApiV1ResourceJobsPost,
+  type ResourceJobView,
+  type ResourceTypeContract,
+} from "@pymentor/api-client";
+import { readServerUrl } from "@pymentor/config";
 import { StatePanel } from "@pymentor/ui";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
+
+import { configureStudentApi, safeApiMessage, studentAuthorization } from "../../student-api";
+import { useAuth } from "../auth/auth-session";
+
+const USING_TEST_FIXTURES = import.meta.env.MODE === "test";
 
 type ResourceStatus = "READY" | "GENERATING" | "QUEUED" | "FALLBACK";
 
 const resourceDefinitions = [
   {
+    apiType: "MICRO_LECTURE" as ResourceTypeContract,
     description: "用边界值对比解释 range 的左闭右开规则，并连接到当前错因。",
     href: "/resources/micro-lecture",
     icon: BookOpenText,
@@ -35,6 +49,7 @@ const resourceDefinitions = [
     version: "v3.1",
   },
   {
+    apiType: "STRUCTURE_CARD" as ResourceTypeContract,
     description: "一张卡片梳理起点、终点、步长与常见 off-by-one 误区。",
     href: "/resources/knowledge-card",
     icon: Cards,
@@ -45,6 +60,7 @@ const resourceDefinitions = [
     version: "v2.3",
   },
   {
+    apiType: "TRACE_ANIMATION" as ResourceTypeContract,
     description: "逐帧观察 i 与 total 的变化，关键帧可提交预测证据。",
     href: "/lab/trace",
     icon: FilmStrip,
@@ -55,6 +71,7 @@ const resourceDefinitions = [
     version: "v1.8",
   },
   {
+    apiType: "LAYERED_EXERCISE" as ResourceTypeContract,
     description: "从识别边界到修复代码，按基础、进阶、迁移三层递进。",
     href: "/resources/layered-practice",
     icon: ListChecks,
@@ -65,6 +82,7 @@ const resourceDefinitions = [
     version: "v1.4",
   },
   {
+    apiType: "NOTEBOOK_TASK" as ResourceTypeContract,
     description: "在受控沙箱中完成列表偶数求和，并保留提示与修订证据。",
     href: "/lab",
     icon: Code,
@@ -84,18 +102,83 @@ const statusLabel: Record<ResourceStatus, string> = {
 };
 
 function statusesFor(view: string | null): ResourceStatus[] {
-  if (view === "partial")
-    return ["READY", "READY", "READY", "GENERATING", "QUEUED"];
-  if (view === "fallback")
-    return ["FALLBACK", "READY", "READY", "READY", "READY"];
+  if (view === "partial") return ["READY", "READY", "READY", "GENERATING", "QUEUED"];
+  if (view === "fallback") return ["FALLBACK", "READY", "READY", "READY", "READY"];
   return ["READY", "READY", "READY", "READY", "READY"];
 }
 
 export function ResourcesPage() {
+  const { session } = useAuth();
   const [searchParams] = useSearchParams();
   const view = searchParams.get("view");
+  const [job, setJob] = useState<ResourceJobView | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  if (view === "rejected") {
+  useEffect(() => {
+    if (USING_TEST_FIXTURES) return;
+    const accessToken = session?.accessToken;
+    if (!accessToken) {
+      setLoadError("登录会话缺少访问令牌，请重新登录");
+      return;
+    }
+    let active = true;
+    let timer: number | null = null;
+    configureStudentApi();
+
+    const poll = async (jobId: string) => {
+      const result = await getResourceJobApiV1ResourceJobsJobIdGet({
+        headers: studentAuthorization(accessToken),
+        path: { job_id: jobId },
+      });
+      if (!active) return;
+      if (!result.data) throw new Error(safeApiMessage(result.error));
+      setJob(result.data);
+      if (
+        !["READY", "FAILED_RETRYABLE", "FAILED_FINAL", "CANCELLED"].includes(
+          result.data.status,
+        )
+      ) {
+        timer = window.setTimeout(() => void poll(jobId).catch(handleError), 1500);
+      }
+    };
+    const handleError = (error: unknown) => {
+      if (active) setLoadError(safeApiMessage(error));
+    };
+
+    void getCurrentPathApiV1PathsCurrentGet({
+      headers: studentAuthorization(accessToken),
+    })
+      .then(async (pathResult) => {
+        if (!pathResult.data || pathResult.data.steps.length === 0) {
+          throw new Error(safeApiMessage(pathResult.error) || "当前没有可生成资源的路径节点");
+        }
+        const [step] = pathResult.data.steps;
+        if (!step) throw new Error("当前没有可生成资源的路径节点");
+        const result = await startResourceJobApiV1ResourceJobsPost({
+          body: {
+            course_id: pathResult.data.course_id,
+            node_id: step.node_id,
+            resource_types: resourceDefinitions.map((item) => item.apiType),
+          },
+          headers: {
+            ...studentAuthorization(accessToken),
+            "Idempotency-Key": `web-resource-${pathResult.data.id}-${step.node_id}`,
+          },
+        });
+        if (!result.data) throw new Error(safeApiMessage(result.error));
+        if (!active) return;
+        setJob(result.data);
+        await poll(result.data.id);
+      })
+      .catch(handleError);
+
+    return () => {
+      active = false;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [session?.accessToken]);
+
+  if (USING_TEST_FIXTURES && view === "rejected") {
     return (
       <StatePanel
         actionLabel="返回今日学习"
@@ -107,7 +190,53 @@ export function ResourcesPage() {
     );
   }
 
-  const statuses = statusesFor(view);
+  if (!USING_TEST_FIXTURES && loadError) {
+    return (
+      <StatePanel
+        actionLabel="重试"
+        description={loadError}
+        onAction={() => window.location.reload()}
+        state="error"
+        title="无法加载学习资源"
+      />
+    );
+  }
+  if (!USING_TEST_FIXTURES && !job) {
+    return (
+      <StatePanel description="正在创建或恢复服务端资源任务" state="loading" title="加载学习资源" />
+    );
+  }
+  if (!USING_TEST_FIXTURES && job?.status === "FAILED_FINAL") {
+    return (
+      <StatePanel
+        actionLabel="返回今日学习"
+        description="本批内容未通过最终审校，未向学生发布"
+        onAction={() => window.history.back()}
+        state="error"
+        title="内容未通过安全审校"
+      />
+    );
+  }
+  if (!USING_TEST_FIXTURES && job?.status === "FAILED_RETRYABLE") {
+    return (
+      <StatePanel
+        actionLabel="重试资源生成"
+        description="资源生成服务暂时不可用，当前未发布任何未审校内容"
+        onAction={() => window.location.reload()}
+        state="error"
+        title="资源生成可重试"
+      />
+    );
+  }
+
+  const statuses = USING_TEST_FIXTURES
+    ? statusesFor(view)
+    : resourceDefinitions.map((definition) => {
+        const artifact = job?.artifacts.find((item) => item.resource_type === definition.apiType);
+        if (artifact?.status === "PUBLISHED") return "READY";
+        if (artifact) return "GENERATING";
+        return "QUEUED";
+      });
   const readyCount = statuses.filter(
     (status) => status === "READY" || status === "FALLBACK",
   ).length;
@@ -117,7 +246,7 @@ export function ResourcesPage() {
       <div className="page-heading">
         <div>
           <p className="eyebrow">RESOURCE PACK · PROGRESSIVE RELEASE</p>
-          <h1>循环边界学习资源</h1>
+          <h1>{USING_TEST_FIXTURES ? "循环边界学习资源" : "服务端学习资源"}</h1>
           <p>资源完成一项发布一项，不让仍在生成的内容阻断今天的学习。</p>
         </div>
         <Link className="py-button resource-tutor-link" to="/tutor">
@@ -125,20 +254,18 @@ export function ResourcesPage() {
         </Link>
       </div>
 
-      <div
-        aria-label="资源生成进度"
-        className="resource-progress"
-        role="status"
-      >
+      <div aria-label="资源生成进度" className="resource-progress" role="status">
         <span>
-          <Sparkle size={18} weight="fill" /> 资源包 JOB-RES-2407
+          <Sparkle size={18} weight="fill" /> 资源包 {job?.id ?? "JOB-RES-2407"}
         </span>
         <div>
           <progress aria-label="资源生成完成度" max={5} value={readyCount} />
           <strong>{readyCount} / 5 已可用</strong>
         </div>
         <small>
-          {readyCount === 5 ? "全部资源已发布" : "其余资源完成后会自动补齐"}
+          {readyCount === 5
+            ? "全部资源已发布"
+            : `任务状态 ${job?.status ?? "GENERATING"} · ${job?.progress_percent ?? 0}%`}
         </small>
       </div>
 
@@ -147,6 +274,11 @@ export function ResourcesPage() {
           const Icon = resource.icon;
           const status = statuses[index] ?? "QUEUED";
           const isAvailable = status === "READY" || status === "FALLBACK";
+          const artifact = job?.artifacts.find((item) => item.resource_type === resource.apiType);
+          const href =
+            USING_TEST_FIXTURES || !job || !artifact
+              ? resource.href
+              : `/resources/micro-lecture?job_id=${encodeURIComponent(job.id)}&resource_id=${encodeURIComponent(artifact.id)}`;
           return (
             <li key={resource.id}>
               <article
@@ -175,18 +307,24 @@ export function ResourcesPage() {
                 </div>
                 {status === "FALLBACK" ? (
                   <p className="resource-fallback">
-                    <WarningCircle size={16} />{" "}
-                    配图暂不可用，已切换为审校通过的文字版
+                    <WarningCircle size={16} /> 配图暂不可用，已切换为审校通过的文字版
                   </p>
                 ) : null}
                 <dl>
                   <div>
                     <dt>来源</dt>
-                    <dd>来源 {resource.source}</dd>
+                    <dd>
+                      来源{" "}
+                      {USING_TEST_FIXTURES
+                        ? resource.source
+                        : artifact?.source_ids.join(", ") || "等待发布"}
+                    </dd>
                   </div>
                   <div>
                     <dt>版本</dt>
-                    <dd>版本 {resource.version}</dd>
+                    <dd>
+                      版本 {USING_TEST_FIXTURES ? resource.version : (artifact?.version ?? "—")}
+                    </dd>
                   </div>
                   <div>
                     <dt>审校</dt>
@@ -199,15 +337,12 @@ export function ResourcesPage() {
                   <Link
                     aria-label={`打开${resource.title}`}
                     className="resource-card__action"
-                    to={resource.href}
+                    to={href}
                   >
                     打开资源 <ArrowRight size={16} />
                   </Link>
                 ) : (
-                  <span
-                    aria-disabled="true"
-                    className="resource-card__action is-disabled"
-                  >
+                  <span aria-disabled="true" className="resource-card__action is-disabled">
                     {statusLabel[status]}
                   </span>
                 )}
@@ -227,8 +362,102 @@ const rangeExamples = [
 ] as const;
 
 export function ResourceDetailPage() {
+  const { session } = useAuth();
   const { pathname } = useLocation();
+  const [searchParams] = useSearchParams();
   const showKnowledgeCard = pathname.endsWith("/knowledge-card");
+  const jobId = searchParams.get("job_id");
+  const resourceId = searchParams.get("resource_id");
+  const [publishedContent, setPublishedContent] = useState<string | null>(null);
+  const [publishedMimeType, setPublishedMimeType] = useState<string | null>(null);
+  const [contentError, setContentError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (USING_TEST_FIXTURES) return;
+    const accessToken = session?.accessToken;
+    if (!accessToken || !jobId || !resourceId) {
+      setContentError("缺少已发布资源标识或登录会话");
+      return;
+    }
+    let active = true;
+    void fetch(
+      `${readServerUrl()}/api/v1/resource-jobs/${encodeURIComponent(jobId)}/artifacts/${encodeURIComponent(resourceId)}/content`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    )
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const content = await response.text();
+        if (!active) return;
+        setPublishedMimeType(response.headers.get("Content-Type")?.split(";")[0] ?? "text/plain");
+        setPublishedContent(content);
+      })
+      .catch((error: unknown) => {
+        if (active) setContentError(safeApiMessage(error));
+      });
+    return () => {
+      active = false;
+    };
+  }, [jobId, resourceId, session?.accessToken]);
+
+  if (!USING_TEST_FIXTURES && contentError) {
+    return (
+      <StatePanel
+        actionLabel="返回资源包"
+        description={contentError}
+        onAction={() => window.history.back()}
+        state="error"
+        title="无法读取已发布资源"
+      />
+    );
+  }
+  if (!USING_TEST_FIXTURES && publishedContent === null) {
+    return (
+      <StatePanel
+        description="正在校验对象摘要并读取私有资源"
+        state="loading"
+        title="加载已发布资源"
+      />
+    );
+  }
+
+  if (!USING_TEST_FIXTURES) {
+    const isSvg = publishedMimeType === "image/svg+xml";
+    const svgSource = isSvg
+      ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(publishedContent ?? "")}`
+      : null;
+    return (
+      <div className="foundation-page resource-detail-page">
+        <div className="resource-detail-heading">
+          <div>
+            <Link className="resource-back-link" to="/resources">
+              <ArrowLeft size={16} /> 返回资源包
+            </Link>
+            <p className="eyebrow">PUBLISHED RESOURCE · VERIFIED OBJECT</p>
+            <h1>已审校学习资源</h1>
+            <p>内容来自私有对象存储；服务端在返回前重新校验 SHA-256 摘要与发布状态。</p>
+          </div>
+        </div>
+        <article aria-label="已发布资源正文" className="resource-lesson">
+          <header>
+            <div>
+              <p className="eyebrow">{publishedMimeType}</p>
+              <h2>资源 {resourceId}</h2>
+            </div>
+            <span className="resource-status">
+              <ShieldCheck size={15} /> 已发布并通过完整性校验
+            </span>
+          </header>
+          {svgSource ? (
+            <img alt="服务端生成的代码执行轨迹资源" src={svgSource} />
+          ) : (
+            <pre>
+              <code>{publishedContent}</code>
+            </pre>
+          )}
+        </article>
+      </div>
+    );
+  }
 
   return (
     <div className="foundation-page resource-detail-page">
@@ -268,14 +497,9 @@ export function ResourceDetailPage() {
           <header>
             <div>
               <p className="eyebrow">
-                {showKnowledgeCard ? "STRUCTURE CARD" : "MICRO-LECTURE"} · 约 8
-                分钟
+                {showKnowledgeCard ? "STRUCTURE CARD" : "MICRO-LECTURE"} · 约 8 分钟
               </p>
-              <h2>
-                {showKnowledgeCard
-                  ? "range 边界结构卡"
-                  : "为什么 range 不包含终点？"}
-              </h2>
+              <h2>{showKnowledgeCard ? "range 边界结构卡" : "为什么 range 不包含终点？"}</h2>
             </div>
             <span className="resource-status">
               <ShieldCheck size={15} /> 审校 v3.1
@@ -288,8 +512,8 @@ export function ResourceDetailPage() {
                 <p className="eyebrow">CORE MODEL</p>
                 <h3>起点 → 终点（不含）→ 步长</h3>
                 <p>
-                  range(start, stop, step) 从 start 开始，每次增加
-                  step；只要下一项会到达或越过 stop，就结束生成。
+                  range(start, stop, step) 从 start 开始，每次增加 step；只要下一项会到达或越过
+                  stop，就结束生成。
                 </p>
               </section>
               <dl className="knowledge-fact-grid">
@@ -318,8 +542,7 @@ export function ResourceDetailPage() {
                 <h3>左边界进入序列，右边界只负责“喊停”</h3>
                 <p>
                   Python 的 range 使用左闭右开区间。写下 range(1, 5) 时，1
-                  是第一项；当下一项准备到达 5，生成过程就停止，因此结果是
-                  1、2、3、4。
+                  是第一项；当下一项准备到达 5，生成过程就停止，因此结果是 1、2、3、4。
                 </p>
                 <pre>
                   <code>{`values = list(range(1, 5))\nprint(values)  # [1, 2, 3, 4]`}</code>
@@ -329,8 +552,8 @@ export function ResourceDetailPage() {
                 <p className="eyebrow">02 · 连接到你的错因</p>
                 <h3>列表索引与 range(len(items)) 正好配对</h3>
                 <p>
-                  长度为 4 的列表，其有效索引是 0 到 3。range(len(items))
-                  生成的也是 0、1、2、3， 因此不会访问 items[4]。
+                  长度为 4 的列表，其有效索引是 0 到 3。range(len(items)) 生成的也是 0、1、2、3，
+                  因此不会访问 items[4]。
                 </p>
                 <pre>
                   <code>{`items = ["A", "B", "C", "D"]\nfor index in range(len(items)):\n    print(index, items[index])`}</code>
@@ -468,16 +691,44 @@ export function reduceTutorSse(
 
     try {
       const parsed = JSON.parse(payload) as {
+        chunk?: {
+          delta_content?: string | null;
+          delta_reasoning?: string | null;
+          delta_tool_calls?: Array<{
+            id?: string | null;
+            index: number;
+            name?: string | null;
+          }> | null;
+        };
+        event_id?: string;
+        type?:
+          "content_delta" | "reasoning_delta" | "tool_call_delta" | "progress" | "error" | "done";
         choices?: Array<{ delta?: CompatibleDelta }>;
       };
+      const typedEventId = parsed.event_id ?? eventId;
+      if (typedEventId && next.seenEventIds.includes(typedEventId)) continue;
+      if (parsed.type) {
+        if (typedEventId) next.seenEventIds.push(typedEventId);
+        if (parsed.type === "done") next.done = true;
+        if (typeof parsed.chunk?.delta_content === "string") {
+          next.content += parsed.chunk.delta_content;
+        }
+        if (typeof parsed.chunk?.delta_reasoning === "string" && parsed.chunk.delta_reasoning) {
+          next.reasoningObserved = true;
+        }
+        for (const tool of parsed.chunk?.delta_tool_calls ?? []) {
+          const id = tool.id ?? `tool-${tool.index}`;
+          const existing = next.tools.find((item) => item.id === id);
+          if (existing && tool.name) existing.name = tool.name;
+          if (!existing && tool.name) next.tools.push({ id, name: tool.name, status: "complete" });
+        }
+        continue;
+      }
       const delta = parsed.choices?.[0]?.delta;
       if (eventId) next.seenEventIds.push(eventId);
       if (!delta) continue;
       if (typeof delta.content === "string") next.content += delta.content;
-      if (
-        typeof delta.reasoning_content === "string" &&
-        delta.reasoning_content.length > 0
-      ) {
+      if (typeof delta.reasoning_content === "string" && delta.reasoning_content.length > 0) {
         next.reasoningObserved = true;
       }
       for (const tool of delta.tool_calls ?? []) {
@@ -485,8 +736,7 @@ export function reduceTutorSse(
         const existing = next.tools.find((item) => item.id === id);
         const name = tool.function?.name;
         if (existing && name) existing.name = name;
-        if (!existing && name)
-          next.tools.push({ id, name, status: "complete" });
+        if (!existing && name) next.tools.push({ id, name, status: "complete" });
       }
     } catch {
       if (eventId) next.seenEventIds.push(eventId);
@@ -498,8 +748,7 @@ export function reduceTutorSse(
 
 const reasoningEvent =
   'id: tutor-1\ndata: {"choices":[{"delta":{"reasoning_content":"RAW_REASONING_MUST_NOT_RENDER"}}]}';
-const openingEvent =
-  'id: tutor-2\ndata: {"choices":[{"delta":{"content":"先看规则："}}]}';
+const openingEvent = 'id: tutor-2\ndata: {"choices":[{"delta":{"content":"先看规则："}}]}';
 const toolEvent =
   'id: tutor-3\ndata: {"choices":[{"delta":{"tool_calls":[{"id":"call-source-1","function":{"name":"search_course_sources"}}]}}]}';
 const answerEvent =
@@ -511,15 +760,15 @@ function toolLabel(name: string) {
 }
 
 export function TutorPage() {
+  const { session } = useAuth();
   const [searchParams] = useSearchParams();
   const mode = searchParams.get("mode");
   const view = searchParams.get("view");
   const [question, setQuestion] = useState("为什么 range(1, 5) 不包含 5？");
   const [stream, setStream] = useState<TutorStreamState>(emptyTutorState);
-  const [streamStatus, setStreamStatus] = useState<
-    "idle" | "streaming" | "done" | "error"
-  >("idle");
+  const [streamStatus, setStreamStatus] = useState<"idle" | "streaming" | "done" | "error">("idle");
   const timerRef = useRef<number | null>(null);
+  const [streamErrorCode, setStreamErrorCode] = useState<string | null>(null);
 
   useEffect(
     () => () => {
@@ -536,13 +785,10 @@ export function TutorPage() {
     }, 60);
   }
 
-  function startStream() {
+  function startFixtureStream() {
     if (timerRef.current !== null) window.clearTimeout(timerRef.current);
     setStreamStatus("streaming");
-    const head = [
-      mode === "plain" ? openingEvent : reasoningEvent,
-      openingEvent,
-    ].join("\n\n");
+    const head = [mode === "plain" ? openingEvent : reasoningEvent, openingEvent].join("\n\n");
     const started = reduceTutorSse(head);
     setStream(started);
 
@@ -557,7 +803,68 @@ export function TutorPage() {
     completeStream(started);
   }
 
+  async function startRealStream(afterEventId?: string): Promise<void> {
+    const accessToken = session?.accessToken;
+    if (!accessToken) {
+      setStreamErrorCode("AUTH_REQUIRED");
+      setStreamStatus("error");
+      return;
+    }
+    setStreamStatus("streaming");
+    setStreamErrorCode(null);
+    configureStudentApi();
+    const pathResult = await getCurrentPathApiV1PathsCurrentGet({
+      headers: studentAuthorization(accessToken),
+    });
+    const step = pathResult.data?.steps[0];
+    if (!pathResult.data || !step) {
+      setStreamErrorCode("NOT_FOUND");
+      setStreamStatus("error");
+      return;
+    }
+    try {
+      const response = await fetch(`${readServerUrl()}/api/v1/chat/completions`, {
+        body: JSON.stringify({
+          course_id: pathResult.data.course_id,
+          messages: [{ content: question, role: "user" }],
+          node_id: step.node_id,
+          stream: true,
+        }),
+        headers: {
+          Accept: "text/event-stream",
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          ...(afterEventId ? { "Last-Event-ID": afterEventId } : {}),
+        },
+        method: "POST",
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const raw = await response.text();
+      const next = reduceTutorSse(raw, afterEventId ? stream : emptyTutorState);
+      setStream(next);
+      const errorMatch = raw.match(/"code"\s*:\s*"([A-Z_]+)"/);
+      if (errorMatch?.[1]) {
+        setStreamErrorCode(errorMatch[1]);
+        setStreamStatus("error");
+      } else {
+        setStreamStatus(next.done ? "done" : "error");
+      }
+    } catch (error) {
+      setStreamErrorCode(error instanceof Error ? error.message : "PROVIDER_UNAVAILABLE");
+      setStreamStatus("error");
+    }
+  }
+
+  function startStream() {
+    if (USING_TEST_FIXTURES) startFixtureStream();
+    else void startRealStream();
+  }
+
   function retryStream() {
+    if (!USING_TEST_FIXTURES) {
+      void startRealStream(stream.seenEventIds.at(-1));
+      return;
+    }
     setStreamStatus("streaming");
     const resumed = reduceTutorSse(
       [
@@ -581,9 +888,7 @@ export function TutorPage() {
         <div>
           <p className="eyebrow">TUTOR · REVIEWED SOURCES</p>
           <h1>智能辅导</h1>
-          <p>
-            回答引用课程知识底座；工具调用可见，内部提示、密钥与原始推理不会展示。
-          </p>
+          <p>回答引用课程知识底座；工具调用可见，内部提示、密钥与原始推理不会展示。</p>
         </div>
         <Link className="profile-secondary-button" to="/resources">
           <BookOpenText size={16} /> 返回学习资源
@@ -591,10 +896,7 @@ export function TutorPage() {
       </div>
 
       <div className="tutor-layout">
-        <section
-          aria-labelledby="tutor-conversation-title"
-          className="tutor-conversation"
-        >
+        <section aria-labelledby="tutor-conversation-title" className="tutor-conversation">
           <div className="section-heading-row">
             <div>
               <p className="eyebrow">GUIDED CONVERSATION</p>
@@ -607,29 +909,17 @@ export function TutorPage() {
 
           <div aria-live="polite" className="tutor-answer-area">
             {stream.reasoningObserved ? (
-              <div
-                aria-label="分析状态"
-                className="tutor-reasoning-status"
-                role="status"
-              >
+              <div aria-label="分析状态" className="tutor-reasoning-status" role="status">
                 <Brain size={18} />
                 <div>
-                  <strong>
-                    {streamStatus === "done"
-                      ? "已完成教学分析"
-                      : "正在分析解题步骤"}
-                  </strong>
+                  <strong>{streamStatus === "done" ? "已完成教学分析" : "正在分析解题步骤"}</strong>
                   <p>原始模型推理受保护，仅展示可验证的教学进度。</p>
                 </div>
               </div>
             ) : null}
 
             {stream.tools.map((tool) => (
-              <article
-                aria-label={toolLabel(tool.name)}
-                className="tutor-tool-card"
-                key={tool.id}
-              >
+              <article aria-label={toolLabel(tool.name)} className="tutor-tool-card" key={tool.id}>
                 <span>
                   <MagnifyingGlass size={18} />
                 </span>
@@ -649,9 +939,7 @@ export function TutorPage() {
                 <div>
                   <p>{stream.content}</p>
                   {stream.done ? (
-                    <small>
-                      来源：KB-PY-04 · Python 官方课程镜像 · 审校 v3.1
-                    </small>
+                    <small>来源：KB-PY-04 · Python 官方课程镜像 · 审校 v3.1</small>
                   ) : null}
                 </div>
               </article>
@@ -663,25 +951,23 @@ export function TutorPage() {
             ) : null}
 
             {streamStatus === "error" ? (
-              <section
-                aria-label="辅导流中断"
-                className="tutor-stream-error"
-                role="alert"
-              >
+              <section aria-label="辅导流中断" className="tutor-stream-error" role="alert">
                 <WarningCircle size={20} />
                 <div>
                   <strong>
-                    {view === "rejected"
+                    {USING_TEST_FIXTURES && view === "rejected"
                       ? "回答触发内容安全门禁"
-                      : "连接中断，已保留收到的内容"}
+                      : streamErrorCode === "PROVIDER_UNAVAILABLE"
+                        ? "辅导 Provider 当前不可用"
+                        : "连接中断，已保留收到的内容"}
                   </strong>
                   <p>
-                    {view === "rejected"
+                    {USING_TEST_FIXTURES && view === "rejected"
                       ? "本次内容不会展示或写入学习证据。"
                       : "可从最后一个事件继续，重放片段会按事件 ID 去重。"}
                   </p>
                 </div>
-                {view !== "rejected" ? (
+                {!USING_TEST_FIXTURES || view !== "rejected" ? (
                   <button onClick={retryStream} type="button">
                     <ArrowClockwise size={16} /> 重新连接辅导流
                   </button>
@@ -741,9 +1027,7 @@ export function TutorPage() {
             </div>
             <div>
               <dt>推理展示</dt>
-              <dd>
-                {stream.reasoningObserved ? "安全状态摘要" : "当前模型不提供"}
-              </dd>
+              <dd>{stream.reasoningObserved ? "安全状态摘要" : "当前模型不提供"}</dd>
             </div>
             <div>
               <dt>工具权限</dt>
@@ -751,8 +1035,7 @@ export function TutorPage() {
             </div>
           </dl>
           <p>
-            <ShieldCheck size={15} /> 浏览器不持有 Provider
-            密钥，也不能执行特权工具。
+            <ShieldCheck size={15} /> 浏览器不持有 Provider 密钥，也不能执行特权工具。
           </p>
         </aside>
       </div>

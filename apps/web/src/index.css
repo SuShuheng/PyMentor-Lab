@@ -2150,7 +2150,7 @@ input {
 }
 
 .resource-card dl dt {
-  color: #777;
+  color: #6f6f6f;
 }
 
 .resource-card dl dd {
@@ -2466,7 +2466,7 @@ input {
   place-content: center;
   justify-items: center;
   gap: 10px;
-  color: #777;
+  color: #6f6f6f;
   text-align: center;
 }
 
@@ -2591,7 +2591,7 @@ input {
 }
 
 .tutor-composer > div > span {
-  color: #777;
+  color: #6f6f6f;
   font-size: 10px;
 }
 
@@ -2599,6 +2599,10 @@ input {
   padding: 24px 20px;
   color: #fff;
   background: #0b0b0b;
+}
+
+.tutor-stream-panel .eyebrow {
+  color: #a0a7b2;
 }
 
 .tutor-stream-panel h2 {

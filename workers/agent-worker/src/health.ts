@@ -31,6 +31,7 @@ const isoNow = (): string => new Date().toISOString();
 export function buildHealthApp(
   now: NowProvider = { now: isoNow },
   readiness: ReadinessProvider = { isReady: () => false },
+  resourceGeneration?: (context: import("hono").Context) => Response | Promise<Response>,
 ): Hono {
   const app = new Hono();
 
@@ -55,6 +56,10 @@ export function buildHealthApp(
     }
     return c.json({ status: "ready", service: SERVICE_NAME }, 200);
   });
+
+  if (resourceGeneration) {
+    app.post("/internal/v1/resource-generation", resourceGeneration);
+  }
 
   return app;
 }

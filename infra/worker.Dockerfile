@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 # Agent Worker image (Node 22 LTS; required by the pinned pnpm 11 runtime).
 FROM node:22-slim AS base
 

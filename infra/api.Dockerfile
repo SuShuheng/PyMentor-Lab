@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 # FastAPI service image (Python 3.13).
 FROM python:3.13-slim AS builder
 
@@ -17,7 +16,7 @@ COPY backend ./backend
 COPY sandbox ./sandbox
 
 RUN uv venv /opt/pymentor-venv && \
-    uv pip install --python /opt/pymentor-venv/bin/python .
+    uv pip install --python /opt/pymentor-venv/bin/python . alembic==1.17.0
 
 FROM python:3.13-slim AS runtime
 
@@ -50,7 +49,7 @@ COPY --chown=pymentor:pymentor backend ./backend
 COPY --chown=pymentor:pymentor sandbox ./sandbox
 COPY --chown=pymentor:pymentor knowledge ./knowledge
 
-WORKDIR /app/backend
+WORKDIR /app
 USER pymentor
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "alembic -c backend/migrations/alembic.ini upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]

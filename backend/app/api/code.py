@@ -154,6 +154,11 @@ def _execute_command(
             detail="idempotent command reservation was not persisted",
         )
 
+    # The execution orchestrator intentionally uses independent sessions for
+    # its reserve/running/finalize transactions. Make the command reservation
+    # visible before the first of those transactions links its foreign key.
+    db.commit()
+
     trace_enabled = getattr(body, "trace_enabled", False) or mode == CodeRunMode.TRACE
     command = CodeCommand(
         task=instance,

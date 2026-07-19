@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 # Sandbox RUNTIME image (Python 3.13) — the untrusted-student execution boundary.
 #
 # This image contains ONLY the trusted harness and the Python standard library.

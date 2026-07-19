@@ -8,12 +8,23 @@
 
 from __future__ import annotations
 
+from uuid import UUID
+
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.knowledge_seed import seed_published_course
+from app.models import LearningPath, LearningPathStatus, TaskDefinition
 from app.models.base import RoleName, TenantType, UserStatus
 from app.models.identity import Tenant, User
+from app.pathing import (
+    PathProposal,
+    StepProposal,
+    ValidationContext,
+    persist_validated_path,
+    validate_path,
+)
 from app.security import hash_password
 from app.services import (
     assign_role,
@@ -22,10 +33,13 @@ from app.services import (
     get_user_by_email,
     has_any_admin,
 )
+from app.task_compiler import CompileInput, compile_task_version
 
 DEMO_TENANT_SLUG = "demo"
 DEMO_GUEST_EMAIL = "guest@demo.pymentor.dev"
 _LEGACY_DEMO_GUEST_EMAIL = "guest@demo.local"
+_DEMO_COURSE_ID = UUID("69408047-3b99-5fb2-b383-81f7314ecd5d")
+_DEMO_NODE_ID = UUID("9512e5ec-f547-51b3-b0df-c5b3a877da9e")
 
 
 def ensure_demo_guest(db: Session, tenant: Tenant) -> User:
@@ -119,6 +133,125 @@ def seed_demo_tenant(db: Session) -> None:
     db.commit()
 
 
+def seed_demo_learning_data(db: Session) -> None:
+    """Publish one governed, reset-safe learning path and task for Demo Guest."""
+
+    tenant = db.scalar(select(Tenant).where(Tenant.slug == DEMO_TENANT_SLUG))
+    if tenant is None:
+        return
+    guest = get_user_by_email(db, tenant_id=tenant.id, email=DEMO_GUEST_EMAIL)
+    if guest is None:
+        return
+    definition = db.scalar(
+        select(TaskDefinition).where(
+            TaskDefinition.tenant_id == tenant.id,
+            TaskDefinition.course_id == _DEMO_COURSE_ID,
+            TaskDefinition.key == "demo-loop-boundary",
+        )
+    )
+    if definition is None:
+        definition = TaskDefinition(
+            tenant_id=tenant.id,
+            course_id=_DEMO_COURSE_ID,
+            node_id=_DEMO_NODE_ID,
+            key="demo-loop-boundary",
+            title="实现偶数求和函数",
+        )
+        db.add(definition)
+        db.flush()
+    compile_task_version(
+        db,
+        definition,
+        CompileInput(
+            prompt="实现 sum_even(numbers)，返回所有偶数之和；空列表返回 0。",
+            tests_policy={
+                "entrypoint": {"kind": "FUNCTION", "name": "sum_even"},
+                "allowed_imports": ["math"],
+                "visible": [
+                    {
+                        "id": "visible-basic",
+                        "args": [[1, 2, 3, 4]],
+                        "expected": 6,
+                        "comparison": "EQUAL",
+                        "transfer": False,
+                    }
+                ],
+                "hidden": [
+                    {
+                        "id": "hidden-empty",
+                        "args": [[]],
+                        "expected": 0,
+                        "comparison": "EQUAL",
+                        "transfer": True,
+                    }
+                ],
+            },
+            hint_policy={
+                "max_level": 3,
+                "hints": [
+                    {
+                        "key": "iterate-values",
+                        "level": 1,
+                        "content": "逐个检查列表值是否能被 2 整除。",
+                        "independence_cost": 10,
+                    },
+                    {
+                        "key": "accumulate",
+                        "level": 2,
+                        "content": "使用从 0 开始的累计变量。",
+                        "independence_cost": 20,
+                    },
+                    {
+                        "key": "empty-list",
+                        "level": 3,
+                        "content": "空列表不会进入循环，因此返回初始累计值。",
+                        "independence_cost": 30,
+                    },
+                ],
+            },
+            mastery_policy={
+                "independence_min": 0.7,
+                "transfer_min": 0.6,
+                "max_hints_for_mastery": 1,
+                "review_delay_days": 7,
+            },
+            resource_versions={},
+            scenario_key="demo-sum-even-v1",
+        ),
+    )
+    current_path = db.scalar(
+        select(LearningPath).where(
+            LearningPath.student_id == guest.id,
+            LearningPath.course_id == _DEMO_COURSE_ID,
+            LearningPath.status == LearningPathStatus.CURRENT,
+        )
+    )
+    if current_path is None:
+        validated = validate_path(
+            PathProposal(steps=[StepProposal(node_id=_DEMO_NODE_ID, estimated_minutes=20)]),
+            ValidationContext(
+                daily_minutes=30,
+                prerequisites={},
+                completed_nodes=set(),
+                due_reviews=[],
+                mastery_policy_nodes={_DEMO_NODE_ID},
+                resource_ready_nodes={_DEMO_NODE_ID},
+                active_node_ids=set(),
+                template_fallback_nodes=set(),
+                forbidden_node_ids=set(),
+            ),
+        )
+        persist_validated_path(
+            db,
+            tenant_id=tenant.id,
+            student_id=guest.id,
+            course_id=_DEMO_COURSE_ID,
+            expected_version=0,
+            validated=validated,
+        )
+    db.commit()
+
+
 def run_bootstrap(db: Session) -> None:
     """执行全部引导步骤（启动时调用）。"""
     seed_published_course(db)
@@ -126,3 +259,4 @@ def run_bootstrap(db: Session) -> None:
     db.commit()
     bootstrap_initial_admin(db)
     seed_demo_tenant(db)
+    seed_demo_learning_data(db)

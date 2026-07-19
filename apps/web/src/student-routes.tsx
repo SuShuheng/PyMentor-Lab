@@ -60,13 +60,12 @@ function StudentHeader() {
       </label>
       <div className="student-header__actions">
         <button className="task-progress" type="button">
-          <span>今日任务</span>
-          <strong>3/6</strong>
-          <span aria-label="完成度 50%" className="task-progress__ring" />
+          <span>今日计划</span>
+          <strong>服务端同步</strong>
+          <span aria-label="进度见今日学习页" className="task-progress__ring" />
         </button>
-        <button aria-label="通知，有 1 条未读消息" className="icon-button" type="button">
+        <button aria-label="通知" className="icon-button" type="button">
           <Bell size={22} />
-          <span className="notification-dot" />
         </button>
         <button aria-label="打开个人菜单" className="profile-button" type="button">
           <UserCircle size={34} weight="duotone" />
@@ -90,6 +89,7 @@ function StudentLayout() {
       header={<StudentHeader />}
       navigation={navigation}
       onNavigate={navigate}
+      status={{ label: "AI 助教 · 按需连接", detail: "连接状态在辅导会话内显示" }}
     >
       <Routes>
         <Route path="/today" element={<TodayPage />} />

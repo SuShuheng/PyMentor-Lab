@@ -3,6 +3,7 @@ export interface WorkerRuntimeConfig {
   readonly port: number;
   readonly concurrency: number;
   readonly shutdownGraceMs: number;
+  readonly internalSecret: string;
 }
 
 type RuntimeEnvironment = Readonly<Record<string, string | undefined>>;
@@ -42,6 +43,12 @@ function redisUrl(environment: RuntimeEnvironment): string {
 export function loadWorkerRuntimeConfig(
   environment: RuntimeEnvironment = process.env,
 ): WorkerRuntimeConfig {
+  const internalSecret =
+    environment["PYMENTOR_WORKER_INTERNAL_SECRET"] ??
+    "dev-only-insecure-worker-secret-change-me-min-32-bytes";
+  if (internalSecret.length < 32) {
+    throw new Error("PYMENTOR_WORKER_INTERNAL_SECRET must contain at least 32 characters.");
+  }
   return Object.freeze({
     redisUrl: redisUrl(environment),
     port: integerSetting(environment, "PYMENTOR_WORKER_PORT", 8081, 1, 65_535),
@@ -53,5 +60,6 @@ export function loadWorkerRuntimeConfig(
       100,
       120_000,
     ),
+    internalSecret,
   });
 }
