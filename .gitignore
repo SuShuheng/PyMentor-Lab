@@ -41,3 +41,8 @@ Thumbs.db
 
 # ---- Competition raw inputs (design-only, not runtime) ----
 raw/
+
+# ---- Local worktrees / agent tooling (never commit) ----
+.worktrees/
+.zcode/
+.pnpm-store/
