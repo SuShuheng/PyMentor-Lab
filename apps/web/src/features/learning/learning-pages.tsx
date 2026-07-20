@@ -142,12 +142,16 @@ export function TodayPage() {
             eyebrow: `${item.kind} · ${item.due_at ? "已安排到期时间" : "服务端学习路径"}`,
             id: item.id,
             priority: index + 1,
-            reason: `节点 ${item.node_id}，由服务端路径与任务编译器发布。`,
+            // FE Issue 6: never surface the raw node UUID to students. The
+            // server already sequences today's tasks; the student-facing copy
+            // describes the source (server path + task compiler) without the
+            // opaque id. The node id stays in `data-node-id` for tracing.
+            reason: `任务 ${index + 1}，由服务端路径与任务编译器发布。`,
             taskVersionId: item.task_version_id ?? undefined,
             title:
               item.kind === "REVIEW"
-                ? `到期复测 · ${item.node_id.slice(0, 8)}`
-                : `学习任务 · ${item.node_id.slice(0, 8)}`,
+                ? `到期复测 · 任务 ${index + 1}`
+                : `学习任务 · 任务 ${index + 1}`,
             tone: item.kind === "REVIEW" ? "review" : "core",
           })),
         );
@@ -349,7 +353,10 @@ export function TodayPage() {
                     <span>
                       <Clock size={15} /> {task.duration}
                     </span>
-                    <span>依据 {task.evidence}</span>
+                    {/* FE Issue 6: hide raw task-version UUIDs from students.
+                        Fixtures carry a human-readable evidence id; live data
+                        would otherwise surface the opaque task_version_id. */}
+                    {USING_TEST_FIXTURES ? <span>依据 {task.evidence}</span> : null}
                   </div>
                 </div>
                 <button
@@ -545,7 +552,10 @@ export function LearningMapPage() {
                 : "UNSEEN · 未开始";
             return [
               String(step.position).padStart(2, "0"),
-              `节点 ${step.node_id.slice(0, 8)}`,
+              // FE Issue 6: use a sequential, position-based label instead of
+              // the raw node UUID. The node_id is still carried in the 5th
+              // tuple element for routing/internal use.
+              `节点 ${step.position}`,
               masteryStatus,
               `${step.kind} · ${step.scenario_key} · ${step.validation_status}`,
               step.node_id,
@@ -1011,8 +1021,11 @@ export function GrowthPage() {
                 ]
               : mastery
                   .slice(0, 8)
-                  .map((item) => [
-                    `节点 ${item.node_id.slice(0, 8)} · ${item.status}`,
+                  .map((item, index) => [
+                    // FE Issue 6: replace the raw node UUID with a sequential
+                    // position label. The opaque node_id is never shown to the
+                    // student; the status string carries the meaningful info.
+                    `节点 ${index + 1} · ${item.status}`,
                     `正式状态版本 ${item.version}${item.review_due_at ? ` · 复测 ${item.review_due_at}` : ""}`,
                     item.status,
                   ])
@@ -1044,7 +1057,9 @@ export function GrowthPage() {
             {USING_TEST_FIXTURES
               ? "循环边界复测"
               : firstReview
-                ? `节点 ${firstReview.node_id.slice(0, 8)} 复测`
+                ? // FE Issue 6: hide the raw node UUID; the heading just names
+                  // the next due review without the opaque identifier.
+                  "到期复测"
                 : "当前没有到期复测"}
           </h2>
           <p>

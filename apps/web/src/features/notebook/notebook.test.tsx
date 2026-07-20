@@ -134,6 +134,59 @@ describe("controlled notebook", () => {
   });
 });
 
+describe("FE Issue 1 — dynamic task version after submit", () => {
+  const TASK_INSTANCE_ID = "00000000-0000-0000-0000-000000000901";
+
+  // The trace link in NotebookPage must reflect the LIVE taskVersion state,
+  // not a hardcoded constant. We gate the link on the presence of a task
+  // instance (rather than the global test-fixture flag) so that whenever a
+  // real task instance is loaded the link carries its version — and after a
+  // successful submit the page adopts the bumped version returned by
+  // TaskSubmissionResponse, so subsequent run/trace/submit calls do not hit
+  // HTTP 409 with a stale expected_task_version.
+  //
+  // The full live submit-then-bump cycle cannot be exercised here because the
+  // notebook's run/submit handlers short-circuit on USING_TEST_FIXTURES; the
+  // version-adoption line (`setTaskVersion(mastery.data.version)`) is verified
+  // by code inspection. This test guards the dynamic-link gating that makes
+  // the live version reachable at all.
+  it("builds the trace link from the URL version when a task instance is present", () => {
+    saveServerUrl("https://api.example.test");
+    vi.stubGlobal("fetch", vi.fn());
+
+    render(
+      <MemoryRouter
+        initialEntries={[
+          `/lab?task_instance_id=${TASK_INSTANCE_ID}&version=3`,
+        ]}
+      >
+        <StudentRoutes initialSession={liveStudentSession} />
+      </MemoryRouter>,
+    );
+
+    const traceLink = screen.getByRole("link", { name: /打开执行轨迹/ });
+    // The link carries the task instance id and the version from the URL,
+    // rather than the bare "/lab/trace" fixture path.
+    expect(traceLink).toHaveAttribute(
+      "href",
+      `/lab/trace?task_instance_id=${TASK_INSTANCE_ID}&version=3`,
+    );
+  });
+
+  it("falls back to the plain trace page when no task instance is present (fixture/demo)", () => {
+    render(
+      <MemoryRouter initialEntries={["/lab"]}>
+        <StudentRoutes initialSession={liveStudentSession} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("link", { name: /打开执行轨迹/ })).toHaveAttribute(
+      "href",
+      "/lab/trace",
+    );
+  });
+});
+
 describe("trace playback", () => {
   it("steps through deterministic frames and records a prediction", async () => {
     const user = userEvent.setup();

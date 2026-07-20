@@ -234,7 +234,9 @@ function StudentHeader() {
                         role="menuitem"
                         type="button"
                       >
-                        <span>到期复测 · {review.node_id.slice(0, 8)}</span>
+                        {/* FE Issue 6: hide raw node UUID; surface the
+                            human-readable scenario key + due date instead. */}
+                        <span>到期复测</span>
                         <small>
                           场景 {review.scenario_key} · {review.due_at ?? "今天"}
                         </small>
@@ -252,7 +254,7 @@ function StudentHeader() {
                         role="menuitem"
                         type="button"
                       >
-                        <span>到期复测任务 · {task.node_id.slice(0, 8)}</span>
+                        <span>到期复测任务</span>
                         <small>预计 {task.estimated_minutes} 分钟</small>
                       </button>
                     </li>
@@ -268,7 +270,7 @@ function StudentHeader() {
                         role="menuitem"
                         type="button"
                       >
-                        <span>今日学习任务 · {task.node_id.slice(0, 8)}</span>
+                        <span>今日学习任务</span>
                         <small>
                           {task.kind} · 预计 {task.estimated_minutes} 分钟
                         </small>

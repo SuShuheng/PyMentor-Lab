@@ -104,8 +104,17 @@ describe("conversational onboarding", () => {
   });
 
   it("submits mapped answers to the onboarding endpoint and clears saved progress on success", async () => {
+    // FE Issue 4: the page now resolves the current profile version BEFORE
+    // submitting (so a redo sends the live version). For a first-time submit
+    // the profile GET returns 404 -> expected_profile_version stays 0.
     fetchMock
       .mockReset()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(null), {
+          headers: { "Content-Type": "application/json" },
+          status: 404,
+        }),
+      )
       .mockResolvedValueOnce(
         new Response(JSON.stringify(onboardingResponse), {
           headers: { "Content-Type": "application/json" },
@@ -140,15 +149,18 @@ describe("conversational onboarding", () => {
     await user.click(screen.getByRole("button", { name: "提交并生成初始画像" }));
 
     await waitFor(() => {
-      const request = fetchMock.mock.calls[0]?.[0] as Request;
-      expect(request).toBeDefined();
-      expect(request.url).toBe("https://api.example.test/api/v1/profiles/onboarding");
-      expect(request.method).toBe("POST");
-      expect(request.headers.get("Authorization")).toBe("Bearer student-access");
-      expect(request.headers.get("Idempotency-Key")).toMatch(/^onboarding-/);
+      const postRequest = fetchMock.mock.calls
+        .map((call) => call[0] as Request)
+        .find((request) => request.method === "POST");
+      expect(postRequest).toBeDefined();
+      expect(postRequest!.url).toBe("https://api.example.test/api/v1/profiles/onboarding");
+      expect(postRequest!.headers.get("Authorization")).toBe("Bearer student-access");
+      expect(postRequest!.headers.get("Idempotency-Key")).toMatch(/^onboarding-/);
     });
-    const request = fetchMock.mock.calls[0]?.[0] as Request;
-    await expect(request.clone().json()).resolves.toEqual({
+    const postRequest = fetchMock.mock.calls
+      .map((call) => call[0] as Request)
+      .find((request) => request.method === "POST")!;
+    await expect(postRequest.clone().json()).resolves.toEqual({
       answers: {
         prior_experience: "做过完整项目",
         primary_goal: "准备竞赛或项目",
@@ -163,13 +175,75 @@ describe("conversational onboarding", () => {
     await waitFor(() => expect(window.localStorage.getItem("pymentor.onboardingStep")).toBeNull());
   });
 
-  it("surfaces a visible error and keeps progress when the onboarding submission fails", async () => {
-    fetchMock.mockReset().mockResolvedValue(
-      new Response(JSON.stringify({ detail: "画像服务暂时不可用" }), {
-        headers: { "Content-Type": "application/json" },
-        status: 500,
-      }),
+  it("sends the CURRENT profile version when redoing the survey (FE Issue 4)", async () => {
+    // A redo submit must send expected_profile_version = current version (7),
+    // not 0, or BE-018 rejects with a concurrency conflict.
+    fetchMock
+      .mockReset()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(profileSnapshot), {
+          headers: { "Content-Type": "application/json" },
+          status: 200,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(onboardingResponse), {
+          headers: { "Content-Type": "application/json" },
+          status: 200,
+        }),
+      )
+      .mockResolvedValue(
+        new Response(JSON.stringify(profileSnapshot), {
+          headers: { "Content-Type": "application/json" },
+          status: 200,
+        }),
+      );
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/onboarding"]}>
+        <StudentRoutes initialSession={liveStudentSession} />
+      </MemoryRouter>,
     );
+
+    await user.click(screen.getByRole("button", { name: "做过完整项目" }));
+    await user.click(screen.getByRole("button", { name: "准备竞赛或项目" }));
+    await user.click(screen.getByRole("button", { name: "阅读错误信息" }));
+    await user.click(screen.getByRole("button", { name: "可运行代码" }));
+    await user.click(screen.getByRole("button", { name: "4 小时以上" }));
+    await user.click(screen.getByRole("button", { name: "提交并生成初始画像" }));
+
+    await waitFor(() => {
+      const postRequest = fetchMock.mock.calls
+        .map((call) => call[0] as Request)
+        .find((request) => request.method === "POST");
+      expect(postRequest).toBeDefined();
+    });
+    const postRequest = fetchMock.mock.calls
+      .map((call) => call[0] as Request)
+      .find((request) => request.method === "POST")!;
+    await expect(postRequest.clone().json()).resolves.toMatchObject({
+      expected_profile_version: profileSnapshot.version,
+    });
+  });
+
+  it("surfaces a visible error and keeps progress when the onboarding submission fails", async () => {
+    // FE Issue 4: the page resolves the profile version first; let that
+    // succeed (404 -> version 0) so the POST is actually attempted, then
+    // have the POST itself fail with 500.
+    fetchMock
+      .mockReset()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(null), {
+          headers: { "Content-Type": "application/json" },
+          status: 404,
+        }),
+      )
+      .mockResolvedValue(
+        new Response(JSON.stringify({ detail: "画像服务暂时不可用" }), {
+          headers: { "Content-Type": "application/json" },
+          status: 500,
+        }),
+      );
     const user = userEvent.setup();
     render(
       <MemoryRouter initialEntries={["/onboarding"]}>
@@ -268,5 +342,33 @@ describe("evidence-linked profile", () => {
       profile_version_id: profileSnapshot.id,
       reason: "这次循环练习未计入画像。",
     });
+  });
+
+  it("offers a 更新学习问卷 entry that returns to the onboarding flow (FE Issue 4)", async () => {
+    render(
+      <MemoryRouter initialEntries={["/growth/profile"]}>
+        <StudentRoutes initialSession={liveStudentSession} />
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole("figure", { name: "八维能力画像" });
+    const redoLink = screen.getByRole("link", { name: "更新学习问卷" });
+    expect(redoLink).toBeVisible();
+    expect(redoLink).toHaveAttribute("href", "/onboarding");
+  });
+
+  it("hides the raw profile UUID from students (FE Issue 6)", async () => {
+    render(
+      <MemoryRouter initialEntries={["/growth/profile"]}>
+        <StudentRoutes initialSession={liveStudentSession} />
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole("figure", { name: "八维能力画像" });
+    // The profile snapshot carries a UUID id; it must never appear as visible
+    // text. The version number and the human-readable evidence id are fine.
+    expect(screen.queryByText(profileSnapshot.id)).not.toBeInTheDocument();
+    // The version card still exposes the version (non-UUID) for transparency.
+    expect(screen.getByText("v7")).toBeInTheDocument();
   });
 });

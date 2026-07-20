@@ -442,6 +442,53 @@ textarea {
   min-height: auto;
 }
 
+/*
+ * FE Issue 7: the SettingsPage "当前会话" section was a plain <dl> with no
+ * visual rhythm. Promote it to a labeled value-pair grid consistent with the
+ * other admin panels (same border + spacing + label color as the data tables).
+ * The grid auto-flows so a 5-row session reads as a tidy two-column key/value
+ * card on wide viewports and stacks on narrow ones.
+ */
+.admin-session-card {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1px;
+  margin: 16px 0 0;
+  background: #e5e7eb; /* gap hairlines between cells */
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.admin-session-card > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  background: #fff;
+}
+
+.admin-session-card dt {
+  color: #6b7280;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-session-card dd {
+  margin: 0;
+  color: #111;
+  font-size: 13px;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.admin-session-card dd code {
+  font-size: 12px;
+  font-weight: 400;
+  word-break: break-all;
+}
+
 .admin-panel__heading,
 .admin-table-toolbar,
 .admin-pagination,

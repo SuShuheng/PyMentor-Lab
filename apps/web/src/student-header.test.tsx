@@ -90,8 +90,11 @@ describe("student header button wiring (Stage C)", () => {
     await user.click(bell);
 
     const panel = await screen.findByRole("menu", { name: "通知中心" });
-    // The due review node prefix is rendered as a clickable notification item.
-    expect(panel).toHaveTextContent("00000000");
+    // FE Issue 6: the raw node UUID must NOT appear in the notification text.
+    // The student sees a human-readable "到期复测" label plus the scenario key.
+    expect(panel).not.toHaveTextContent("00000000");
+    expect(panel).not.toHaveTextContent("0000000000a1");
+    expect(panel).toHaveTextContent("loop-off-by-one");
     expect(
       await within(panel).findByRole("menuitem", { name: /到期复测/ }),
     ).toBeVisible();
