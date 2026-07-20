@@ -66,7 +66,11 @@ const ZIP_PATH = join(BACKEND_DEPLOY_DIR, ZIP_NAME);
 const INSTALLER_ASSET_ZIP = join(INSTALLER_ASSETS_DIR, 'backend-deploy.zip');
 
 // Source directories/files copied into code/. Directories are recursive.
-const SOURCE_DIRS = ['backend', 'workers', 'packages', 'knowledge', 'infra', 'sandbox'];
+// `apps/` is REQUIRED: the frontend Dockerfiles (web + admin) COPY apps/
+// to build the student + admin frontends. The desktop app source is also
+// included for completeness, but its build outputs (out/, .vite/, build/)
+// are filtered out by SKIP_SEGMENTS below.
+const SOURCE_DIRS = ['apps', 'backend', 'workers', 'packages', 'knowledge', 'infra', 'sandbox'];
 const SOURCE_FILES = [
     'pyproject.toml',
     'pnpm-workspace.yaml',
@@ -104,6 +108,7 @@ const SKIP_SEGMENTS = new Set([
     'dist',
     'build',
     'out',
+    '.vite',  // Vite build output (apps/*/.vite/build/, apps/*/.vite/renderer/)
     'coverage',
     '.nyc_output',
     '.eslintcache',
