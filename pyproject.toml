@@ -4,7 +4,7 @@ version = "0.0.0"
 description = "PyMentor Lab — higher-education Python learning system (competition release V1.0)."
 readme = "README.md"
 requires-python = ">=3.13"
-license = { text = "CC-BY-NC-4.0" }
+license = { text = "Proprietary (All Rights Reserved)" }
 authors = [{ name = "PyMentor Lab Team" }]
 
 # Runtime dependencies. SQLAlchemy/psycopg moved to runtime in BE-002 (identity

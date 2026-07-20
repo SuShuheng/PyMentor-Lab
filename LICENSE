@@ -1,0 +1,73 @@
+PyMentor Lab — Proprietary License (All Rights Reserved)
+
+Copyright © 2026 PyMentor Lab Team. All rights reserved.
+
+This software and its associated source code, documentation, course assets,
+knowledge graph, design materials, and compiled artifacts (collectively, the
+"Software") are the proprietary and confidential work of the PyMentor Lab Team.
+
+By accessing, cloning, downloading, viewing, or otherwise obtaining a copy of
+the Software, you agree to be bound by the terms below.
+
+----------------------------------------------------------------------
+
+1. NO OPEN-SOURCE RIGHTS
+
+   The Software is NOT open source. The source is published to a private
+   repository for the sole purpose of evaluation by the competition judging
+   panel, authorized collaborators, and the project maintainers. No license
+   is granted under any open-source definition (including the OSI Open Source
+   Definition), and no rights are granted to redistribute, fork, mirror, or
+   re-publish the Software under any open-source license.
+
+2. NO COMMERCIAL USE
+
+   Commercial use of the Software, in whole or in part, is strictly
+   prohibited. "Commercial use" includes, without limitation:
+     - Selling, licensing, sublicensing, renting, or leasing the Software;
+     - Using the Software to provide a paid product, service, or platform;
+     - Incorporating the Software into any product or offering that generates
+       revenue, directly or indirectly;
+     - Internal business use that substitutes for a commercial product.
+
+3. LIMITED PERMITTED USE
+
+   The Software may be used ONLY for:
+     (a) review, grading, and evaluation by the official competition judges;
+     (b) non-commercial academic teaching and learning within an accredited
+         higher-education institution, for the 2026 competition cycle; and
+     (c) internal development by the PyMentor Lab Team and its authorized
+         collaborators.
+
+   No rights are granted beyond the express limited uses above.
+
+4. NO MODIFICATION OR REDISTRIBUTION
+
+   You may NOT modify, adapt, translate, create derivative works of, merge,
+   sublicense, distribute, publish, host, or transmit the Software, in source
+   or binary form, without prior written permission from the PyMentor Lab Team.
+
+5. NO WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL
+   THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING
+   FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+   DEALINGS IN THE SOFTWARE.
+
+6. RESERVATION OF RIGHTS
+
+   All rights not expressly granted herein are reserved by the PyMentor Lab
+   Team. Any use not specifically authorized in writing is a violation of this
+   License and may constitute a breach of intellectual-property rights.
+
+----------------------------------------------------------------------
+
+For permission requests, contact the PyMentor Lab Team through the official
+competition channel.
+
+Third-party dependencies retain their original licenses; their notices belong
+in the `NOTICE` file. This License applies only to the PyMentor Lab Software
+itself.
