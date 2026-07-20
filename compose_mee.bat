@@ -44,13 +44,28 @@ if errorlevel 1 (
 
 REM 1. Generate icon FIRST (required by make:win + Inno Setup)
 echo [1/6] Generating brand icon (required before EXE build)...
-if not exist "%ROOT%%PYTHON%" (
-    echo ERROR: %PYTHON% not found. Install Python 3.13 + Pillow first:
-    echo        %PYTHON% -m pip install Pillow
-    set "EXITCODE=1"
-    goto :end
+REM Ensure Python venv exists (uv creates it without pip; use uv for deps)
+if not exist "%ROOT%.venv\Scripts\python.exe" (
+    echo Creating Python venv via uv...
+    call uv sync --frozen --extra dev
+    if errorlevel 1 (
+        echo ERROR: uv sync failed. Is uv installed?
+        set "EXITCODE=1"
+        goto :end
+    )
 )
-"%ROOT%%PYTHON%" "%ROOT%infra\icons\generate-icons.py"
+REM Ensure Pillow is installed (icon generation dependency)
+"%ROOT%.venv\Scripts\python.exe" -c "import PIL" 2>nul
+if errorlevel 1 (
+    echo Installing Pillow for icon generation...
+    call uv pip install Pillow
+    if errorlevel 1 (
+        echo ERROR: failed to install Pillow. Try manually: uv pip install Pillow
+        set "EXITCODE=1"
+        goto :end
+    )
+)
+"%ROOT%.venv\Scripts\python.exe" "%ROOT%infra\icons\generate-icons.py"
 if errorlevel 1 (
     echo ERROR: icon generation failed
     set "EXITCODE=1"

@@ -46,6 +46,15 @@ router = APIRouter(prefix="/api/v1/practice", tags=["practice"])
 #: deterministic engine downstream; this API never advances mastery on it.
 SELF_TEST_EVENT_TYPE = "SELF_TEST_ATTEMPTED"
 
+#: Question kinds surfaced by ``GET /nodes/{id}/questions``. Only
+#: ``MULTIPLE_CHOICE`` is machine-scorable by ``POST /attempt`` (it is the only
+#: kind whose ``answer_schema`` carries a ``const`` correct option). Returning
+#: CODE_* kinds here would let the front-end fetch a question the attempt
+#: endpoint must then reject with 422 ("not machine-scorable"), producing a
+#: blank practice page for nodes whose only templates are CODE_WRITING (issue 5).
+#: The front-end renders an empty list as "暂无选择型自测题，请通过代码实验练习".
+MACHINE_SCORABLE_KINDS: frozenset[str] = frozenset({PracticeQuestionKind.MULTIPLE_CHOICE.value})
+
 
 def _load_node(db: Session, node_id: UUID) -> KnowledgeNode:
     """Load a knowledge node or 404.
@@ -100,10 +109,15 @@ async def list_node_questions(
             .order_by(KnowledgeQuestionTemplate.created_at, KnowledgeQuestionTemplate.id)
         )
     )
+    # Surface only machine-scorable kinds. CODE_* templates belong to the code
+    # submission flow; including them here makes the FE fetch a question that
+    # ``POST /attempt`` rejects with 422 (issue 5). An empty result is the
+    # intended signal that the node has no choice-type self-test.
+    scorable = [t for t in templates if t.kind in MACHINE_SCORABLE_KINDS]
     return PracticeQuestionSet(
         node_id=str(node.id),
         course_id=str(node.course_id),
-        questions=[_question_view(template) for template in templates],
+        questions=[_question_view(template) for template in scorable],
     )
 
 

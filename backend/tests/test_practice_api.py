@@ -151,6 +151,143 @@ def _answer(template: KnowledgeQuestionTemplate) -> str:
     return template.answer_schema["const"]
 
 
+def _seed_node_with_mixed_questions(
+    db_session: Session,
+) -> tuple[KnowledgeNode, list[KnowledgeQuestionTemplate]]:
+    """Seed a node with one MULTIPLE_CHOICE plus one CODE_WRITING template.
+
+    Mirrors the canonical course, where every node carries a CODE_WRITING
+    template alongside choice-type templates. The GET endpoint must hide the
+    CODE_WRITING row so the FE never fetches a question the attempt flow
+    rejects with 422 (issue 5).
+    """
+
+    from app.models import CourseChapter
+
+    course = db_session.get(CourseCatalog, COURSE_ID)
+    assert course is not None, "canonical course must be seeded by conftest"
+    chapter = db_session.scalar(select(CourseChapter).where(CourseChapter.course_id == COURSE_ID))
+    assert chapter is not None, "canonical course must have chapters seeded"
+
+    policy = KnowledgeMasteryPolicy(
+        id=uuid4(),
+        name=f"practice-mixed-policy-{uuid4().hex}",
+        pass_threshold=0.7,
+        stable_attempts=2,
+        max_support_level=1,
+        min_transfer_score=0.6,
+        review_intervals_days=[7, 30],
+        content_version=course.content_version,
+    )
+    db_session.add(policy)
+    db_session.flush()
+
+    node = KnowledgeNode(
+        id=uuid4(),
+        course_id=COURSE_ID,
+        chapter_id=chapter.id,
+        title="Practice mixed-kind node",
+        learning_objectives=["obj-mixed"],
+        prerequisites=[],
+        misconceptions=[],
+        examples=[],
+        diagnostic_items=[],
+        practice_templates=[],
+        mastery_policy_id=policy.id,
+        source_ids=[],
+        content_version=course.content_version,
+    )
+    db_session.add(node)
+    db_session.flush()
+
+    mc = KnowledgeQuestionTemplate(
+        id=uuid4(),
+        node_id=node.id,
+        kind="MULTIPLE_CHOICE",
+        prompt_template="Pick A.",
+        parameter_schema={},
+        answer_schema={"type": "string", "const": "A"},
+        test_case_ids=[],
+        source_ids=[],
+        content_version=course.content_version,
+    )
+    code = KnowledgeQuestionTemplate(
+        id=uuid4(),
+        node_id=node.id,
+        kind="CODE_WRITING",
+        prompt_template="Write a function that returns 42.",
+        parameter_schema={},
+        # CODE_WRITING has no const correct option; it is scored via the code
+        # submission flow, not the practice attempt endpoint.
+        answer_schema={"type": "object"},
+        test_case_ids=[],
+        source_ids=[],
+        content_version=course.content_version,
+    )
+    db_session.add_all([mc, code])
+    db_session.flush()
+    return node, [mc, code]
+
+
+def _seed_node_with_only_code_writing(
+    db_session: Session,
+) -> tuple[KnowledgeNode, KnowledgeQuestionTemplate]:
+    """Seed a node whose only template is CODE_WRITING (issue 5 worst case)."""
+
+    from app.models import CourseChapter
+
+    course = db_session.get(CourseCatalog, COURSE_ID)
+    assert course is not None, "canonical course must be seeded by conftest"
+    chapter = db_session.scalar(select(CourseChapter).where(CourseChapter.course_id == COURSE_ID))
+    assert chapter is not None, "canonical course must have chapters seeded"
+
+    policy = KnowledgeMasteryPolicy(
+        id=uuid4(),
+        name=f"practice-code-only-policy-{uuid4().hex}",
+        pass_threshold=0.7,
+        stable_attempts=2,
+        max_support_level=1,
+        min_transfer_score=0.6,
+        review_intervals_days=[7, 30],
+        content_version=course.content_version,
+    )
+    db_session.add(policy)
+    db_session.flush()
+
+    node = KnowledgeNode(
+        id=uuid4(),
+        course_id=COURSE_ID,
+        chapter_id=chapter.id,
+        title="Practice code-only node",
+        learning_objectives=["obj-code-only"],
+        prerequisites=[],
+        misconceptions=[],
+        examples=[],
+        diagnostic_items=[],
+        practice_templates=[],
+        mastery_policy_id=policy.id,
+        source_ids=[],
+        content_version=course.content_version,
+    )
+    db_session.add(node)
+    db_session.flush()
+
+    code = KnowledgeQuestionTemplate(
+        id=uuid4(),
+        node_id=node.id,
+        kind="CODE_WRITING",
+        prompt_template="Write a function that returns 42.",
+        parameter_schema={},
+        answer_schema={"type": "object"},
+        test_case_ids=[],
+        source_ids=[],
+        content_version=course.content_version,
+    )
+    db_session.add(code)
+    db_session.flush()
+    return node, code
+
+
 def test_get_questions_returns_node_templates(
     client: TestClient, db_session: Session, student_auth
 ) -> None:
@@ -421,3 +558,55 @@ def test_attempt_records_trace_id(client: TestClient, db_session: Session, stude
     # created_at is timezone-aware ( EvidenceEvent stores tz-aware timestamps ).
     assert evidence.created_at.tzinfo is not None
     assert evidence.created_at <= datetime.now(UTC)
+
+
+# --------------------------------------------------------------------------- #
+# Issue 5: GET /nodes/{id}/questions filters out non-machine-scorable kinds.
+# --------------------------------------------------------------------------- #
+
+
+def test_get_questions_filters_out_code_writing(
+    client: TestClient, db_session: Session, student_auth
+) -> None:
+    """Regression for issue 5: CODE_WRITING must NOT appear in the GET response.
+
+    Only MULTIPLE_CHOICE is machine-scorable by ``POST /attempt``. Surfacing
+    CODE_WRITING here makes the FE fetch a question the attempt endpoint then
+    rejects with 422, producing a blank practice page.
+    """
+
+    _, token = student_auth
+    node, templates = _seed_node_with_mixed_questions(db_session)
+    mc_template = next(t for t in templates if t.kind == "MULTIPLE_CHOICE")
+    code_template = next(t for t in templates if t.kind == "CODE_WRITING")
+
+    response = client.get(f"/api/v1/practice/nodes/{node.id}/questions", headers=_headers(token))
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    returned_ids = {q["id"] for q in body["questions"]}
+    # The MULTIPLE_CHOICE template is returned; the CODE_WRITING one is hidden.
+    assert str(mc_template.id) in returned_ids
+    assert str(code_template.id) not in returned_ids
+    assert len(body["questions"]) == 1
+    assert body["questions"][0]["kind"] == "MULTIPLE_CHOICE"
+
+
+def test_get_questions_returns_empty_list_when_only_code_writing(
+    client: TestClient, db_session: Session, student_auth
+) -> None:
+    """When a node has ZERO scorable templates, the GET returns an empty list.
+
+    The FE renders this as a graceful "暂无选择型自测题，请通过代码实验练习"
+    instead of fetching a CODE_WRITING question and then failing on submit.
+    """
+
+    _, token = student_auth
+    node, _code_template = _seed_node_with_only_code_writing(db_session)
+
+    response = client.get(f"/api/v1/practice/nodes/{node.id}/questions", headers=_headers(token))
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["node_id"] == str(node.id)
+    assert body["questions"] == []
