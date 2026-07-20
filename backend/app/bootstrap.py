@@ -295,11 +295,13 @@ def seed_course_tasks(db: Session) -> int:
     demo guest's single ``TaskDefinition`` was the only one seeded.
 
     Test policy: ``entrypoint.kind = "SCRIPT"`` with one visible case whose
-    ``expected_stdout = ".*"`` and ``comparison = "MATCHES"``. The sandbox
-    harness evaluates ``re.fullmatch(".*", stdout)`` which matches any output
-    (including empty), so the case passes iff the script runs without a runtime
-    error. This is the minimum viable practice task and avoids per-node
-    function-name contracts.
+    ``expected_stdout = "(?s).*"`` and ``comparison = "MATCHES"``. The sandbox
+    harness evaluates ``re.fullmatch(pattern, stdout)``; the inline ``(?s)``
+    DOTALL flag is required because ``print()`` emits a trailing ``\n`` that
+    ``.`` would not otherwise match under :func:`re.fullmatch`. The pattern
+    matches any output (including empty), so the case passes iff the script
+    runs without a runtime error. This is the minimum viable practice task and
+    avoids per-node function-name contracts.
 
     Idempotent: nodes that already have a ``TaskDefinition`` are skipped.
     Returns the number of new definitions created in this run.
@@ -312,15 +314,11 @@ def seed_course_tasks(db: Session) -> int:
     )
     if course is None:
         return 0
-    nodes = list(
-        db.scalars(select(KnowledgeNode).where(KnowledgeNode.course_id == course.id))
-    )
+    nodes = list(db.scalars(select(KnowledgeNode).where(KnowledgeNode.course_id == course.id)))
     tenant = get_or_create_tenant(db, slug="default", name="Default Tenant")
     created = 0
     for node in nodes:
-        existing = db.scalar(
-            select(TaskDefinition).where(TaskDefinition.node_id == node.id)
-        )
+        existing = db.scalar(select(TaskDefinition).where(TaskDefinition.node_id == node.id))
         if existing is not None:
             continue
         title = node.title or f"练习：{node.id}"
@@ -328,16 +326,10 @@ def seed_course_tasks(db: Session) -> int:
         examples = list(node.examples or [])
         prompt_parts = [f"# {title}\n"]
         if objectives:
-            prompt_parts.append(
-                "学习目标：\n" + "\n".join(f"- {o}" for o in objectives)
-            )
+            prompt_parts.append("学习目标：\n" + "\n".join(f"- {o}" for o in objectives))
         if examples:
-            prompt_parts.append(
-                "示例：\n" + "\n".join(f">>> {e}" for e in examples)
-            )
-        prompt_parts.append(
-            "请在下方编写一段 Python 代码，演示本节点的核心概念并打印结果。"
-        )
+            prompt_parts.append("示例：\n" + "\n".join(f">>> {e}" for e in examples))
+        prompt_parts.append("请在下方编写一段 Python 代码，演示本节点的核心概念并打印结果。")
         prompt = "\n\n".join(prompt_parts)
         definition = TaskDefinition(
             tenant_id=tenant.id,
@@ -359,7 +351,7 @@ def seed_course_tasks(db: Session) -> int:
                     "visible": [
                         {
                             "id": "runs-without-error",
-                            "expected_stdout": ".*",
+                            "expected_stdout": "(?s).*",
                             "comparison": "MATCHES",
                             "transfer": False,
                         }
