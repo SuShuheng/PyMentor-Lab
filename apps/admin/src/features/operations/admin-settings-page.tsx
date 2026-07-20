@@ -197,7 +197,10 @@ export function SettingsPage() {
             <h2>当前会话</h2>
           </div>
         </div>
-        <dl>
+        {/* FE Issue 7: styled as a labeled value-pair card via
+            .admin-session-card (see apps/admin/src/index.css) instead of a
+            bare <dl>, for visual consistency with the other admin panels. */}
+        <dl className="admin-session-card">
           <div>
             <dt>显示名</dt>
             <dd>{session?.displayName ?? "-"}</dd>

@@ -269,8 +269,11 @@ export function ResourcesPage() {
       </div>
 
       <div aria-label="资源生成进度" className="resource-progress" role="status">
-        <span>
-          <Sparkle size={18} weight="fill" /> 资源包 {job?.id ?? "JOB-RES-2407"}
+        {/* FE Issue 6: never surface the raw resource-job UUID. The progress
+            block already shows ready count + status; the opaque id lives only
+            in `data-job-id` for client-side tracing, not as visible text. */}
+        <span data-job-id={job?.id ?? undefined}>
+          <Sparkle size={18} weight="fill" /> 资源包 {USING_TEST_FIXTURES ? "JOB-RES-2407" : "服务端资源"}
         </span>
         <div>
           <progress aria-label="资源生成完成度" max={5} value={readyCount} />
@@ -403,7 +406,16 @@ export function ResourceDetailPage() {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const content = await response.text();
         if (!active) return;
-        setPublishedMimeType(response.headers.get("Content-Type")?.split(";")[0] ?? "text/plain");
+        // FE Issue 3: strip any `; charset=...` parameters and trim so the
+        // renderer's `text/markdown` / `application/json` / etc. branch fires.
+        // Without trimming, a header like `text/markdown; charset=utf-8` would
+        // still match (the space follows the semicolon), but a leading space
+        // from an unusual header value would silently fall through to the raw
+        // branch. Defensive trim keeps the MIME-type contract robust.
+        setPublishedMimeType(
+          (response.headers.get("Content-Type") ?? "text/plain").split(";")[0]?.trim() ??
+            "text/plain",
+        );
         // The backend returns the SHA-256 object digest in the ETag header,
         // quoted as "<hex>". Surface it as integrity metadata (Stage B
         // problem 8) rather than the primary body.
@@ -458,11 +470,17 @@ export function ResourceDetailPage() {
             <p>内容来自私有对象存储；服务端在返回前重新校验 SHA-256 摘要与发布状态。</p>
           </div>
         </div>
-        <article aria-label="已发布资源正文" className="resource-lesson">
+        <article
+          aria-label="已发布资源正文"
+          className="resource-lesson"
+          // FE Issue 6: keep the opaque resource UUID out of visible text;
+          // surface it only as a data attribute for client-side tracing.
+          data-resource-id={resourceId ?? undefined}
+        >
           <header>
             <div>
               <p className="eyebrow">{publishedMimeType}</p>
-              <h2>资源 {resourceId}</h2>
+              <h2>已发布学习资源</h2>
             </div>
             <span className="resource-status">
               <ShieldCheck size={15} /> 已发布并通过完整性校验

@@ -57,7 +57,16 @@ export function NotebookPage() {
   const [searchParams] = useSearchParams();
   const view = searchParams.get("view");
   const taskInstanceId = searchParams.get("task_instance_id");
-  const taskVersion = Number(searchParams.get("version") ?? "0");
+  // FE Issue 1: the task instance version can bump after a successful submit
+  // (the backend hands back the new `version` in TaskSubmissionResponse).
+  // Reading it once from the URL means subsequent run/trace/submit calls would
+  // send a stale `expected_task_version` and hit HTTP 409. We seed state from
+  // the URL (which carries the startTask version) and refresh it from every
+  // submit response so all subsequent calls — including the trace link — use
+  // the live version.
+  const [taskVersion, setTaskVersion] = useState(() =>
+    Number(searchParams.get("version") ?? "0"),
+  );
   const [code, setCode] = useState(starterCode);
   const [runStatus, setRunStatus] = useState<RunStatus>(
     view === "long-output" ? "success" : "idle",
@@ -225,6 +234,11 @@ export function NotebookPage() {
         setOperationError(safeApiMessage(mastery.error));
         return;
       }
+      // FE Issue 1: a successful submit bumps the task instance version. The
+      // response carries the new `version`; we adopt it so the next run /
+      // hint / trace request sends the correct `expected_task_version`
+      // instead of the stale URL value (which would 409).
+      setTaskVersion(mastery.data.version);
       setSubmissionStatus("submitted");
       setSubmissionMessage(
         `提交成功 · 掌握状态 ${mastery.data.status}${
@@ -270,9 +284,14 @@ export function NotebookPage() {
           className="profile-secondary-button notebook-trace-link"
           state={{ sourceCode: code }}
           to={
-            USING_TEST_FIXTURES
-              ? "/lab/trace"
-              : `/lab/trace?task_instance_id=${encodeURIComponent(taskInstanceId ?? "")}&version=${taskVersion}`
+            // FE Issue 1: gate on the presence of a task instance rather than
+            // the global test-fixture flag, so the trace link reflects the
+            // LIVE taskVersion state even in test mode whenever a real task
+            // instance is loaded. Without a task instance (demo/fixture) we
+            // fall back to the plain trace page.
+            taskInstanceId
+              ? `/lab/trace?task_instance_id=${encodeURIComponent(taskInstanceId)}&version=${taskVersion}`
+              : "/lab/trace"
           }
         >
           <ClockCounterClockwise size={16} /> 打开执行轨迹

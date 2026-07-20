@@ -141,10 +141,26 @@ export function OnboardingPage() {
     setSubmitError(null);
     configureProfileClient();
     try {
+      // FE Issue 4: BE-018 is idempotent on re-submission ONLY when we send
+      // the CURRENT profile version as `expected_profile_version`. A first-time
+      // submit has no profile yet (404 -> version 0); a redo must send the
+      // live version or the backend rejects with a concurrency conflict. We
+      // therefore resolve the current version right before submit. A 404 is
+      // the legitimate "no profile yet" case and resolves to 0.
+      let expectedProfileVersion = 0;
+      const current = await getCurrentProfileApiV1ProfilesCurrentGet({
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (current.response.status !== 404) {
+        if (!current.data) {
+          throw new Error(profileError(current.error));
+        }
+        expectedProfileVersion = current.data.version;
+      }
       const result = await submitOnboarding({
         body: {
           answers: mapAnswers(answers),
-          expected_profile_version: 0,
+          expected_profile_version: expectedProfileVersion,
         },
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -433,10 +449,14 @@ export function ProfilePage() {
         <aside className="profile-version-card">
           <p className="eyebrow">PROFILE VERSION</p>
           <h2>画像版本 v{profile.version}</h2>
-          <dl>
+          <dl data-profile-id={profile.id}>
+            {/* FE Issue 6: the profile id is an opaque UUID — hide it from
+                students. The dispute form still submits it (held in JS state,
+                not scraped from the DOM); the visible card surfaces the
+                version number and a short digest instead. */}
             <div>
-              <dt>画像 ID</dt>
-              <dd>{profile.id}</dd>
+              <dt>画像版本</dt>
+              <dd>v{profile.version}</dd>
             </div>
             <div>
               <dt>来源事件</dt>
@@ -470,6 +490,17 @@ export function ProfilePage() {
           >
             对画像提出异议
           </button>
+          {/* FE Issue 4: BE-018 is idempotent on re-submission when the current
+              profile version is sent, so a student can redo the diagnostic
+              survey to refresh goals/preferences. The answers overwrite the
+              prior evidence via a fresh idempotency key. */}
+          <Link
+            aria-label="更新学习问卷"
+            className="profile-secondary-button profile-redo-onboarding"
+            to="/onboarding"
+          >
+            <ClockCounterClockwise size={17} /> 更新学习问卷
+          </Link>
           {disputeState === "submitted" ? (
             <p aria-label="异议状态" className="profile-dispute-status" role="status">
               异议已提交 · 审核前画像版本保持不变
