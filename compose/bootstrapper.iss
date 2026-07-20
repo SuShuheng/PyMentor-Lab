@@ -464,7 +464,17 @@ begin
   LogFile := ExpandConstant('{tmp}\deploy.log');
   MarkerFile := BackendDir + '\.deploy-done.marker';
 
-  // Clear stale artifacts from any prior run.
+  // Disable the Back + Next buttons while the deploy runs. AppProcessMessage
+  // pumps the UI queue during the long tail loop, which would otherwise let
+  // the user click Next repeatedly (re-entering this handler) or Back (out
+  // of the deploy mid-flight). Restore on exit via a try/finally.
+  WizardForm.NextButton.Enabled := False;
+  WizardForm.BackButton.Enabled := False;
+  try
+
+  // Clear stale artifacts from any prior run. The marker is critical: if a
+  // prior attempt left one, the tail loop would detect "completion"
+  // immediately and report a stale exit code.
   DeleteFile(LogFile);
   DeleteFile(MarkerFile);
 
@@ -524,23 +534,46 @@ begin
   end;
   AppProcessMessage;
 
-  // 4. Launch deploy.ps1 hidden, redirect all output to LogFile. -ForcePort is
-  //    implied by deploy.ps1's non-interactive guard, but pass it explicitly
-  //    for clarity. ewNoWait returns immediately so we can tail the log.
+  // 4. Launch deploy.ps1 hidden, redirect all output to LogFile.
+  //
+  //    CRITICAL: powershell.exe must be invoked via cmd.exe so the shell
+  //    interprets the >logfile 2>&1 redirection. Calling powershell.exe
+  //    directly via ShellExec passes >logfile as a PowerShell argument
+  //    (where it's silently ignored or errors out), so no log is ever
+  //    written and the deploy appears to "hang" with no output.
+  //
+  //    We use -File (not -Command) because -File handles Unicode script
+  //    paths natively (the user's Documents folder may be localized,
+  //    e.g. F:\文档\...). The > and 2>&1 tokens sit OUTSIDE the
+  //    powershell.exe arguments, so cmd.exe parses them as redirection.
+  //
+  //    We use Exec() with ewNoWait so the call returns immediately and
+  //    the tail loop below can stream the log to the memo. deploy.ps1's
+  //    own non-interactive guard ($Host.UI.RawUI.WindowVisible) auto-
+  //    enables -ForcePort because the process has no visible console.
   DeployMemo.Lines.Add('==> 启动 deploy.ps1（构建镜像 + 端口检查 + 启动 + 健康检查）...');
   DeployMemo.Lines.Add('    日志: ' + LogFile);
   DeployMemo.Lines.Add('');
   AppProcessMessage;
 
-  PsCmd := '-NoProfile -ExecutionPolicy Bypass -File "' + BackendDir + '\deploy.ps1" -ForcePort *>"' + LogFile + '" 2>&1';
-  if not ShellExec('open', 'powershell.exe', PsCmd, BackendDir, SW_HIDE, ewNoWait, ResultCode) then begin
-    DeployMemo.Lines.Add('    ERR  无法启动 PowerShell。');
+  // cmd /c wraps powershell.exe -File. The double quotes around the script
+  // path survive cmd's parser; the > logfile 2>&1 is interpreted by cmd.
+  PsCmd := '/c powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' + BackendDir + '\deploy.ps1" -ForcePort > "' + LogFile + '" 2>&1';
+  if not Exec(ExpandConstant('{cmd}'), PsCmd, BackendDir, SW_HIDE, ewNoWait, ResultCode) then begin
+    DeployMemo.Lines.Add('    ERR  无法启动 PowerShell (Exec 失败)。');
     Exit;
   end;
+  DeployMemo.Lines.Add('    OK   PowerShell 已启动（后台运行，输出重定向到日志）。');
+  AppProcessMessage;
 
   // 5. Tail loop: poll the log file for new bytes, surface them on the memo,
   //    and watch for the marker file that deploy.ps1 writes on completion.
   //    Cap at ~2 hours (24000 * 300ms) as a safety net against runaway loops.
+  //
+  //    Diagnostic: if after ~10s neither the log file nor the marker file
+  //    has appeared, the powershell.exe launch itself failed (bad cmd line,
+  //    execution policy, missing exe). Surface a clear error rather than
+  //    spinning for 2 hours.
   LastLen := 0;
   Finished := False;
   Iterations := 0;
@@ -548,6 +581,18 @@ begin
     AppendMemoDelta(LastLen, LogFile);
     AppProcessMessage;
     if FileExists(MarkerFile) then Finished := True;
+    // After ~30 iterations (10s), if PowerShell produced NO log at all and
+    // no marker, something is wrong with the launch itself.
+    if (Iterations = 30) and (not FileExists(LogFile)) and (not FileExists(MarkerFile)) then begin
+      DeployMemo.Lines.Add('');
+      DeployMemo.Lines.Add('    ERR  PowerShell 启动后 10 秒未产生任何输出。');
+      DeployMemo.Lines.Add('         可能原因：执行策略限制、cmd 路径错误、或权限不足。');
+      DeployMemo.Lines.Add('         请手动运行以诊断：');
+      DeployMemo.Lines.Add('           cd "' + BackendDir + '"');
+      DeployMemo.Lines.Add('           powershell.exe -File deploy.ps1 -ForcePort');
+      Result := 99;
+      Exit;
+    end;
     Sleep(300);
     Iterations := Iterations + 1;
   end;
@@ -562,6 +607,14 @@ begin
   end else begin
     DeployMemo.Lines.Add('    ERR  deploy.ps1 未在 2 小时内完成，或 marker 文件缺失。');
     Result := 99;
+  end;
+
+  finally
+    // Always restore the navigation buttons, even on early Exit paths or
+    // uncaught exceptions. The caller (NextButtonClick) decides whether to
+    // advance based on the returned exit code.
+    WizardForm.NextButton.Enabled := True;
+    WizardForm.BackButton.Enabled := True;
   end;
 end;
 
