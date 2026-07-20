@@ -39,7 +39,17 @@
   <body>
     <main>
       <h1>PyMentor Lab</h1>
-      <p>学生 Web 地址尚未配置。请由部署管理员设置受信任的 PYMENTOR_DESKTOP_WEB_URL 后重新启动。</p>
+      <p>
+        学生 Web 地址尚未配置。请运行
+        <strong>PyMentorLab-Bootstrapper.exe</strong>
+        完成后端部署，引导程序会自动将
+        <code>PYMENTOR_DESKTOP_WEB_URL</code>
+        设置为本地学生端地址（<code>http://127.0.0.1:4173</code>），随后重启本应用即可。
+      </p>
+      <p style="margin-top: 1rem; font-size: 0.9rem; color: #555;">
+        如已通过其他方式部署，可手动设置系统环境变量：<br />
+        <code>PYMENTOR_DESKTOP_WEB_URL=https://your-student-web.example.edu</code>
+      </p>
     </main>
   </body>
 </html>

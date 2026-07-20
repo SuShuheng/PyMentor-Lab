@@ -42,8 +42,13 @@ export const createTrustedContentPolicy = (options: {
     : development
       ? options.devServerUrl
       : (options.localUrl ?? "pymentor://app/index.html");
+  // allowLoopbackHttp is always permitted: a configured URL may legitimately
+  // point at a locally-deployed backend (http://localhost:4173) when the
+  // Bootstrapper deploys the Docker stack on the same machine. The hostname
+  // is still validated by isExplicitLocalHostname inside parsedTrustedUrl,
+  // so arbitrary non-loopback HTTP remains rejected.
   const parsed = parsedTrustedUrl(selected, {
-    allowLoopbackHttp: development,
+    allowLoopbackHttp: true,
     allowInternalProtocol: !configured && !development,
   });
   const origin =

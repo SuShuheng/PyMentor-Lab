@@ -22,13 +22,19 @@ describe("Electron security boundary", () => {
     });
   });
 
-  it("accepts only HTTPS or loopback dev student content", () => {
+  it("accepts HTTPS, loopback dev content, and configured loopback backends", () => {
     expect(
       createTrustedContentPolicy({ configuredWebUrl: "https://learn.example.edu/app" }).url,
     ).toBe("https://learn.example.edu/app");
     expect(createTrustedContentPolicy({ devServerUrl: "http://127.0.0.1:5173" }).origin).toBe(
       "http://127.0.0.1:5173",
     );
+    // A configured loopback URL is accepted so the desktop shell can target a
+    // locally-deployed Docker stack (e.g. http://127.0.0.1:4173 set by the
+    // Bootstrapper as a machine environment variable).
+    expect(
+      createTrustedContentPolicy({ configuredWebUrl: "http://127.0.0.1:4173" }).url,
+    ).toBe("http://127.0.0.1:4173");
     expect(() => createTrustedContentPolicy({ configuredWebUrl: "http://example.edu" })).toThrow();
     expect(() =>
       createTrustedContentPolicy({ configuredWebUrl: "pymentor://app/index.html" }),

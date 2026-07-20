@@ -2,29 +2,49 @@
 REM ===========================================================================
 REM  PyMentor Lab artifact builder (compose_mee.bat)
 REM  --------------------------------------------------------------------------
-REM  Builds three artifacts and places them under dist\V1.1\:
+REM  Builds three artifacts and places them under dist\<VERSION>\:
 REM    1. PyMentorLab-Setup.exe        - student Electron app (unsigned)
 REM    2. PyMentorLab-Bootstrapper.exe - Inno Setup bootstrapper (embeds
 REM                                      student exe + backend deploy zip)
-REM    3. pymentor-backend-v1.1.zip    - self-contained backend deployment kit
+REM    3. pymentor-backend-<ver>.zip   - self-contained backend deployment kit
+REM
+REM  Usage:
+REM      compose_mee.bat              -> dist\V1.1\       (default)
+REM      compose_mee.bat V1.1.4       -> dist\V1.1.4\
+REM      compose_mee.bat V2.0         -> dist\V2.0\
 REM
 REM  Prerequisites (must be on PATH or at the default locations):
 REM    - Node.js + pnpm (workspace install)
 REM    - Python 3.13 + Pillow (for icon generation)
 REM    - Inno Setup 6 at F:\Tools\Inno-Setup6\ISCC.exe
 REM
-REM  Output: dist\V1.1\
+REM  Output: dist\<VERSION>\
 REM  ASCII-only to avoid codepage issues on Windows.
 REM ===========================================================================
 
 setlocal enabledelayedexpansion
 
+REM Version: first CLI arg overrides the default. Strip a leading "/" or "-"
+REM if present so callers can write either `V1.1.4` or `/V1.1.4`. A leading "V"
+REM (the version prefix itself) is NOT stripped.
 set "VERSION=V1.1"
+if not "%~1"=="" (
+    set "ARG=%~1"
+    set "FIRST=!ARG:~0,1!"
+    if "!FIRST!"=="/" set "ARG=!ARG:~1!"
+    if "!FIRST!"=="-" set "ARG=!ARG:~1!"
+    set "VERSION=!ARG!"
+)
 set "DIST_DIR=%~dp0dist\%VERSION%"
 set "ROOT=%~dp0"
 set "ISCC=F:\Tools\Inno-Setup6\ISCC.exe"
 set "PYTHON=.venv\Scripts\python.exe"
 set "EXITCODE=0"
+
+REM Derive the bare version (no leading "V") for the zip filename, e.g.
+REM VERSION=V1.1.4 -> ZIPVER=1.1.4. Falls back to VERSION if no "V" prefix.
+set "ZIPVER=!VERSION!"
+if /I "!ZIPVER:~0,1!"=="V" set "ZIPVER=!ZIPVER:~1!"
 
 echo ========================================
 echo Building PyMentor Lab %VERSION% artifacts
@@ -108,26 +128,28 @@ echo.
 
 REM 3. Build backend deploy zip (self-contained full source)
 echo [3/6] Building backend deployment zip...
-node "%ROOT%dist\build-dist.mjs"
+node "%ROOT%compose\build-dist.mjs" "%VERSION%"
 if errorlevel 1 (
     echo ERROR: build-dist.mjs failed
     set "EXITCODE=1"
     goto :end
 )
-if not exist "%ROOT%dist\backend-deploy\pymentor-backend-v1.1.zip" (
-    echo ERROR: pymentor-backend-v1.1.zip not found after build
+REM build-dist.mjs normalizes "V1.1.4" -> "v1.1.4" for the zip filename.
+set "ZIP_NAME=pymentor-backend-v!ZIPVER!.zip"
+if not exist "%ROOT%dist\backend-deploy\!ZIP_NAME!" (
+    echo ERROR: !ZIP_NAME! not found after build
     set "EXITCODE=1"
     goto :end
 )
-copy /y "%ROOT%dist\backend-deploy\pymentor-backend-v1.1.zip" "%DIST_DIR%\pymentor-backend-v1.1.zip" >nul
-echo     -^> %DIST_DIR%\pymentor-backend-v1.1.zip
+copy /y "%ROOT%dist\backend-deploy\!ZIP_NAME!" "%DIST_DIR%\!ZIP_NAME!" >nul
+echo     -^> %DIST_DIR%\!ZIP_NAME!
 echo.
 
 REM 4. Copy assets for Inno Setup embedding
 echo [4/6] Preparing Inno Setup assets...
 if not exist "%ROOT%dist\installer-source\installer-assets" mkdir "%ROOT%dist\installer-source\installer-assets"
 copy /y "%ROOT%apps\desktop\out\make\squirrel.windows\x64\PyMentorLab-Setup.exe" "%ROOT%dist\installer-source\installer-assets\PyMentorLab-Setup.exe" >nul
-copy /y "%ROOT%dist\backend-deploy\pymentor-backend-v1.1.zip" "%ROOT%dist\installer-source\installer-assets\backend-deploy.zip" >nul
+copy /y "%ROOT%dist\backend-deploy\!ZIP_NAME!" "%ROOT%dist\installer-source\installer-assets\backend-deploy.zip" >nul
 REM Ensure bootstrapper icon is current
 if exist "%ROOT%apps\desktop\build\icon.ico" copy /y "%ROOT%apps\desktop\build\icon.ico" "%ROOT%dist\installer-source\icon.ico" >nul
 echo.
@@ -140,7 +162,7 @@ if not exist "%ISCC%" (
     set "EXITCODE=1"
     goto :end
 )
-"%ISCC%" "%ROOT%dist\installer-source\bootstrapper.iss"
+"%ISCC%" "%ROOT%compose\bootstrapper.iss"
 if errorlevel 1 (
     echo ERROR: ISCC compile failed
     set "EXITCODE=1"

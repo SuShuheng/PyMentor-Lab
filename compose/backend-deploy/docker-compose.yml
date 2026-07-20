@@ -1,29 +1,15 @@
-# PyMentor Lab v1.1 — self-contained production deployment stack.
+# ===========================================================================
+#  PyMentor Lab - Backend deployment stack (self-contained kit)
+#  --------------------------------------------------------------------------
+#  This compose file is identical to the repository root docker-compose.yml,
+#  but is bundled so it can run standalone from this folder. The build
+#  context is `./code` so the Dockerfiles shipped in code/infra/*.Dockerfile
+#  are used.
 #
-# This file is the PRODUCTION variant shipped inside the backend-deploy zip.
-# Differences vs. the repository root docker-compose.yml:
-#   * `name: pymentor-prod` is baked in so users do NOT need `-p pymentor-prod`.
-#   * Every `build.context` points at `./code` — the full source copy that
-#     build-dist.mjs assembles next to this file. No git clone is required.
-#   * Healthchecks, ports, volume names, and pin versions are otherwise identical.
-#
-# Pinned versions (frozen design §5.2): PostgreSQL 16, Redis 7, MinIO RELEASE
-# image, Python 3.13, Node 20.
-#
-# Usage (run from this directory):
-#   docker compose --env-file .env up --build -d
-#
-# Access ports (host-side, bound to 127.0.0.1):
-#   5432  PostgreSQL     — connect a SQL client here
-#   6379  Redis          — inspect with redis-cli
-#   9000  MinIO S3 API   — upload/inspect object storage
-#   9001  MinIO Console  — web UI for object storage
-#   8000  FastAPI        — backend REST API + admin login at /docs
-#   8081  Worker         — worker health/metrics (internal)
-#   4173  Web app        — student-facing SPA
-#   4174  Admin app      — admin/operator SPA
-
-name: pymentor-prod
+#  Usage:
+#      1. Copy .env.example to .env and edit (REQUIRED keys documented there).
+#      2. Run deploy.ps1 (Windows) or deploy.sh (Linux/macOS).
+# ===========================================================================
 
 services:
   sandbox-runtime-build:
@@ -92,7 +78,7 @@ services:
     environment:
       PYMENTOR_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-pymentor}:${POSTGRES_PASSWORD:-pymentor_dev}@postgres:5432/${POSTGRES_DB:-pymentor}
       PYMENTOR_BOOTSTRAP_ON_STARTUP: "true"
-      PYMENTOR_CORS_ALLOWED_ORIGINS: http://127.0.0.1:4173,http://localhost:4173,http://127.0.0.1:4174,http://localhost:4174
+      PYMENTOR_CORS_ALLOWED_ORIGINS: http://127.0.0.1:4173,http://127.0.0.1:4174
       PYMENTOR_JWT_SECRET: ${PYMENTOR_JWT_SECRET:-dev-only-insecure-secret-change-me-in-production-min-32-bytes}
       PYMENTOR_INITIAL_ADMIN_EMAIL: ${PYMENTOR_INITIAL_ADMIN_EMAIL:-}
       PYMENTOR_INITIAL_ADMIN_PASSWORD: ${PYMENTOR_INITIAL_ADMIN_PASSWORD:-}
@@ -172,11 +158,6 @@ services:
 
   sandbox:
     restart: unless-stopped
-    # Sandbox SUPERVISOR (BE-005). Signed internal service only; no host port.
-    # Bound to the internal Compose network with the API. The Docker Engine
-    # socket is mounted read-only so the executor can create/remove job
-    # containers; production uses a dedicated sandbox host or rootless engine,
-    # never a shared rootful daemon socket.
     build:
       context: ./code
       dockerfile: infra/sandbox.Dockerfile
@@ -187,8 +168,6 @@ services:
     expose:
       - "8090"
     volumes:
-      # Read-only engine socket; the supervisor creates/removes labeled job
-      # containers only and exposes no generic Docker operation.
       - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       redis:
