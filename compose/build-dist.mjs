@@ -328,10 +328,14 @@ async function main() {
         if (existsSync(p)) rmSync(p, { force: true });
     }
 
-    // 5. Zip the entire backend-deploy/ folder, preserving a top-level
-    //    backend-deploy/ entry so the archive unpacks to a single dir.
+    // 5. Zip the entire dist/backend-deploy/ folder.
+    //    Entries are emitted WITHOUT a top-level prefix so the archive
+    //    unpacks flat (e.g. .env.example, deploy.ps1, code/...). The
+    //    Inno Setup bootstrapper extracts into Documents\PyMentorLab-Backend
+    //    and expects files directly at that root, not nested under another
+    //    backend-deploy/ dir.
     log(`zipping ${BACKEND_DEPLOY_DIR} -> ${ZIP_PATH} ...`);
-    const { entryCount, archiveSize } = await zipSingleDir(BACKEND_DEPLOY_DIR, ZIP_PATH, 'backend-deploy');
+    const { entryCount, archiveSize } = await zipSingleDir(BACKEND_DEPLOY_DIR, ZIP_PATH, '');
 
     log(`zip written: ${entryCount} entries, ${(archiveSize / 1024 / 1024).toFixed(2)} MiB`);
 
@@ -390,8 +394,11 @@ async function zipSingleDir(absDir, outPath, topPrefix) {
     }
     walk(absDir, '');
 
-    // Prefix every entry.
-    for (const e of entries) e.rel = `${topPrefix}/${e.rel}`;
+    // Prefix every entry. When topPrefix is empty, entries are emitted
+    // as-is (flat layout) — no leading slash is introduced.
+    if (topPrefix) {
+        for (const e of entries) e.rel = `${topPrefix}/${e.rel}`;
+    }
 
     const out = createWriteStream(outPath);
     const central = [];

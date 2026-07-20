@@ -1,28 +1,36 @@
 ; ===========================================================================
-;  PyMentor Lab - Bootstrapper (Stage D, v2)
+;  PyMentor Lab - Bootstrapper (Stage D, v3)
 ;  --------------------------------------------------------------------------
 ;  Single Inno Setup wrapper that:
-;    1. Runs the Electron student app installer (PyMentorLab-Setup.exe,
-;       Squirrel.Windows /SILENT)                         -- component `main`
-;    2. Unpacks the backend deployment kit to Documents\PyMentorLab-Backend
-;       after verifying Docker Desktop is available        -- component `backend`
+;    1. Collects admin credentials on EnvPage (email/password/master-key).
+;    2. Deploys the backend BEFORE installing the student app:
+;       - ExtractTemporaryFile('backend-deploy.zip') -> {tmp}.
+;       - Expand-Archive into Documents\PyMentorLab-Backend (flat layout).
+;       - WriteEnvFile() rewrites .env with the captured credentials.
+;       - ProbeDocker() fail-fast if Docker is missing.
+;       - Launch deploy.ps1 hidden, stdout+stderr -> {tmp}\deploy.log.
+;       - Tail the log onto DeployPage's TNewMemo (live progress).
+;       - Watch for .deploy-done.marker (written by deploy.ps1's finally).
+;       - On failure: ask the user whether to continue installing the
+;         student app anyway.
+;    3. [Files] + [Run] install the Electron student app via Squirrel.
 ;
-;  Backend deploy UX (revised):
-;    - A custom wizard page collects ADMIN_EMAIL / ADMIN_PASSWORD and offers
-;      to auto-generate PROVIDER_MASTER_KEY. The values are written into
-;      .env before the user is asked to run deploy.ps1.
-;    - Docker is probed INLINE from PascalScript (no external .ps1 file),
-;      which fixes the -196608 exit code caused by the previous design
-;      running the probe before [Files] had extracted check-docker.ps1.
-;    - PYMENTOR_DESKTOP_WEB_URL is set as a machine environment variable
-;      (HKLM\...\Session Env\Environment) so the desktop shell finds the
-;      student web frontend without manual configuration. Uses 127.0.0.1,
-;      never localhost, per deployment convention.
-;    - The backend is NEVER auto-started. deploy.ps1 is offered as a one-
-;      click shortcut (with port-occupancy handling built in).
+;  Component `backend` gates the entire deploy flow. `main`-only installs
+;  skip DeployPage + EnvPage and go straight to the student app.
+;
+;  Key fixes over v2:
+;    - .env write bug: the kit zip is now flat (no backend-deploy/ prefix),
+;      so Expand-Archive puts .env.example at BackendDir root where the
+;      PascalScript expects it.
+;    - Docker not starting: deploy.ps1 now has a non-interactive guard
+;      ($Host.UI.RawUI.WindowVisible) that auto-enables -ForcePort, plus
+;      [Console]::Out.Flush() so the redirected log streams line-by-line.
+;    - Order: backend deploy now runs in NextButtonClick(DeployPage) BEFORE
+;      the [Run] step that installs the student app.
+;    - Progress: live log streamed to a TNewMemo on a custom wizard page.
 ;
 ;  Build:
-;    "F:/Tools/Inno-Setup6/ISCC.exe" dist/installer-source/bootstrapper.iss
+;    "F:/Tools/Inno-Setup6/ISCC.exe" compose/bootstrapper.iss
 ;  Output:
 ;    dist/installer/PyMentorLab-Bootstrapper.exe
 ; ===========================================================================
@@ -82,8 +90,12 @@ Name: "backend"; Description: "后端服务部署（需要 Docker Desktop，将�
 [Files]
 ; --- main: the Electron installer. Copied to {tmp} and run from there. ---
 Source: "..\dist\installer-source\installer-assets\PyMentorLab-Setup.exe"; DestDir: "{tmp}"; Components: main;    Flags: nocompression deleteafterinstall
-; --- backend: deployment kit. ---
-Source: "..\dist\installer-source\installer-assets\backend-deploy.zip";    DestDir: "{app}\backend"; Components: backend; Flags: nocompression ignoreversion
+; --- backend: deployment kit. Marked `dontcopy` so it is NOT auto-extracted
+;     during [Files]; instead NextButtonClick(wpReady) calls
+;     ExtractTemporaryFile('backend-deploy.zip') to pull it into {tmp} on
+;     demand, BEFORE the install phase begins. nocompression avoids the
+;     solid-compression re-decompress penalty. ---
+Source: "..\dist\installer-source\installer-assets\backend-deploy.zip";    DestDir: "{tmp}"; Components: backend; Flags: nocompression dontcopy
 ; --- keep the brand icon alongside {app} for the uninstall display icon. ---
 Source: "..\dist\installer-source\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 
@@ -119,13 +131,48 @@ Root: HKLM; Subkey: "System\CurrentControlSet\Control\Session Manager\Environmen
 const
   DOCKER_DOWNLOAD_URL = 'https://www.docker.com/products/docker-desktop/';
   DEFAULT_DESKTOP_URL = 'http://127.0.0.1:4173';
-  BACKEND_DOCS_URL    = 'docs/deployment/backend-deploy-windows.md';
+  PM_REMOVE      = 1;
+  WM_QUIT        = $0012;
+
+type
+  TMsg = record
+    hwnd: HWND;
+    message: UINT;
+    wParam: LongInt;
+    lParam: LongInt;
+    time: DWORD;
+    pt: TPoint;
+  end;
+
+// Win32 message-pump helpers. PascalScript does NOT expose
+// Application.ProcessMessages, so we recreate it via PeekMessage +
+// TranslateMessage + DispatchMessage. This keeps the wizard responsive
+// (draggable, repaintable) while RunBackendDeploy blocks in its tail loop.
+function PeekMessage(var lpMsg: TMsg; hWnd: HWND; wMsgFilterMin, wMsgFilterMax: UINT; wRemoveMsg: UINT): BOOL;
+  external 'PeekMessageW@user32.dll stdcall';
+function TranslateMessage(const lpMsg: TMsg): BOOL;
+  external 'TranslateMessage@user32.dll stdcall';
+function DispatchMessage(const lpMsg: TMsg): LongInt;
+  external 'DispatchMessageW@user32.dll stdcall';
+
+procedure AppProcessMessage;
+var
+  Msg: TMsg;
+begin
+  while PeekMessage(Msg, 0, 0, 0, PM_REMOVE) do begin
+    if Msg.message = WM_QUIT then Exit;
+    TranslateMessage(Msg);
+    DispatchMessage(Msg);
+  end;
+end;
 
 var
   // Component + page state.
   BackendSelected: Boolean;
-  // The custom wizard page handle (created in InitializeWizard).
+  // The custom wizard page handles (created in InitializeWizard).
   EnvPage: TInputQueryWizardPage;
+  DeployPage: TWizardPage;
+  DeployMemo: TNewMemo;
   // Captured inputs (saved at NextButtonClick time so [Registry] code helpers
   // and CurStepChanged can both read them).
   AdminEmail: String;
@@ -134,8 +181,14 @@ var
   // User's chosen desktop URL (defaults to DEFAULT_DESKTOP_URL; user may
   // override if they deploy the backend elsewhere).
   DesktopWebUrl: String;
-  // Result of the inline Docker probe (set in CurStepChanged).
+  // Result of the inline Docker probe (set during the deploy step).
   DockerReady: Boolean;
+  // Final exit code from deploy.ps1 (read from the marker file). -1 = not yet
+  // run / not yet finished. Set by RunBackendDeploy.
+  DeployExitCode: Integer;
+  // True once NextButtonClick has run the backend deploy (so CurStepChanged
+  // knows whether to show a final reminder).
+  BackendDeployDone: Boolean;
 
 // ===========================================================================
 // Pure helpers (defined first so callers below can reference them).
@@ -319,124 +372,306 @@ begin
 end;
 
 // ===========================================================================
-// Wizard page: collect admin credentials + optional desktop URL.
+// Wizard pages: EnvPage (admin credentials) + DeployPage (live deploy log).
 // ===========================================================================
 procedure InitializeWizard;
 begin
   DesktopWebUrl := DEFAULT_DESKTOP_URL;
+  DeployExitCode := -1;
+  BackendDeployDone := False;
 
   EnvPage := CreateInputQueryPage(wpSelectComponents,
     '后端部署配置',
     '请填写首次部署所需的管理员账号与密钥（仅写入本地 .env，不会上传）。',
-    '点击“下一步”将这些值写入后端部署目录的 .env 文件。');
+    '点击“下一步”进入后端部署阶段。');
 
   EnvPage.Add('管理员邮箱（必须是可投递邮箱，例如 admin@pymentor.dev）：', False);
   EnvPage.Add('管理员密码（至少 8 位）：', True);
   EnvPage.Add('Provider 主密钥（留空将自动生成 32 字节 base64 密钥）：', True);
   EnvPage.Add('学生端 Web 地址（桌面应用加载的 URL，默认 127.0.0.1:4173）：', False);
-
-  // Pre-fill the desktop URL so the user sees the default.
   EnvPage.Values[3] := DEFAULT_DESKTOP_URL;
+
+  // DeployPage: a custom page with a read-only memo that streams deploy.ps1
+  // output. Created up-front so NextButtonClick(EnvPage.ID) can navigate to it.
+  DeployPage := CreateCustomPage(EnvPage.ID,
+    '正在部署后端服务',
+    'Docker 镜像构建 + 启动 + 健康检查（可能耗时 5-40 分钟，请勿关闭窗口）');
+
+  DeployMemo := TNewMemo.Create(DeployPage);
+  DeployMemo.Parent := DeployPage.Surface;
+  DeployMemo.SetBounds(ScaleX(0), ScaleY(0), DeployPage.SurfaceWidth, ScaleY(280));
+  DeployMemo.ScrollBars := ssVertical;
+  DeployMemo.ReadOnly := True;
+  DeployMemo.WordWrap := True;
+  DeployMemo.Font.Name := 'Consolas';
+  DeployMemo.Font.Size := 9;
+  DeployMemo.Lines.Clear;
+  DeployMemo.Lines.Add('点击“安装”开始部署后端…');
 end;
 
-// Skip the env page entirely when the backend component is not selected.
+// Skip EnvPage + DeployPage entirely when the backend component is not selected.
 function ShouldSkipPage(PageID: Integer): Boolean;
 begin
   Result := False;
-  if (PageID = EnvPage.ID) and (not WizardIsComponentSelected('backend')) then
-    Result := True;
+  if (PageID = EnvPage.ID)    and (not WizardIsComponentSelected('backend')) then Result := True;
+  if (PageID = DeployPage.ID) and (not WizardIsComponentSelected('backend')) then Result := True;
 end;
 
-// Validate inputs before leaving the env page.
+// ---------------------------------------------------------------------------
+// Append the delta of a log file to DeployMemo. Tails the file by remembering
+// the last-read byte offset. Returns True if any new bytes were appended.
+// ---------------------------------------------------------------------------
+procedure AppendMemoDelta(var LastLen: LongInt; LogFile: String);
+var
+  Contents: AnsiString;
+  Delta: String;
+begin
+  if not FileExists(LogFile) then Exit;
+  if not LoadStringFromFile(LogFile, Contents) then Exit;
+  if Length(Contents) <= LastLen then Exit;
+  // Only the newly-appended bytes are added; existing lines stay as-is.
+  Delta := Copy(Contents, LastLen + 1, Length(Contents) - LastLen);
+  LastLen := Length(Contents);
+  // Replace lone LF with CRLF so the memo renders newlines correctly.
+  StringChangeEx(Delta, #10, #13#10, True);
+  DeployMemo.Lines.Add(Delta);
+end;
+
+// ---------------------------------------------------------------------------
+// Run the backend deploy end-to-end. Returns the deploy.ps1 exit code, or -1
+// if the deploy never started (precondition failure). The deploy is driven
+// by launching deploy.ps1 in a hidden PowerShell process whose stdout+stderr
+// is redirected to {tmp}\deploy.log; we poll the log + a marker file written
+// by deploy.ps1's finally block to detect completion.
+// ---------------------------------------------------------------------------
+function RunBackendDeploy(BackendDir: String): Integer;
+var
+  ResultCode: Integer;
+  ExpandCmd: String;
+  LogFile: String;
+  MarkerFile: String;
+  PsCmd: String;
+  LastLen: LongInt;
+  Finished: Boolean;
+  Iterations: LongInt;
+  MarkerContents: AnsiString;
+  TmpZip: String;
+  DockerStatus: String;
+  DockerCode: Integer;
+begin
+  Result := -1;
+
+  LogFile := ExpandConstant('{tmp}\deploy.log');
+  MarkerFile := BackendDir + '\.deploy-done.marker';
+
+  // Clear stale artifacts from any prior run.
+  DeleteFile(LogFile);
+  DeleteFile(MarkerFile);
+
+  DeployMemo.Lines.Clear;
+  DeployMemo.Lines.Add('==> 解压后端部署包...');
+  DeployMemo.Lines.Add('    目录: ' + BackendDir);
+  AppProcessMessage;
+
+  // 1. Extract the embedded backend-deploy.zip from the installer staging
+  //    area to {tmp}, then Expand-Archive it into the final BackendDir.
+  try
+    ExtractTemporaryFile('backend-deploy.zip');
+  except
+    DeployMemo.Lines.Add('    ERR  无法从安装程序提取 backend-deploy.zip。');
+    Exit;
+  end;
+  TmpZip := ExpandConstant('{tmp}\backend-deploy.zip');
+
+  ExpandCmd := '-NoProfile -ExecutionPolicy Bypass -Command "'
+             + 'Expand-Archive -Path ''' + TmpZip + ''''
+             + ' -DestinationPath ''' + BackendDir + ''' -Force'
+             + '"';
+  if not Exec(ExpandConstant('{cmd}'), '/c powershell.exe ' + ExpandCmd,
+              '', SW_HIDE, ewWaitUntilTerminated, ResultCode) or (ResultCode <> 0) then begin
+    DeployMemo.Lines.Add('    ERR  解压失败 (ExitCode=' + IntToStr(ResultCode) + ')。');
+    Exit;
+  end;
+  DeployMemo.Lines.Add('    OK   解压完成。');
+  AppProcessMessage;
+
+  // 2. Write .env with the captured credentials (does not depend on Docker).
+  if WriteEnvFile(BackendDir) then begin
+    DeployMemo.Lines.Add('    OK   .env 已写入（含管理员账号与 Provider 主密钥）。');
+  end else begin
+    DeployMemo.Lines.Add('    !!   .env 写入失败。请手动复制 .env.example 并填入：');
+    DeployMemo.Lines.Add('         PYMENTOR_PROVIDER_MASTER_KEY=' + MasterKey);
+    DeployMemo.Lines.Add('         PYMENTOR_INITIAL_ADMIN_EMAIL=' + AdminEmail);
+    DeployMemo.Lines.Add('         PYMENTOR_INITIAL_ADMIN_PASSWORD=(your password)');
+  end;
+  AppProcessMessage;
+
+  // 3. Probe Docker INLINE. Fail-fast if Docker is not usable.
+  DeployMemo.Lines.Add('==> 检查 Docker Desktop...');
+  AppProcessMessage;
+  DockerStatus := '';
+  DockerCode := ProbeDocker(DockerStatus);
+  DeployMemo.Lines.Add('    ' + DockerStatus);
+  if DockerCode <> 0 then begin
+    case DockerCode of
+      1: DeployMemo.Lines.Add('         下载地址: ' + DOCKER_DOWNLOAD_URL);
+      3: DeployMemo.Lines.Add('         请更新 Docker Desktop 以启用 compose 插件。');
+    end;
+    DeployMemo.Lines.Add('');
+    DeployMemo.Lines.Add('后端部署中止。请修复 Docker 后重跑安装程序。');
+    Result := -2;  // Distinguish Docker-missing from deploy.ps1 failure.
+    Exit;
+  end;
+  AppProcessMessage;
+
+  // 4. Launch deploy.ps1 hidden, redirect all output to LogFile. -ForcePort is
+  //    implied by deploy.ps1's non-interactive guard, but pass it explicitly
+  //    for clarity. ewNoWait returns immediately so we can tail the log.
+  DeployMemo.Lines.Add('==> 启动 deploy.ps1（构建镜像 + 端口检查 + 启动 + 健康检查）...');
+  DeployMemo.Lines.Add('    日志: ' + LogFile);
+  DeployMemo.Lines.Add('');
+  AppProcessMessage;
+
+  PsCmd := '-NoProfile -ExecutionPolicy Bypass -File "' + BackendDir + '\deploy.ps1" -ForcePort *>"' + LogFile + '" 2>&1';
+  if not ShellExec('open', 'powershell.exe', PsCmd, BackendDir, SW_HIDE, ewNoWait, ResultCode) then begin
+    DeployMemo.Lines.Add('    ERR  无法启动 PowerShell。');
+    Exit;
+  end;
+
+  // 5. Tail loop: poll the log file for new bytes, surface them on the memo,
+  //    and watch for the marker file that deploy.ps1 writes on completion.
+  //    Cap at ~2 hours (24000 * 300ms) as a safety net against runaway loops.
+  LastLen := 0;
+  Finished := False;
+  Iterations := 0;
+  while (not Finished) and (Iterations < 24000) do begin
+    AppendMemoDelta(LastLen, LogFile);
+    AppProcessMessage;
+    if FileExists(MarkerFile) then Finished := True;
+    Sleep(300);
+    Iterations := Iterations + 1;
+  end;
+
+  // Final tail so the very last lines (success banner / error) appear.
+  AppendMemoDelta(LastLen, LogFile);
+  AppProcessMessage;
+
+  // 6. Read the exit code from the marker file.
+  if FileExists(MarkerFile) and LoadStringFromFile(MarkerFile, MarkerContents) then begin
+    Result := StrToIntDef(Trim(MarkerContents), 99);
+  end else begin
+    DeployMemo.Lines.Add('    ERR  deploy.ps1 未在 2 小时内完成，或 marker 文件缺失。');
+    Result := 99;
+  end;
+end;
+
+// Validate EnvPage inputs; on success, advance to DeployPage.
 function NextButtonClick(CurPageID: Integer): Boolean;
 var
   Email, Pwd, Key, UrlVal: String;
   AtPos, DotPos: Integer;
+  BackendDir: String;
+  ExitCode: Integer;
+  Choice: Integer;
 begin
   Result := True;
 
+  // --- EnvPage: validate + capture credentials ---
   if CurPageID = EnvPage.ID then begin
     Email := Trim(EnvPage.Values[0]);
     Pwd   := EnvPage.Values[1];
     Key   := Trim(EnvPage.Values[2]);
     UrlVal := Trim(EnvPage.Values[3]);
 
-    // Email: must contain '@' and a '.' in the domain part.
     AtPos := Pos('@', Email);
     if (AtPos < 2) then begin
       MsgBox('管理员邮箱格式不正确：缺少 @ 或用户名。请使用形如 admin@pymentor.dev 的可投递邮箱。',
              mbError, MB_OK);
-      Result := False;
-      Exit;
+      Result := False; Exit;
     end;
     DotPos := Pos('.', Copy(Email, AtPos + 1, Length(Email)));
     if DotPos = 0 then begin
       MsgBox('管理员邮箱域名缺少点号（.）。请使用形如 admin@pymentor.dev 的可投递邮箱。' + #13#10 +
              '注意：admin@*.local 等保留 TLD 会被后端 EmailStr 校验拒绝。',
              mbError, MB_OK);
-      Result := False;
-      Exit;
+      Result := False; Exit;
     end;
-
-    // Password: min 8 chars.
     if Length(Pwd) < 8 then begin
       MsgBox('管理员密码至少 8 位。', mbError, MB_OK);
-      Result := False;
-      Exit;
+      Result := False; Exit;
     end;
-
-    // Master key: if provided, sanity-check length (base64 of 32 bytes ~= 44 chars).
     if (Key <> '') and (Length(Key) < 32) then begin
       MsgBox('Provider 主密钥看起来过短（应为 base64 编码的 32 字节，约 44 字符）。' + #13#10 +
              '留空可由安装程序自动生成。', mbError, MB_OK);
-      Result := False;
-      Exit;
+      Result := False; Exit;
     end;
-    // If empty, auto-generate using PowerShell so we do not depend on a fixed
-    // key being committed anywhere.
     if Key = '' then begin
       Key := GenerateMasterKey;
       if Key = '' then begin
         MsgBox('无法自动生成 Provider 主密钥。请在字段中手动填入 base64 编码的 32 字节密钥。',
                mbError, MB_OK);
-        Result := False;
-        Exit;
+        Result := False; Exit;
       end;
       MsgBox('已自动生成 Provider 主密钥（将写入 .env）：' + #13#10 + #13#10 + Key,
              mbInformation, MB_OK);
     end;
-
-    // Desktop URL: must start with http://127.0.0.1 or https://.
     if (Pos('http://127.0.0.1', UrlVal) <> 1) and (Pos('https://', UrlVal) <> 1) then begin
       MsgBox('学生端 Web 地址必须以 http://127.0.0.1 或 https:// 开头。' + #13#10 +
              '本地部署默认：http://127.0.0.1:4173', mbError, MB_OK);
-      Result := False;
-      Exit;
+      Result := False; Exit;
     end;
 
-    // Persist for later steps.
     AdminEmail := Email;
     AdminPassword := Pwd;
     MasterKey := Key;
     DesktopWebUrl := UrlVal;
+    // Fall through: returning True advances the wizard to DeployPage.
+  end;
+
+  // --- DeployPage: run the backend deploy BEFORE the student-app [Run] step ---
+  if CurPageID = DeployPage.ID then begin
+    BackendDir := ExpandConstant('{userdocs}\PyMentorLab-Backend');
+    ExitCode := RunBackendDeploy(BackendDir);
+    DeployExitCode := ExitCode;
+    BackendDeployDone := True;
+
+    if ExitCode = 0 then begin
+      // Success: continue to [Files] + [Run] (student app install).
+      DeployMemo.Lines.Add('');
+      DeployMemo.Lines.Add('==============================================================');
+      DeployMemo.Lines.Add('  后端部署成功。点击“下一步”安装学生端主程序。');
+      DeployMemo.Lines.Add('==============================================================');
+      MsgBox('后端服务部署成功！' + #13#10 + #13#10
+           + '点击“下一步”继续安装学生端主程序。安装完成后请重启桌面应用以加载 '
+           + 'PYMENTOR_DESKTOP_WEB_URL。',
+           mbInformation, MB_OK);
+      Result := True;
+    end else if ExitCode = -2 then begin
+      // Docker missing/down — no point continuing; the RunBackendDeploy
+      // function already explained the situation on the memo.
+      Result := False;
+    end else begin
+      // Any other non-zero exit: ask the user whether to continue with the
+      // student-app install anyway (the backend can be fixed later).
+      Choice := MsgBox('后端部署失败（退出码 ' + IntToStr(ExitCode) + '）。' + #13#10 + #13#10
+                     + '是否仍要安装学生端主程序？' + #13#10
+                     + '  • 选“是”：继续安装学生端（后端需稍后手动修复）' + #13#10
+                     + '  • 选“否”：中止安装，修复后重跑',
+                     mbConfirmation, MB_YESNO or MB_DEFBUTTON2);
+      Result := (Choice = IDYES);
+    end;
   end;
 end;
 
 // ===========================================================================
-// Post-install: unpack the backend kit, probe Docker, write .env, and offer
-// to launch deploy.ps1 (which handles port-occupancy itself).
-// Runs AFTER all [Files] have been copied and AFTER the [Run] student-app step.
+// Post-install: confirm the backend kit is in place + remind the user to
+// restart the desktop app so it picks up PYMENTOR_DESKTOP_WEB_URL. The heavy
+// lifting (unzip + Docker deploy) already happened in NextButtonClick(DeployPage).
 // ===========================================================================
 procedure CurStepChanged(CurStep: TSetupStep);
 var
-  ResultCode: Integer;
-  BackendDir: String;
-  ExpandCmd: String;
   Msg: String;
-  OpenFolder: Integer;
-  DockerStatus: String;
-  DockerCode: Integer;
-  LaunchDeploy: Integer;
+  BackendDir: String;
 begin
   if CurStep <> ssPostInstall then Exit;
   BackendSelected := WizardIsComponentSelected('backend');
@@ -444,71 +679,24 @@ begin
 
   BackendDir := ExpandConstant('{userdocs}\PyMentorLab-Backend');
 
-  // 1. Expand-Archive the backend kit. -Force overwrites prior extracts.
-  ExpandCmd := '-NoProfile -ExecutionPolicy Bypass -Command "'
-             + 'Expand-Archive -Path ''' + ExpandConstant('{app}\backend\backend-deploy.zip') + ''''
-             + ' -DestinationPath ''' + BackendDir + ''' -Force'
-             + '"';
-  if not Exec(ExpandConstant('{cmd}'), '/c powershell.exe ' + ExpandCmd,
-              '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then begin
-    MsgBox('解压后端部署包失败 (ExitCode=' + IntToStr(ResultCode) + ')。' + #13#10
-         + '请稍后手动解压 {app}\backend\backend-deploy.zip。',
-           mbError, MB_OK);
-    Exit;
+  // If the backend deploy was skipped (e.g. user aborted at DeployPage), still
+  // surface the post-install summary so they know where the kit lives.
+  Msg := '安装完成。' + #13#10 + #13#10;
+  if BackendDeployDone then begin
+    if DeployExitCode = 0 then
+      Msg := Msg + '后端服务已成功部署，监听 127.0.0.1。' + #13#10
+    else
+      Msg := Msg + '后端部署未能完成（退出码 ' + IntToStr(DeployExitCode) + '），请稍后手动修复。' + #13#10;
+  end else begin
+    Msg := Msg + '后端部署包位于：' + BackendDir + #13#10
+         + '可稍后双击 deploy.ps1 手动启动。' + #13#10;
   end;
-
-  // 2. Probe Docker INLINE (no external .ps1) AFTER files are extracted.
-  DockerStatus := '';
-  DockerCode := ProbeDocker(DockerStatus);
-
-  // 3. Write .env with the captured credentials (do this regardless of Docker
-  //    status, so the user can fix Docker later without re-running setup).
-  if not WriteEnvFile(BackendDir) then begin
-    MsgBox('警告：无法自动写入 .env。请手动复制 .env.example 为 .env 并填入：' + #13#10
-         + '  PYMENTOR_PROVIDER_MASTER_KEY=' + MasterKey + #13#10
-         + '  PYMENTOR_INITIAL_ADMIN_EMAIL=' + AdminEmail + #13#10
-         + '  PYMENTOR_INITIAL_ADMIN_PASSWORD=(your password)' + #13#10
-         + '目录：' + BackendDir,
-           mbInformation, MB_OK);
-  end;
-
-  // 4. Surface status + next steps.
-  Msg := '后端部署包已解压到：' + #13#10
-       + BackendDir + #13#10 + #13#10
-       + 'Docker 状态：' + DockerStatus + #13#10 + #13#10
+  Msg := Msg + #13#10
        + '系统环境变量已设置：' + #13#10
        + '  PYMENTOR_DESKTOP_WEB_URL = ' + GetDesktopWebUrl('') + #13#10
-       + '（重启桌面应用后生效）' + #13#10 + #13#10;
-
-  case DockerCode of
-    0: Msg := Msg + '现在可以一键启动后端（deploy.ps1 会自动检测端口占用）。';
-    1: Msg := Msg + '尚未安装 Docker Desktop。请安装后双击 deploy.ps1：' + #13#10 + DOCKER_DOWNLOAD_URL;
-    2: Msg := Msg + 'Docker 守护进程未运行。请启动 Docker Desktop 后双击 deploy.ps1。';
-    3: Msg := Msg + 'docker compose 插件缺失。请更新 Docker Desktop 后双击 deploy.ps1。';
-  else
-    Msg := Msg + 'Docker 检查异常（代码 ' + IntToStr(DockerCode) + '）。请稍后手动运行 deploy.ps1。';
-  end;
+       + #13#10
+       + '请重启桌面应用以加载新的环境变量。';
   MsgBox(Msg, mbInformation, MB_OK);
-
-  // 5. Offer to launch deploy.ps1 immediately when Docker is ready.
-  if DockerReady then begin
-    LaunchDeploy := MsgBox('是否立即部署后端？' + #13#10
-                         + 'deploy.ps1 将构建镜像、检测端口占用、并启动 Docker 服务栈。',
-                           mbConfirmation, MB_YESNO or MB_DEFBUTTON1);
-    if LaunchDeploy = IDYES then begin
-      // Launch in a visible window so the user sees build progress + port
-      // prompts. runhidden is intentionally NOT used here.
-      ShellExec('open', 'powershell.exe',
-                '-NoProfile -ExecutionPolicy Bypass -File "' + BackendDir + '\deploy.ps1"',
-                BackendDir, SW_SHOW, ewNoWait, ResultCode);
-    end;
-  end;
-
-  // 6. Offer to open the unpacked folder for manual inspection.
-  OpenFolder := MsgBox('是否打开后端部署目录？', mbConfirmation, MB_YESNO or MB_DEFBUTTON2);
-  if OpenFolder = IDYES then begin
-    ShellExec('open', BackendDir, '', '', SW_SHOW, ewNoWait, ResultCode);
-  end;
 end;
 
 // ===========================================================================
