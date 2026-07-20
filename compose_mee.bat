@@ -102,6 +102,19 @@ echo.
 REM 2. Build student EXE (Electron Forge make:win)
 echo [2/6] Building student EXE (Electron Forge)...
 pushd "%ROOT%apps\desktop"
+
+REM Configure Electron mirror BEFORE make:win so Forge can fetch the
+REM prebuilt binary + checksums from the Chinese mirror when github.com is
+REM unreachable (common behind the GFW). If github.com IS reachable, Forge
+REM will still prefer the cache; the mirror is only a fallback.
+REM
+REM   ELECTRON_MIRROR          - base URL for the electron binary itself
+REM   ELECTRON_BUILDER_BINARIES_MIRROR - for electron-builder helpers (not used
+REM                                      by Forge, set for completeness)
+REM Set them inside the pushed directory so they apply only to make:win.
+set "ELECTRON_MIRROR=https://registry.npmmirror.com/-/binary/electron/"
+set "ELECTRON_BUILDER_BINARIES_MIRROR=https://registry.npmmirror.com/-/binary/electron-builder-binaries/"
+
 call pnpm install --frozen-lockfile
 if errorlevel 1 (
     echo ERROR: pnpm install failed for apps/desktop
@@ -112,6 +125,11 @@ if errorlevel 1 (
 call pnpm run make:win
 if errorlevel 1 (
     echo ERROR: pnpm make:win failed
+    echo        If the failure was a network timeout to github.com,
+    echo        verify ELECTRON_MIRROR is reachable:
+    echo            curl -sI %ELECTRON_MIRROR%
+    echo        Or clear Forge's stale state:
+    echo            rmdir /s /q apps\desktop\out
     popd
     set "EXITCODE=1"
     goto :end
